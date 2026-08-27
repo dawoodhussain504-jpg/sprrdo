@@ -5,7 +5,10 @@ import { getDb } from '../config/db';
 export async function runMigrations() {
   console.log(' Running database migrations...');
   const db = getDb();
-  const schemaPath = path.resolve(__dirname, 'schema.sql');
+  let schemaPath = path.resolve(__dirname, 'schema.sql');
+  if (!fs.existsSync(schemaPath)) {
+    schemaPath = path.resolve(__dirname, '../../src/database/schema.sql');
+  }
   const sql = fs.readFileSync(schemaPath, 'utf8');
 
   try {

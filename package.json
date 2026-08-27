@@ -5,10 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/database/migrate.js && node dist/seed/seed.js && node dist/server.js",
     "dev": "ts-node src/server.ts",
-    "db:migrate": "ts-node src/database/migrate.ts",
-    "db:seed": "ts-node src/seed/seed.ts",
+    "db:migrate": "node dist/database/migrate.js",
+    "db:seed": "node dist/seed/seed.js",
     "test": "ts-node src/test/api.test.ts"
   },
   "dependencies": {
