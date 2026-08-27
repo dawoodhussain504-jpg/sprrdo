@@ -1,0 +1,7 @@
+node_modules/
+dist/
+speedo.db
+speedo.db-journal
+.env
+.DS_Store
+uploads/*.tmp
