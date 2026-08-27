@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../config/db';
 import { calculateDistanceKm, calculateFares, generateRideOtp, VehicleType } from '../services/distance';
 import { createNotification } from '../services/notification';
+import { emitRideEvent, emitToCaptains } from '../services/socket';
 
 export async function getRiderProfile(req: AuthenticatedRequest, res: Response) {
   try {
@@ -149,6 +150,9 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
       [vehicle_type.toLowerCase()]
     );
 
+    // Notify online nearby captains via WebSockets immediately (sub-second broadcast)
+    emitToCaptains('ride:new_request', ride);
+
     for (const capt of nearbyCaptains.rows) {
       await createNotification({
         recipientId: capt.id,
@@ -252,6 +256,9 @@ export async function cancelRide(req: AuthenticatedRequest, res: Response) {
         metadata: { rideId },
       });
     }
+
+    // Broadcast real-time cancellation to room
+    emitRideEvent(rideId, 'ride:status_update', { rideId, status: 'cancelled', cancelledBy: 'rider' });
 
     return res.json({ success: true, message: 'Ride cancelled successfully' });
   } catch (error: any) {

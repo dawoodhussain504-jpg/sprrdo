@@ -1,3 +1,4 @@
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -7,11 +8,16 @@ import riderRoutes from './routes/rider.routes';
 import captainRoutes from './routes/captain.routes';
 import adminRoutes from './routes/admin.routes';
 import { runMigrations } from './database/migrate';
+import { initSocketServer } from './services/socket';
 
 dotenv.config();
 
 const app = express();
+const httpServer = http.createServer(app);
 const PORT = Number(process.env.PORT) || 5000;
+
+// Initialize WebSocket Engine
+initSocketServer(httpServer);
 
 // Middlewares
 app.use(cors());
@@ -33,8 +39,9 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'healthy',
     platform: 'Speedo Centralized Ride-Hailing Backend',
+    websocket: 'Socket.io Enabled (Sub-second GPS Streaming)',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
+    version: '1.1.0',
   });
 });
 
@@ -69,11 +76,12 @@ async function startServer() {
       console.log('🌱 Seed info:', seedErr.message);
     }
 
-    app.listen(PORT, '0.0.0.0', () => {
+    httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`====================================================`);
-      console.log(` SPEEDO RIDE-HAILING BACKEND RUNNING ON PORT ${PORT}`);
+      console.log(` SPEEDO REAL-TIME BACKEND & SOCKETS RUNNING ON ${PORT}`);
       console.log(` Health Check: http://0.0.0.0:${PORT}/health`);
       console.log(` API Base:     http://0.0.0.0:${PORT}/api`);
+      console.log(` WebSockets:   ws://0.0.0.0:${PORT}/socket.io/`);
       console.log(` Static Files: http://0.0.0.0:${PORT}/uploads`);
       console.log(`====================================================`);
     });

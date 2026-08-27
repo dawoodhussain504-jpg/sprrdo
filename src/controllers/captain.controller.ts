@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../config/db';
 import { calculateDistanceKm } from '../services/distance';
 import { createNotification } from '../services/notification';
+import { emitRideEvent } from '../services/socket';
 
 export async function getCaptainProfile(req: AuthenticatedRequest, res: Response) {
   try {
@@ -211,6 +212,19 @@ export async function acceptRide(req: AuthenticatedRequest, res: Response) {
       metadata: { rideId, captainName: capt.name, vehicleNumber: capt.vehicle_number },
     });
 
+    // Real-time WebSocket broadcast to Rider and Admin
+    emitRideEvent(rideId, 'ride:status_update', {
+      rideId,
+      status: 'accepted',
+      captain: {
+        id: capt.id,
+        name: capt.name,
+        phone: capt.phone,
+        vehicleNumber: capt.vehicle_number,
+        vehicleType: capt.vehicle_type,
+      },
+    });
+
     return res.json({
       success: true,
       message: 'Ride accepted successfully',
@@ -272,6 +286,8 @@ export async function updateRideStatus(req: AuthenticatedRequest, res: Response)
         metadata: { rideId },
       });
 
+      emitRideEvent(rideId, 'ride:status_update', { rideId, status: 'arrived' });
+
       return res.json({ success: true, message: 'Status updated to Arrived', data: { status: 'arrived' } });
     }
 
@@ -294,6 +310,8 @@ export async function updateRideStatus(req: AuthenticatedRequest, res: Response)
         type: 'ride_started',
         metadata: { rideId },
       });
+
+      emitRideEvent(rideId, 'ride:status_update', { rideId, status: 'ongoing' });
 
       return res.json({ success: true, message: 'OTP verified. Ride started!', data: { status: 'ongoing' } });
     }
@@ -327,6 +345,8 @@ export async function updateRideStatus(req: AuthenticatedRequest, res: Response)
         type: 'ride_completed',
         metadata: { rideId, fare: ride.fare },
       });
+
+      emitRideEvent(rideId, 'ride:status_update', { rideId, status: 'completed', fare: ride.fare });
 
       return res.json({
         success: true,
