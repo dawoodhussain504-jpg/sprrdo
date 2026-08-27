@@ -11,7 +11,7 @@ import { runMigrations } from './database/migrate';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 // Middlewares
 app.use(cors());
@@ -58,16 +58,23 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-// Start Server after running schema migrations
+// Start Server after running schema migrations and seeds
 async function startServer() {
   try {
     await runMigrations();
-    app.listen(PORT, () => {
+    try {
+      const { seedDatabase } = await import('./seed/seed');
+      await seedDatabase();
+    } catch (seedErr: any) {
+      console.log('🌱 Seed info:', seedErr.message);
+    }
+
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`====================================================`);
       console.log(` SPEEDO RIDE-HAILING BACKEND RUNNING ON PORT ${PORT}`);
-      console.log(` Health Check: http://localhost:${PORT}/health`);
-      console.log(` API Base:     http://localhost:${PORT}/api`);
-      console.log(` Static Files: http://localhost:${PORT}/uploads`);
+      console.log(` Health Check: http://0.0.0.0:${PORT}/health`);
+      console.log(` API Base:     http://0.0.0.0:${PORT}/api`);
+      console.log(` Static Files: http://0.0.0.0:${PORT}/uploads`);
       console.log(`====================================================`);
     });
   } catch (err) {
