@@ -137,8 +137,8 @@ export async function getIncomingRideRequests(req: AuthenticatedRequest, res: Re
       `SELECT r.*, u.name as rider_name, u.phone as rider_phone
        FROM rides r
        JOIN users u ON r.rider_id = u.id
-       WHERE r.status = 'requested' AND r.vehicle_type = $1
-       ORDER BY r.created_at DESC LIMIT 5`,
+       WHERE r.status = 'requested' AND (r.vehicle_type = $1 OR $1 = 'bike' OR r.vehicle_type = 'bike')
+       ORDER BY r.created_at DESC LIMIT 10`,
       [captain.vehicle_type]
     );
 

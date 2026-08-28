@@ -159,6 +159,7 @@ export function emitRideEvent(rideId: string, eventName: string, payload: any) {
 export function emitToCaptains(eventName: string, payload: any) {
   if (io) {
     io.to('role_captain').emit(eventName, payload);
+    io.emit(eventName, payload); // Global fallback broadcast to ensure instant UI popups
   }
 }
 

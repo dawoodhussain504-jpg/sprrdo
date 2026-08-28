@@ -104,15 +104,21 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ success: false, message: 'All ride request fields are required' });
     }
 
-    // Check if rider already has an active ride
+    // Auto-cancel any previous unassigned requested rides for this rider to allow re-booking
+    await db.query(
+      `UPDATE rides SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE rider_id = $1 AND status = 'requested'`,
+      [riderId]
+    );
+
+    // Only block if rider already has an assigned captain in progress
     const activeRideRes = await db.query(
-      `SELECT id FROM rides WHERE rider_id = $1 AND status IN ('requested', 'accepted', 'arrived', 'ongoing')`,
+      `SELECT id FROM rides WHERE rider_id = $1 AND status IN ('accepted', 'arrived', 'ongoing')`,
       [riderId]
     );
     if (activeRideRes.rows.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'You already have an active ride request in progress.',
+        message: 'You already have an active ride in progress with a captain.',
         activeRideId: activeRideRes.rows[0].id,
       });
     }
@@ -145,20 +151,25 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
       ]
     );
 
-    // Fetch the inserted ride
-    const newRideRes = await db.query('SELECT * FROM rides WHERE id = $1', [rideId]);
-    const ride = newRideRes.rows[0];
-
-    // Notify online nearby captains of this vehicle type
-    const nearbyCaptains = await db.query(
-      `SELECT c.id FROM captains c
-       JOIN locations l ON c.id = l.captain_id
-       WHERE c.is_online = 1 AND c.kyc_status = 'approved' AND c.vehicle_type = $1`,
-      [vehicle_type.toLowerCase()]
+    // Fetch the inserted ride with rider info
+    const newRideRes = await db.query(
+      `SELECT r.*, u.name as rider_name, u.phone as rider_phone
+       FROM rides r
+       JOIN users u ON r.rider_id = u.id
+       WHERE r.id = $1`,
+      [rideId]
     );
+    const ride = newRideRes.rows[0];
 
     // Notify online nearby captains via WebSockets immediately (sub-second broadcast)
     emitToCaptains('ride:new_request', ride);
+
+    // Notify all approved captains of this vehicle type
+    const nearbyCaptains = await db.query(
+      `SELECT c.id FROM captains c
+       WHERE c.kyc_status = 'approved' AND (c.vehicle_type = $1 OR $1 = 'bike')`,
+      [vehicle_type.toLowerCase()]
+    );
 
     for (const capt of nearbyCaptains.rows) {
       await createNotification({
