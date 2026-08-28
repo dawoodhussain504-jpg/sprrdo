@@ -110,15 +110,7 @@ export async function getIncomingRideRequests(req: AuthenticatedRequest, res: Re
   try {
     const captainId = req.user?.id;
 
-    // Verify captain is online & approved
-    const captRes = await db.query('SELECT vehicle_type, is_online, kyc_status FROM captains WHERE id = $1', [captainId]);
-    if (captRes.rows.length === 0 || !captRes.rows[0].is_online || captRes.rows[0].kyc_status !== 'approved') {
-      return res.json({ success: true, data: [], message: 'Captain must be online and KYC approved to receive requests' });
-    }
-
-    const captain = captRes.rows[0];
-
-    // Check if captain already has an active ride
+    // Check if captain already has an active ongoing ride
     const activeRes = await db.query(
       `SELECT id FROM rides WHERE captain_id = $1 AND status IN ('accepted', 'arrived', 'ongoing')`,
       [captainId]
@@ -132,14 +124,13 @@ export async function getIncomingRideRequests(req: AuthenticatedRequest, res: Re
     const captLat = locRes.rows[0]?.lat;
     const captLng = locRes.rows[0]?.lng;
 
-    // Find requested rides matching vehicle type
+    // Find requested rides (matching all open requests)
     const ridesRes = await db.query(
       `SELECT r.*, u.name as rider_name, u.phone as rider_phone
        FROM rides r
        JOIN users u ON r.rider_id = u.id
-       WHERE r.status = 'requested' AND (r.vehicle_type = $1 OR $1 = 'bike' OR r.vehicle_type = 'bike')
-       ORDER BY r.created_at DESC LIMIT 10`,
-      [captain.vehicle_type]
+       WHERE r.status = 'requested'
+       ORDER BY r.created_at DESC LIMIT 10`
     );
 
     const formattedRequests = ridesRes.rows.map((ride) => {
