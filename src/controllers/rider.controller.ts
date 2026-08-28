@@ -67,6 +67,8 @@ export async function getNearbyCaptains(req: AuthenticatedRequest, res: Response
   }
 }
 
+import { calculateRoadRoute } from '../services/routing';
+
 export async function estimateFares(req: AuthenticatedRequest, res: Response) {
   try {
     const { pickup_lat, pickup_lng, drop_lat, drop_lng } = req.body;
@@ -74,13 +76,17 @@ export async function estimateFares(req: AuthenticatedRequest, res: Response) {
       return res.status(400).json({ success: false, message: 'pickup_lat, pickup_lng, drop_lat, drop_lng are required' });
     }
 
-    const distanceKm = calculateDistanceKm(pickup_lat, pickup_lng, drop_lat, drop_lng);
+    const route = await calculateRoadRoute(pickup_lat, pickup_lng, drop_lat, drop_lng);
+    const distanceKm = route.distanceKm;
     const fares = calculateFares(distanceKm);
 
     return res.json({
       success: true,
       data: {
         distance_km: distanceKm,
+        duration_mins: route.durationMins,
+        summary: route.summary,
+        polyline: route.coordinates,
         estimates: fares,
       },
     });
@@ -111,7 +117,8 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
       });
     }
 
-    const distanceKm = calculateDistanceKm(pickup_lat, pickup_lng, drop_lat, drop_lng);
+    const route = await calculateRoadRoute(pickup_lat, pickup_lng, drop_lat, drop_lng);
+    const distanceKm = route.distanceKm;
     const fares = calculateFares(distanceKm);
     const selectedEstimate = fares[vehicle_type.toLowerCase() as VehicleType] || fares.bike;
     const otp = generateRideOtp();

@@ -15,6 +15,7 @@ import {
   markCaptainNotificationRead,
   getCaptainUnreadCount,
 } from '../controllers/captain.controller';
+import { getRoute } from '../controllers/route.controller';
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.post('/status/toggle', toggleOnlineStatus);
 
 // Live GPS location push (from ForegroundService)
 router.post('/location/update', updateLocation);
+router.post('/routes/calculate', getRoute);
 
 // KYC Document Upload & Status
 router.post('/kyc/upload', upload.single('document'), uploadKycDocument);
