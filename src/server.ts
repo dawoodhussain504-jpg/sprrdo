@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes';
 import riderRoutes from './routes/rider.routes';
 import captainRoutes from './routes/captain.routes';
 import adminRoutes from './routes/admin.routes';
+import chatRoutes from './routes/chat.routes';
 import { runMigrations } from './database/migrate';
 import { initSocketServer } from './services/socket';
 
@@ -39,9 +40,9 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'healthy',
     platform: 'Speedo Centralized Ride-Hailing Backend',
-    websocket: 'Socket.io Enabled (Sub-second GPS Streaming)',
+    websocket: 'Socket.io Enabled (Sub-second GPS Streaming & In-App Chat)',
     timestamp: new Date().toISOString(),
-    version: '1.1.0',
+    version: '1.2.0',
   });
 });
 
@@ -50,6 +51,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rider', riderRoutes);
 app.use('/api/captain', captainRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
 
 // 404 handler
 app.use((_req, res) => {

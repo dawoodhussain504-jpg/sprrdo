@@ -119,3 +119,18 @@ CREATE TABLE IF NOT EXISTS payments (
   FOREIGN KEY (rider_id) REFERENCES users(id),
   FOREIGN KEY (captain_id) REFERENCES captains(id)
 );
+
+CREATE TABLE IF NOT EXISTS messages (
+  id VARCHAR(64) PRIMARY KEY,
+  ride_id VARCHAR(64) NOT NULL,
+  sender_id VARCHAR(64) NOT NULL,
+  sender_role VARCHAR(32) NOT NULL, -- 'rider', 'captain'
+  recipient_id VARCHAR(64) NOT NULL,
+  recipient_role VARCHAR(32) NOT NULL, -- 'rider', 'captain'
+  message_text TEXT NOT NULL,
+  message_type VARCHAR(32) DEFAULT 'text', -- 'text', 'quick_chip', 'voice_note'
+  audio_url TEXT,
+  is_read INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE
+);
