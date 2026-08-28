@@ -164,10 +164,10 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
     // Notify online nearby captains via WebSockets immediately (sub-second broadcast)
     emitToCaptains('ride:new_request', ride);
 
-    // Notify all approved captains of this vehicle type
+    // Notify all approved captains of this specific vehicle type (e.g. Auto -> Auto, Bike -> Bike, Cab -> Cab)
     const nearbyCaptains = await db.query(
       `SELECT c.id FROM captains c
-       WHERE c.kyc_status = 'approved' AND (c.vehicle_type = $1 OR $1 = 'bike')`,
+       WHERE c.kyc_status = 'approved' AND LOWER(c.vehicle_type) = $1`,
       [vehicle_type.toLowerCase()]
     );
 
@@ -175,10 +175,10 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
       await createNotification({
         recipientId: capt.id,
         recipientRole: 'captain',
-        title: 'New Ride Request nearby!',
+        title: `New ${vehicle_type.toUpperCase()} Ride Request!`,
         message: `New ${vehicle_type.toUpperCase()} ride: ${pickup_address} → ${drop_address} (₹${selectedEstimate.totalFare})`,
         type: 'ride_request',
-        metadata: { rideId, fare: selectedEstimate.totalFare, pickup_address, drop_address },
+        metadata: { rideId, fare: selectedEstimate.totalFare, pickup_address, drop_address, vehicleType: vehicle_type.toLowerCase() },
       });
     }
 

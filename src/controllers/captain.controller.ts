@@ -119,18 +119,23 @@ export async function getIncomingRideRequests(req: AuthenticatedRequest, res: Re
       return res.json({ success: true, data: [], message: 'Captain is currently on an active ride' });
     }
 
+    // Fetch captain onboarded vehicle type (Auto, Bike, Cab)
+    const captRes = await db.query('SELECT vehicle_type FROM captains WHERE id = $1', [captainId]);
+    const vehicleType = captRes.rows[0]?.vehicle_type?.toLowerCase() || 'bike';
+
     // Fetch captain live location
     const locRes = await db.query('SELECT lat, lng FROM locations WHERE captain_id = $1', [captainId]);
     const captLat = locRes.rows[0]?.lat;
     const captLng = locRes.rows[0]?.lng;
 
-    // Find requested rides (matching all open requests)
+    // Find requested rides matching this Captain's onboarded vehicle type
     const ridesRes = await db.query(
       `SELECT r.*, u.name as rider_name, u.phone as rider_phone
        FROM rides r
        JOIN users u ON r.rider_id = u.id
-       WHERE r.status = 'requested'
-       ORDER BY r.created_at DESC LIMIT 10`
+       WHERE r.status = 'requested' AND LOWER(r.vehicle_type) = $1
+       ORDER BY r.created_at DESC LIMIT 10`,
+      [vehicleType]
     );
 
     const formattedRequests = ridesRes.rows.map((ride) => {
