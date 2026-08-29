@@ -8,6 +8,7 @@ import riderRoutes from './routes/rider.routes';
 import captainRoutes from './routes/captain.routes';
 import adminRoutes from './routes/admin.routes';
 import chatRoutes from './routes/chat.routes';
+import supportRoutes from './routes/support.routes';
 import { runMigrations } from './database/migrate';
 import { initSocketServer } from './services/socket';
 
@@ -52,6 +53,7 @@ app.use('/api/rider', riderRoutes);
 app.use('/api/captain', captainRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/support', supportRoutes);
 
 // 404 handler
 app.use((_req, res) => {

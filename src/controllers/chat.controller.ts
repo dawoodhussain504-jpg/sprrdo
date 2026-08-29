@@ -71,9 +71,14 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response) {
 
     // 1. Instant Real-Time WebSocket Delivery to Ride Room
     emitRideEvent(rideId, 'ride:chat_message', messagePayload);
+    emitRideEvent(rideId, 'chat:message', messagePayload);
 
-    // 2. Also emit to recipient's private user channel for background notification
+    // 2. Also emit directly to recipient's and sender's private user channels
     emitToUser(recipientId, 'user:new_chat_message', messagePayload);
+    emitToUser(recipientId, 'ride:chat_message', messagePayload);
+    if (senderId) {
+      emitToUser(senderId, 'chat:message', messagePayload);
+    }
 
     // 3. Create persistent Notification
     await createNotification({

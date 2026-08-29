@@ -1,3 +1,5 @@
+export {};
+
 const CLOUD_URL = 'https://web-production-5d826.up.railway.app';
 
 async function testRoadSnappedRouting() {

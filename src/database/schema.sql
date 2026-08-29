@@ -134,3 +134,30 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  user_role VARCHAR(32) NOT NULL, -- 'rider', 'captain'
+  user_name VARCHAR(255),
+  user_phone VARCHAR(32),
+  ride_id VARCHAR(64),
+  subject VARCHAR(255) NOT NULL,
+  category VARCHAR(64) DEFAULT 'general', -- 'payment_fare', 'ride_issue', 'safety', 'account_kyc', 'app_feedback', 'general'
+  status VARCHAR(32) DEFAULT 'open', -- 'open', 'in_progress', 'resolved', 'closed'
+  priority VARCHAR(32) DEFAULT 'normal', -- 'normal', 'high', 'urgent'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id VARCHAR(64) PRIMARY KEY,
+  ticket_id VARCHAR(64) NOT NULL,
+  sender_id VARCHAR(64) NOT NULL,
+  sender_role VARCHAR(32) NOT NULL, -- 'rider', 'captain', 'admin', 'speedo_support'
+  sender_name VARCHAR(255) NOT NULL,
+  message_text TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE
+);
+
