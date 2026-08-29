@@ -1,0 +1,164 @@
+package com.speedo.captain.ui
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.*
+import com.speedo.captain.viewmodel.CaptainViewModel
+import com.speedo.core.theme.SpeedoOrange
+import com.speedo.core.theme.SpeedoTextSecondary
+import com.speedo.core.theme.SpeedoWhite
+
+sealed class CaptainScreen(val route: String, val title: String, val icon: ImageVector) {
+    object Dashboard : CaptainScreen("dashboard", "Duty", Icons.Default.ElectricRickshaw)
+    object KycUpload : CaptainScreen("kyc_upload", "KYC Upload", Icons.Default.UploadFile)
+    object KycStatus : CaptainScreen("kyc_status", "KYC Status", Icons.Default.VerifiedUser)
+    object ActiveRide : CaptainScreen("active_ride", "Active Trip", Icons.Default.Navigation)
+    object Earnings : CaptainScreen("earnings", "Earnings", Icons.Default.AccountBalanceWallet)
+    object Notifications : CaptainScreen("notifications", "Alerts", Icons.Default.Notifications)
+}
+
+@Composable
+fun CaptainMainScaffold(
+    viewModel: CaptainViewModel
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    // 1. If not authenticated, render CaptainAuthScreen directly
+    if (!uiState.isLoggedIn) {
+        CaptainAuthScreen(
+            viewModel = viewModel,
+            onAuthSuccess = {
+                // Auth state update in uiState will immediately recompose into MainScaffold
+            }
+        )
+        return
+    }
+
+    // 2. Authenticated Captain Main View with Bottom Navigation & Flow
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    val unreadCount by viewModel.unreadCount.collectAsState(initial = 0)
+
+    val bottomNavItems = listOf(
+        CaptainScreen.Dashboard,
+        CaptainScreen.KycStatus,
+        CaptainScreen.Earnings,
+        CaptainScreen.Notifications
+    )
+
+    Scaffold(
+        bottomBar = {
+            if (currentRoute != CaptainScreen.ActiveRide.route && currentRoute != CaptainScreen.KycUpload.route) {
+                NavigationBar(
+                    containerColor = SpeedoWhite,
+                    tonalElevation = 8.dp
+                ) {
+                    bottomNavItems.forEach { screen ->
+                        val isSelected = currentRoute == screen.route
+
+                        NavigationBarItem(
+                            icon = {
+                                BadgedBox(
+                                    badge = {
+                                        if (screen == CaptainScreen.Notifications && unreadCount > 0) {
+                                            Badge { Text(text = "$unreadCount") }
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = screen.icon,
+                                        contentDescription = screen.title
+                                    )
+                                }
+                            },
+                            label = { Text(screen.title) },
+                            selected = isSelected,
+                            onClick = {
+                                navController.navigate(screen.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = SpeedoOrange,
+                                selectedTextColor = SpeedoOrange,
+                                unselectedIconColor = SpeedoTextSecondary,
+                                unselectedTextColor = SpeedoTextSecondary,
+                                indicatorColor = SpeedoWhite
+                            )
+                        )
+                    }
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = CaptainScreen.Dashboard.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(CaptainScreen.Dashboard.route) {
+                CaptainDashboardScreen(
+                    viewModel = viewModel,
+                    onNavigateToActiveRide = {
+                        navController.navigate(CaptainScreen.ActiveRide.route)
+                    },
+                    onNavigateToKyc = {
+                        navController.navigate(CaptainScreen.KycUpload.route)
+                    }
+                )
+            }
+
+            composable(CaptainScreen.KycUpload.route) {
+                KycSubmissionScreen(
+                    viewModel = viewModel,
+                    onNavigateToStatus = {
+                        navController.navigate(CaptainScreen.KycStatus.route)
+                    }
+                )
+            }
+
+            composable(CaptainScreen.KycStatus.route) {
+                KycStatusScreen(
+                    viewModel = viewModel,
+                    onNavigateToDashboard = {
+                        navController.navigate(CaptainScreen.Dashboard.route)
+                    },
+                    onNavigateToUpload = {
+                        navController.navigate(CaptainScreen.KycUpload.route)
+                    }
+                )
+            }
+
+            composable(CaptainScreen.ActiveRide.route) {
+                CaptainActiveRideScreen(
+                    viewModel = viewModel,
+                    onRideFinished = {
+                        navController.navigate(CaptainScreen.Dashboard.route) {
+                            popUpTo(CaptainScreen.Dashboard.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(CaptainScreen.Earnings.route) {
+                EarningsScreen(viewModel = viewModel)
+            }
+
+            composable(CaptainScreen.Notifications.route) {
+                CaptainNotificationsScreen(viewModel = viewModel)
+            }
+        }
+    }
+}

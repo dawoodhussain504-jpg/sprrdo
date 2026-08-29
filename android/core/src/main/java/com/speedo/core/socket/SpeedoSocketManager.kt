@@ -1,0 +1,334 @@
+package com.speedo.core.socket
+
+import android.content.Context
+import android.util.Log
+import com.google.gson.Gson
+import com.speedo.core.model.Ride
+import com.speedo.core.storage.TokenManager
+import com.speedo.core.utils.Constants
+import io.socket.client.IO
+import io.socket.client.Socket
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.net.URI
+
+data class LiveCaptainLocation(
+    val captainId: String,
+    val lat: Double,
+    val lng: Double,
+    val bearing: Float = 0f,
+    val speed: Float = 0f,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class LiveRideStatusUpdate(
+    val rideId: String,
+    val status: String,
+    val captainName: String? = null,
+    val vehicleNumber: String? = null,
+    val fare: Double? = null,
+    val cancelledBy: String? = null
+)
+
+class SpeedoSocketManager private constructor(private val context: Context) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val tokenManager = TokenManager.getInstance(context)
+    private val gson = Gson()
+
+    private var socket: Socket? = null
+
+    private val _isConnected = MutableStateFlow(false)
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+
+    private val _liveCaptainLocationFlow = MutableSharedFlow<LiveCaptainLocation>(extraBufferCapacity = 64)
+    val liveCaptainLocationFlow: SharedFlow<LiveCaptainLocation> = _liveCaptainLocationFlow.asSharedFlow()
+
+    private val _liveRideStatusFlow = MutableSharedFlow<LiveRideStatusUpdate>(extraBufferCapacity = 16)
+    val liveRideStatusFlow: SharedFlow<LiveRideStatusUpdate> = _liveRideStatusFlow.asSharedFlow()
+
+    private val _incomingRideRequestFlow = MutableSharedFlow<Ride>(extraBufferCapacity = 16)
+    val incomingRideRequestFlow: SharedFlow<Ride> = _incomingRideRequestFlow.asSharedFlow()
+
+    private val _liveChatMessageFlow = MutableSharedFlow<com.speedo.core.model.ChatMessage>(extraBufferCapacity = 64)
+    val liveChatMessageFlow: SharedFlow<com.speedo.core.model.ChatMessage> = _liveChatMessageFlow.asSharedFlow()
+
+    private val _liveSupportMessageFlow = MutableSharedFlow<com.speedo.core.model.SupportMessage>(extraBufferCapacity = 64)
+    val liveSupportMessageFlow: SharedFlow<com.speedo.core.model.SupportMessage> = _liveSupportMessageFlow.asSharedFlow()
+
+    private val _liveSupportTicketFlow = MutableSharedFlow<com.speedo.core.model.SupportTicket>(extraBufferCapacity = 32)
+    val liveSupportTicketFlow: SharedFlow<com.speedo.core.model.SupportTicket> = _liveSupportTicketFlow.asSharedFlow()
+
+    companion object {
+        private const val TAG = "SpeedoSocket"
+
+        @Volatile
+        private var INSTANCE: SpeedoSocketManager? = null
+
+        fun getInstance(context: Context): SpeedoSocketManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: SpeedoSocketManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
+
+    /**
+     * Connect to Speedo WebSocket Server (Executed safely on background IO)
+     */
+    fun connect() {
+        if (socket?.connected() == true) return
+
+        scope.launch {
+            try {
+                val rawUrl = Constants.getBaseUrl(context)
+                val base = rawUrl.removeSuffix("api/").removeSuffix("/")
+                val socketUri = URI.create(base)
+                val token = tokenManager.getToken()
+
+                Log.d(TAG, "Connecting to WebSocket at $socketUri with token=${token?.take(10)}...")
+
+                val opts = IO.Options().apply {
+                    reconnection = true
+                    reconnectionAttempts = Int.MAX_VALUE
+                    reconnectionDelay = 1000
+                    timeout = 10000
+                    transports = arrayOf("websocket", "polling")
+                    if (!token.isNullOrBlank()) {
+                        auth = mapOf("token" to token)
+                    }
+                }
+
+                socket = IO.socket(socketUri, opts).apply {
+                on(Socket.EVENT_CONNECT) {
+                    Log.i(TAG, "⚡ WebSocket Connected successfully to $base")
+                    _isConnected.value = true
+                }
+
+                on(Socket.EVENT_DISCONNECT) {
+                    Log.w(TAG, "🔌 WebSocket Disconnected")
+                    _isConnected.value = false
+                }
+
+                on(Socket.EVENT_CONNECT_ERROR) { args ->
+                    Log.e(TAG, "❌ WebSocket Connection Error: ${args.getOrNull(0)}")
+                    _isConnected.value = false
+                }
+
+                // 1. Live Captain GPS broadcast for Rider & Active Ride
+                on("ride:location_broadcast") { args ->
+                    try {
+                        val json = args.getOrNull(0) as? JSONObject ?: return@on
+                        val location = LiveCaptainLocation(
+                            captainId = json.optString("captainId", ""),
+                            lat = json.optDouble("lat", 0.0),
+                            lng = json.optDouble("lng", 0.0),
+                            bearing = json.optDouble("bearing", 0.0).toFloat(),
+                            speed = json.optDouble("speed", 0.0).toFloat(),
+                            timestamp = json.optLong("timestamp", System.currentTimeMillis())
+                        )
+                        scope.launch {
+                            _liveCaptainLocationFlow.emit(location)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing live location broadcast", e)
+                    }
+                }
+
+                // 2. Real-time Ride Status Updates
+                on("ride:status_update") { args ->
+                    try {
+                        val json = args.getOrNull(0) as? JSONObject ?: return@on
+                        val captJson = json.optJSONObject("captain")
+                        val update = LiveRideStatusUpdate(
+                            rideId = json.optString("rideId", ""),
+                            status = json.optString("status", ""),
+                            captainName = if (captJson?.has("name") == true) captJson.optString("name") else if (json.has("captainName")) json.optString("captainName") else null,
+                            vehicleNumber = if (captJson?.has("vehicleNumber") == true) captJson.optString("vehicleNumber") else if (json.has("vehicleNumber")) json.optString("vehicleNumber") else null,
+                            fare = if (json.has("fare")) json.optDouble("fare") else null,
+                            cancelledBy = if (json.has("cancelledBy")) json.optString("cancelledBy") else null
+                        )
+                        scope.launch {
+                            _liveRideStatusFlow.emit(update)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing ride status update", e)
+                    }
+                }
+
+                // 3. Instant incoming ride request broadcast for Captains
+                on("ride:new_request") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val ride = gson.fromJson(jsonStr, Ride::class.java)
+                        if (ride != null) {
+                            scope.launch {
+                                _incomingRideRequestFlow.emit(ride)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing incoming ride request socket event", e)
+                    }
+                }
+
+                // 4. In-App Real-Time Chat Messages (Multiple aliases to guarantee delivery)
+                val chatListener = io.socket.emitter.Emitter.Listener { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@Listener
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val msg = gson.fromJson(jsonStr, com.speedo.core.model.ChatMessage::class.java)
+                        if (msg != null) {
+                            scope.launch {
+                                _liveChatMessageFlow.emit(msg)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing chat message socket event", e)
+                    }
+                }
+
+                on("ride:chat_message", chatListener)
+                on("user:new_chat_message", chatListener)
+                on("chat:message", chatListener)
+
+                // 5. Speedo Support & Query Live Messages
+                on("support:ticket_message") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val sMsg = gson.fromJson(jsonStr, com.speedo.core.model.SupportMessage::class.java)
+                        if (sMsg != null) {
+                            scope.launch {
+                                _liveSupportMessageFlow.emit(sMsg)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing support message socket event", e)
+                    }
+                }
+
+                on("support:new_ticket") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val ticket = gson.fromJson(jsonStr, com.speedo.core.model.SupportTicket::class.java)
+                        if (ticket != null) {
+                            scope.launch {
+                                _liveSupportTicketFlow.emit(ticket)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing support ticket socket event", e)
+                    }
+                }
+            }
+
+            socket?.connect()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize Socket.io client", e)
+            }
+        }
+    }
+
+    /**
+     * Join room for active ride to receive sub-second location updates
+     */
+    fun joinRideRoom(rideId: String) {
+        val payload = JSONObject().apply {
+            put("rideId", rideId)
+        }
+        socket?.emit("ride:join", payload)
+        Log.d(TAG, "Emitted ride:join for $rideId")
+    }
+
+    /**
+     * Leave room when ride completes or cancels
+     */
+    fun leaveRideRoom(rideId: String) {
+        val payload = JSONObject().apply {
+            put("rideId", rideId)
+        }
+        socket?.emit("ride:leave", payload)
+        Log.d(TAG, "Emitted ride:leave for $rideId")
+    }
+
+    /**
+     * Join room for support ticket conversation
+     */
+    fun joinTicketRoom(ticketId: String) {
+        val payload = JSONObject().apply {
+            put("ticketId", ticketId)
+        }
+        socket?.emit("support:join", payload)
+        Log.d(TAG, "Emitted support:join for $ticketId")
+    }
+
+    /**
+     * Join room for admin real-time support alerts
+     */
+    fun joinAdminSupportRoom() {
+        val payload = JSONObject().apply {
+            put("role", "admin")
+        }
+        socket?.emit("role:join", payload)
+        Log.d(TAG, "Emitted role:join for admin")
+    }
+
+    /**
+     * Captain high-frequency sub-second GPS stream (500ms - 1000ms)
+     */
+    fun emitCaptainLocation(
+        lat: Double,
+        lng: Double,
+        bearing: Float,
+        speed: Float,
+        isOnline: Boolean,
+        activeRideId: String? = null
+    ) {
+        if (socket?.connected() != true) return
+
+        val payload = JSONObject().apply {
+            put("lat", lat)
+            put("lng", lng)
+            put("bearing", bearing.toDouble())
+            put("speed", speed.toDouble())
+            put("isOnline", isOnline)
+            if (!activeRideId.isNullOrBlank()) {
+                put("activeRideId", activeRideId)
+            }
+        }
+        socket?.emit("captain:location_update", payload)
+    }
+
+    fun disconnect() {
+        socket?.disconnect()
+        socket?.off()
+        socket = null
+        _isConnected.value = false
+    }
+}

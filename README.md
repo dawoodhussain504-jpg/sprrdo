@@ -1,86 +1,93 @@
-# Speedo Centralized Backend REST API
+# Speedo — Native Android Ride-Hailing Platform (Rapido-Style)
 
-Centralized REST API backend for the **Speedo Ride-Hailing Platform**, serving all 3 native Android applications (**Rider App**, **Captain App**, **Admin App**) with a unified database hosted on Railway / PostgreSQL / SQLite.
-
----
-
-## 🚀 Key Capabilities
-
-- **Role-Scoped JWT Authentication:** Strict role guards (`/api/rider/*`, `/api/captain/*`, `/api/admin/*`).
-- **Dynamic Database Adapter:** Native support for PostgreSQL on Railway with seamless local SQLite fallback (`speedo.db`).
-- **Multipart Document Uploads:** Endpoints for Vehicle RC, Aadhaar ID, Camera Live Selfie, and UPI Payment QR images.
-- **Real-Time Polling Engine:** High-performance polling architecture for Captain GPS tracking (5s push, 3–5s rider tracking), incoming ride alerts, and notification badge counts.
-- **Automated OTP & Fare Verification:** 4-digit ride OTP verification and dynamic distance/time/pricing engine for Bike, Auto, and Cab.
+A complete, full-stack ride-hailing platform built as **three separate native Android applications** (three separate APKs) powered by **Kotlin**, **Jetpack Compose**, and **Material 3**, all connected in real time to **one centralized Node.js/TypeScript backend** and database deployed on Railway.
 
 ---
 
-## 🛠️ Tech Stack
+## 📱 Three Native Android Apps
 
-- **Runtime:** Node.js (TypeScript / Express)
-- **Database:** PostgreSQL (Cloud / Railway) or SQLite (`speedo.db` for zero-setup local development)
-- **Authentication:** JWT (`jsonwebtoken`) + Password Hashing (`bcryptjs`)
-- **File Uploads:** Multer with static asset serving (`/uploads/*`) and Cloudinary/S3 compatibility
-- **Tests:** Integrated TypeScript end-to-end API test suite
+```mermaid
+graph LR
+    RiderApp["🧑 Rider App<br/>(:rider-app)<br/>Booking & Tracking"] <--> CentralBackend["⚡ Centralized Backend<br/>(Node.js / Express / Railway)"]
+    CaptainApp["🛵 Captain App<br/>(:captain-app)<br/>Foreground GPS & Rides"] <--> CentralBackend
+    AdminApp["🛡️ Admin App<br/>(:admin-app)<br/>KYC & Live Fleet"] <--> CentralBackend
+```
+
+1. **Rider App (`:rider-app`)**
+   - Email/password signup & login (JWT auth).
+   - Home screen with **osmdroid + CARTO Voyager** map, live GPS pin, and vehicle selector (Speedo Bike, Auto, Cab) with live calculated fares and ETA.
+   - Live nearby available captains on map (polled every few seconds).
+   - Real-time ride status lifecycle tracking (`requested` $\rightarrow$ `accepted` $\rightarrow$ `arrived` $\rightarrow$ `ongoing` $\rightarrow$ `completed`).
+   - Dynamic ETA recalculation and live captain marker movement.
+   - 4-digit Ride Verification OTP display.
+   - Trip history cached in Room + unread notification badges.
+
+2. **Captain App (`:captain-app`)**
+   - KYC submission flow for Vehicle Registration, Aadhaar ID, Camera Live Selfie (`TakePicture` contract), and UPI Payment QR code.
+   - KYC Verification Status screen with real-time feedback and Admin remarks.
+   - Online / Offline duty toggle (strictly guarded by KYC approval).
+   - **Foreground Location Service** (`CaptainLocationService`) with persistent status notification broadcasting GPS lat/lng every 5 seconds to backend.
+   - Incoming ride request alert card with loud local notifications and accept/reject timer.
+   - Active ride screen with osmdroid navigation, pickup/drop pins, route polyline, and status actions ("Reached Pickup", "Start Ride with OTP", "Complete Ride").
+   - Daily earnings dashboard and personal UPI Payment QR code display for passenger payments.
+
+3. **Admin App (`:admin-app`)**
+   - Admin secure portal login.
+   - Real-time analytics dashboard (Total riders, captains, online fleet, active rides, pending KYC, total revenue).
+   - **KYC Review Queue** — Full-size image inspector for Vehicle Reg, Aadhaar, Selfie, and Payment QR images with Approve / Reject actions and Admin remarks.
+   - **Live Fleet & Rides Map** — Real-time osmdroid map showing all online captains and active rides across the city.
+   - Ride monitoring list with status filters (`requested`, `accepted`, `ongoing`, `completed`, `cancelled`).
+   - Customer and driver account moderation (Suspend / Activate).
 
 ---
 
-## 📦 Setup & Running Locally
+## 🛠️ Architecture & Tech Stack
 
-### 1. Install Dependencies
+| Layer | Technologies Used |
+| :--- | :--- |
+| **Android UI** | Kotlin, Jetpack Compose, Material 3 Custom Theme (Light Orange `#FF6600` & White) |
+| **Android Architecture** | MVVM + Repository Pattern, Flow, StateFlow, Coroutines |
+| **Shared Android Core** | `:core` module for models, Retrofit, Room DB, osmdroid, Theme, WorkManager |
+| **Local Offline Cache** | Room Database (`SpeedoDatabase`, DAOs, Entities) |
+| **Background Scheduling** | WorkManager (`NotificationPollingWorker`), Android ForegroundService |
+| **Mapping & Geo** | `osmdroid` native library + CARTO tile templates (Voyager/Positron), custom vector markers |
+| **Backend REST API** | Node.js, Express, TypeScript, Multer, JWT, Bcrypt |
+| **Centralized Database** | PostgreSQL on Railway (with automatic SQLite `speedo.db` fallback for zero-setup local dev) |
+| **Deployment** | Railway-ready (`railway.json`, `Procfile`, `Dockerfile`) |
+
+---
+
+## ⚡ Quick Start Guide
+
+### 1. Run Backend Server
 ```bash
 cd backend
 npm install
-```
-
-### 2. Configure Environment (.env)
-Copy `.env.example` to `.env`:
-```env
-PORT=5000
-NODE_ENV=development
-JWT_SECRET=speedo_super_secret_jwt_key_rapido_2025_prod_safe
-BASE_URL=http://localhost:5000
-# Leave DATABASE_URL empty for zero-setup SQLite, or set your Railway Postgres connection string:
-# DATABASE_URL=postgresql://postgres:password@host:port/railway
-```
-
-### 3. Run Migrations & Seed Sample Test Accounts
-```bash
 npm run db:migrate
 npm run db:seed
-```
-
-### 4. Start Development Server
-```bash
 npm run dev
-# or build & start:
-npm run build && npm start
 ```
+*The backend will run on `http://localhost:5000` with pre-seeded accounts.*
 
-### 5. Run Automated Integration Tests
+To run the full automated backend test suite:
 ```bash
 npm test
 ```
 
+### 2. Run Android Apps in Android Studio
+1. Open Android Studio $\rightarrow$ Open `d:/speedo/android`.
+2. Select the desired module to build and run:
+   - **`rider-app`** $\rightarrow$ Customer booking app
+   - **`captain-app`** $\rightarrow$ Driver ride-fulfillment app
+   - **`admin-app`** $\rightarrow$ Platform operator & KYC app
+
 ---
 
-## 🔑 Pre-Seeded Test Credentials
+## 🔑 Pre-Configured Test Logins
 
-| Role | Email | Password | Details |
+| Role | Email | Password | Role Description |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@speedo.com` | `Admin@123` | Platform Super Admin (KYC review, live fleet map) |
-| **Captain (Approved)** | `captain@speedo.com` | `Captain@123` | Approved KYC, Online in Bangalore |
-| **Captain (Pending)** | `pending_captain@speedo.com` | `Captain@123` | Submitted 4 KYC docs, awaiting review |
-| **Rider** | `rider@speedo.com` | `Rider@123` | Customer with ride history |
-
----
-
-## 🚂 Railway Cloud Deployment
-
-1. Create a new project on [Railway](https://railway.app).
-2. Provision a **PostgreSQL** database on Railway.
-3. Link this repository's `/backend` directory.
-4. Set environment variables on Railway:
-   - `DATABASE_URL`: `${{Postgres.DATABASE_URL}}`
-   - `JWT_SECRET`: `your_secure_random_key`
-   - `NODE_ENV`: `production`
-5. Railway will automatically run `Procfile` / `railway.json` (`npm run db:migrate && npm run db:seed && npm start`).
+| **Admin** | `admin@speedo.com` | `Admin@123` | Platform Super Admin (KYC review, Live Map) |
+| **Captain (Online)** | `captain@speedo.com` | `Captain@123` | Approved KYC, Bike Captain |
+| **Captain (Pending)** | `pending_captain@speedo.com` | `Captain@123` | Auto Driver with submitted documents |
+| **Rider** | `rider@speedo.com` | `Rider@123` | Passenger customer |

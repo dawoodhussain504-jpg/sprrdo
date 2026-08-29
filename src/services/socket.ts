@@ -3,7 +3,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { db } from '../config/db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'speedo_super_secret_jwt_key_2025';
+const JWT_SECRET = process.env.JWT_SECRET || 'speedo_super_secret_jwt_key_rapido_2025_prod_safe';
 
 let io: Server | null = null;
 

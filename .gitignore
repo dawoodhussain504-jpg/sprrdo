@@ -5,3 +5,8 @@ speedo.db-journal
 .env
 .DS_Store
 uploads/*.tmp
+.gradle/
+build/
+android/.gradle/
+android/*/build/
+*.apk

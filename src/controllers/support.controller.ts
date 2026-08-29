@@ -82,18 +82,23 @@ export async function createSupportTicket(req: AuthenticatedRequest, res: Respon
 
     try {
       const io = getIO();
-      io.to('role_admin').emit('support:new_ticket', {
+      const ticketPayload = {
+        id: ticketId,
         ticketId,
         userId,
         userRole,
         userName,
         userPhone,
+        rideId: ride_id || null,
         subject: subject.trim(),
         category,
         priority,
         status: 'open',
         createdAt: new Date().toISOString(),
-      });
+        updatedAt: new Date().toISOString(),
+      };
+      io.to('role_admin').emit('support:new_ticket', ticketPayload);
+      io.emit('support:new_ticket', ticketPayload);
     } catch (e) {}
 
     return res.status(201).json({
@@ -152,17 +157,17 @@ export async function getAdminTickets(req: AuthenticatedRequest, res: Response) 
                  FROM support_tickets WHERE 1=1`;
     const params: any[] = [];
 
-    if (status) {
+    if (status && status !== 'all') {
       params.push(status);
       query += ` AND status = $${params.length}`;
     }
 
-    if (category) {
+    if (category && category !== 'all') {
       params.push(category);
       query += ` AND category = $${params.length}`;
     }
 
-    if (user_role) {
+    if (user_role && user_role !== 'all') {
       params.push(user_role);
       query += ` AND user_role = $${params.length}`;
     }
@@ -296,6 +301,7 @@ export async function sendTicketMessage(req: AuthenticatedRequest, res: Response
     try {
       const io = getIO();
       io.to(`ticket_${ticketId}`).emit('support:ticket_message', payload);
+      io.emit('support:ticket_message', payload);
       if (senderRole === 'admin') {
         emitToUser(ticket.user_id, 'support:ticket_message', payload);
       } else {

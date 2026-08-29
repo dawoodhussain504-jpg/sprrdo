@@ -1,0 +1,437 @@
+package com.speedo.captain.ui
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.speedo.captain.ui.components.*
+import com.speedo.captain.viewmodel.CaptainViewModel
+import com.speedo.core.components.*
+import com.speedo.core.maps.MapMarkerData
+import com.speedo.core.maps.MarkerType
+import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.RouteHelper
+import com.speedo.core.socket.SpeedoSocketManager
+import com.speedo.core.theme.*
+import org.osmdroid.util.GeoPoint
+
+@Composable
+fun CaptainActiveRideScreen(
+    viewModel: CaptainViewModel,
+    onRideFinished: () -> Unit
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val currentRide = uiState.pendingPaymentRide ?: uiState.activeRide
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchProfile()
+        viewModel.fetchKycStatus()
+    }
+
+    var showOtpKeypad by remember { mutableStateOf(false) }
+    var showPaymentSheet by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var showChatSheet by remember { mutableStateOf(false) }
+    var showSupportSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(currentRide?.id) {
+        if (currentRide != null) {
+            SpeedoSocketManager.getInstance(context).joinRideRoom(currentRide.id)
+            viewModel.loadChatMessages(currentRide.id)
+        }
+    }
+
+    LaunchedEffect(showChatSheet, currentRide?.id) {
+        if (showChatSheet && currentRide != null) {
+            viewModel.loadChatMessages(currentRide.id)
+            while (showChatSheet) {
+                kotlinx.coroutines.delay(3000)
+                viewModel.loadChatMessages(currentRide.id)
+            }
+        }
+    }
+
+    if (currentRide == null) {
+        SpeedoEmptyView(
+            icon = Icons.Default.DirectionsCar,
+            title = "No Active Ride",
+            message = "You are currently not on any active trip.",
+            actionButton = {
+                SpeedoPrimaryButton(text = "Go to Dashboard", onClick = onRideFinished)
+            }
+        )
+        return
+    }
+
+    val ride = currentRide
+
+    val mapMarkers = remember(ride.pickupLat, ride.dropLat, ride.status) {
+        listOf(
+            MapMarkerData(
+                id = "pickup",
+                lat = ride.pickupLat,
+                lng = ride.pickupLng,
+                title = "Rider Pickup: ${ride.pickupAddress}",
+                markerType = MarkerType.PICKUP
+            ),
+            MapMarkerData(
+                id = "drop",
+                lat = ride.dropLat,
+                lng = ride.dropLng,
+                title = "Destination: ${ride.dropAddress}",
+                markerType = MarkerType.DROP
+            )
+        )
+    }
+
+    val polylinePoints = remember(uiState.roadPolyline, ride.pickupLat, ride.pickupLng, ride.dropLat, ride.dropLng) {
+        if (uiState.roadPolyline.isNotEmpty()) {
+            uiState.roadPolyline
+        } else {
+            RouteHelper.generateSplineGeoPoints(
+                GeoPoint(ride.pickupLat, ride.pickupLng),
+                GeoPoint(ride.dropLat, ride.dropLng)
+            )
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Navigation Vector Map with Road-Snapped Curves
+        OsmMapView(
+            modifier = Modifier.fillMaxSize(),
+            centerLat = if (ride.status == "ongoing") ride.dropLat else ride.pickupLat,
+            centerLng = if (ride.status == "ongoing") ride.dropLng else ride.pickupLng,
+            zoomLevel = 15.5,
+            markers = mapMarkers,
+            polylinePoints = polylinePoints,
+            autoFitBounds = true
+        )
+
+        // 2. Floating Top Turn-by-Turn Navigation Banner
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .align(Alignment.TopCenter),
+            shape = RoundedCornerShape(18.dp),
+            color = SpeedoWhite,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, SpeedoCardBorder)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE8F5E9)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.TurnRight,
+                            contentDescription = null,
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = uiState.currentManeuver ?: when (ride.status) {
+                                "accepted" -> "Navigate to Pickup"
+                                "arrived" -> "Arrived at Pickup • Enter OTP"
+                                "ongoing" -> "Trip in Progress to Destination"
+                                "completed" -> "Trip Completed 🎉"
+                                else -> ride.status.uppercase()
+                            },
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RapidoCaptainBlack
+                            ),
+                            maxLines = 1
+                        )
+                        Text(
+                            text = if (ride.status == "ongoing") "Drop: ${ride.dropAddress}" else "Pickup: ${ride.pickupAddress}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SpeedoTextSecondary,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // Google Maps Navigation Intent Button
+                IconButton(
+                    onClick = {
+                        val lat = if (ride.status == "ongoing") ride.dropLat else ride.pickupLat
+                        val lng = if (ride.status == "ongoing") ride.dropLng else ride.pickupLng
+                        val gmmIntentUri = Uri.parse("google.navigation:q=$lat,$lng")
+                        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri).apply {
+                            setPackage("com.google.android.apps.maps")
+                        }
+                        context.startActivity(mapIntent)
+                    },
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(RapidoCaptainGreenLight)
+                ) {
+                    Icon(Icons.Default.Navigation, contentDescription = "Navigate", tint = RapidoCaptainGreenDark)
+                }
+            }
+        }
+
+        // 3. Floating Bottom Control Tray
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = SpeedoWhite,
+            shadowElevation = 24.dp,
+            border = BorderStroke(1.dp, SpeedoCardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+            ) {
+                // Rider Info & Call / Chat
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFFF9C4)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFFF57F17), modifier = Modifier.size(28.dp))
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = ride.riderName ?: "Passenger",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RapidoCaptainBlack
+                            )
+                        )
+                        Text(
+                            text = "Guaranteed Earnings: ₹${ride.fare.toInt()}",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = RapidoCaptainGreenDark
+                            )
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Chat Rider Button
+                        IconButton(
+                            onClick = {
+                                viewModel.loadChatMessages(ride.id)
+                                showChatSheet = true
+                            },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE3F2FD))
+                        ) {
+                            Icon(Icons.Default.Chat, contentDescription = "Chat", tint = Color(0xFF1976D2))
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Call Rider Button
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:+919811223344"))
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(RapidoCaptainGreenLight)
+                        ) {
+                            Icon(Icons.Default.Phone, contentDescription = "Call", tint = RapidoCaptainGreenDark)
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Speedo 24/7 Support Desk Button
+                        IconButton(
+                            onClick = { showSupportSheet = true },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFFF3E0))
+                        ) {
+                            Icon(Icons.Default.SupportAgent, contentDescription = "Support", tint = Color(0xFFE65100))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stage Actions:
+                when (ride.status) {
+                    "accepted" -> {
+                        Button(
+                            onClick = { viewModel.updateRideStatus(ride.id, "arrived") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = RapidoCaptainGreen)
+                        ) {
+                            Icon(Icons.Default.Place, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "ARRIVED AT PICKUP", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        }
+                    }
+
+                    "arrived" -> {
+                        Button(
+                            onClick = { showOtpKeypad = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = RapidoCaptainYellowDark, contentColor = RapidoCaptainBlack)
+                        ) {
+                            Icon(Icons.Default.Pin, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "ENTER 4-DIGIT RIDER PIN", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        }
+                    }
+
+                    "ongoing" -> {
+                        Button(
+                            onClick = {
+                                viewModel.initiatePayment(ride)
+                                showPaymentSheet = true
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
+                        ) {
+                            Icon(Icons.Default.Flag, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "COMPLETE TRIP (₹${ride.fare.toInt()})", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        }
+                    }
+
+                    "completed" -> {
+                        Button(
+                            onClick = {
+                                viewModel.initiatePayment(ride)
+                                showPaymentSheet = true
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = RapidoCaptainGreen)
+                        ) {
+                            Icon(Icons.Default.QrCode, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "COLLECT PAYMENT (₹${ride.fare.toInt()})", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. OTP Keypad Bottom Sheet Modal
+        if (showOtpKeypad) {
+            CaptainOtpKeypadSheet(
+                onVerifyOtp = { enteredOtp ->
+                    viewModel.startRideWithOtp(ride.id, enteredOtp) { success ->
+                        if (success) {
+                            showOtpKeypad = false
+                        }
+                    }
+                },
+                onDismiss = { showOtpKeypad = false }
+            )
+        }
+
+        // 5. Dynamic UPI QR Payment Sheet (Persists until Captain explicitly taps PAID)
+        if (uiState.pendingPaymentRide != null || showPaymentSheet) {
+            val paymentTargetRide = uiState.pendingPaymentRide ?: ride
+            val captainQr = uiState.captain?.paymentQrUrl ?: uiState.kycStatus?.paymentQrUrl
+            DynamicUpiQrPaymentSheet(
+                fare = paymentTargetRide.fare.toInt(),
+                rideId = paymentTargetRide.id,
+                riderName = paymentTargetRide.riderName,
+                uploadedQrUrl = captainQr,
+                onPaymentCollected = {
+                    viewModel.confirmPaymentAndFinishRide(paymentTargetRide.id) {
+                        showPaymentSheet = false
+                        onRideFinished()
+                    }
+                }
+            )
+        }
+
+        // 6. In-App Real-Time Chat Modal
+        if (showChatSheet) {
+            val chatMessages by viewModel.chatMessages.collectAsState()
+            SpeedoChatSheet(
+                rideId = ride.id,
+                currentUserId = uiState.captain?.id ?: "",
+                currentUserRole = "captain",
+                peerName = ride.riderName ?: "Passenger",
+                peerSubtitle = "Drop: ${ride.dropAddress}",
+                peerPhone = "+919811223344",
+                messages = chatMessages,
+                onSendMessage = { text, type ->
+                    viewModel.sendChatMessage(text, type)
+                },
+                onDismiss = { showChatSheet = false }
+            )
+        }
+
+        // 7. Speedo 24/7 Support Desk Modal
+        if (showSupportSheet) {
+            com.speedo.core.components.SpeedoSupportChatSheet(
+                userRole = "captain",
+                currentRideId = ride.id,
+                onDismiss = { showSupportSheet = false }
+            )
+        }
+    }
+}

@@ -1,0 +1,13 @@
+## Speedo Android SDK and Backend API Configuration
+## Copy this file to local.properties and update the paths and host IP.
+
+# Android SDK Location (Update to your local Android SDK path)
+# Windows example: sdk.dir=C:\\Users\\your_user\\AppData\\Local\\Android\\Sdk
+# macOS example:   sdk.dir=/Users/your_user/Library/Android/sdk
+# Linux example:   sdk.dir=/home/your_user/Android/Sdk
+
+# Speedo Centralized Backend API Base URL
+# - Use 'http://10.0.2.2:5000/api/' for standard Android Emulator connecting to local host backend
+# - Use 'http://192.168.x.x:5000/api/' for physical Android devices connected to the same Wi-Fi
+# - Use 'https://your-speedo-api.up.railway.app/api/' for Railway production cloud deployment
+SPEEDO_API_BASE_URL="http://10.0.2.2:5000/api/"
