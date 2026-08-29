@@ -356,16 +356,26 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun resolveSosAlert(id: String, status: String, notes: String?) {
+    fun resolveSosAlert(id: String, status: String = "resolved", notes: String? = null, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmittingAction = true, errorMessage = null)
             when (val res = adminRepo.resolveSosAlert(id, status, notes)) {
                 is NetworkResult.Success -> {
+                    // Optimistic instant local state update (0ms latency)
+                    val updatedList = _uiState.value.sosAlerts.map { alert ->
+                        if (alert.id == id) {
+                            alert.copy(status = status, adminNotes = notes)
+                        } else alert
+                    }
+                    val newActiveCount = updatedList.count { it.status == "active" || it.status == "in_progress" }
                     _uiState.value = _uiState.value.copy(
                         isSubmittingAction = false,
-                        successMessage = "SOS alert marked as ${status.uppercase()}"
+                        sosAlerts = updatedList,
+                        activeSosCount = newActiveCount,
+                        successMessage = "Incident marked as ${status.uppercase()} and resolved successfully! ✅"
                     )
                     fetchSosAlerts()
+                    onComplete()
                 }
                 is NetworkResult.Error -> {
                     _uiState.value = _uiState.value.copy(isSubmittingAction = false, errorMessage = res.message)

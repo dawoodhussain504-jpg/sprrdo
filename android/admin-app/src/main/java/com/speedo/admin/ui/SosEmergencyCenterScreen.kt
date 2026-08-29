@@ -37,12 +37,27 @@ fun SosEmergencyCenterScreen(
     val alerts = uiState.sosAlerts
     val activeCount = uiState.activeSosCount
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     var selectedTab by remember { mutableStateOf("active") }
     var selectedAlertForResolve by remember { mutableStateOf<SosAlert?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchSosAlerts()
+    }
+
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
     }
 
     val filteredAlerts = remember(alerts, selectedTab) {
@@ -64,7 +79,8 @@ fun SosEmergencyCenterScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -150,6 +166,7 @@ fun SosEmergencyCenterScreen(
                     items(filteredAlerts) { alert ->
                         SosAlertCard(
                             alert = alert,
+                            isSubmitting = uiState.isSubmittingAction,
                             onCallPassenger = {
                                 val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + alert.userPhone))
                                 context.startActivity(intent)
@@ -164,7 +181,16 @@ fun SosEmergencyCenterScreen(
                                 val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:112"))
                                 context.startActivity(intent)
                             },
-                            onResolve = { selectedAlertForResolve = alert }
+                            onQuickResolve = {
+                                viewModel.resolveSosAlert(
+                                    id = alert.id,
+                                    status = "resolved",
+                                    notes = "Quick resolved by Admin: Passenger confirmed safe."
+                                )
+                            },
+                            onResolveCustom = {
+                                selectedAlertForResolve = alert
+                            }
                         )
                     }
                 }
@@ -176,10 +202,16 @@ fun SosEmergencyCenterScreen(
         val alert = selectedAlertForResolve!!
         ResolveSosDialog(
             alert = alert,
+            isSubmitting = uiState.isSubmittingAction,
             onDismiss = { selectedAlertForResolve = null },
             onConfirmResolve = { status, notes ->
-                viewModel.resolveSosAlert(alert.id, status, notes)
-                selectedAlertForResolve = null
+                viewModel.resolveSosAlert(
+                    id = alert.id,
+                    status = status,
+                    notes = notes
+                ) {
+                    selectedAlertForResolve = null
+                }
             }
         )
     }
@@ -188,10 +220,12 @@ fun SosEmergencyCenterScreen(
 @Composable
 fun SosAlertCard(
     alert: SosAlert,
+    isSubmitting: Boolean = false,
     onCallPassenger: () -> Unit,
     onCallCaptain: () -> Unit,
     onDispatchPolice: () -> Unit,
-    onResolve: () -> Unit
+    onQuickResolve: () -> Unit,
+    onResolveCustom: () -> Unit
 ) {
     val isActive = alert.status == "active" || alert.status == "in_progress"
 
@@ -274,7 +308,7 @@ fun SosAlertCard(
                     if (!alert.adminNotes.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Admin Notes: " + alert.adminNotes,
+                            text = "Resolution Notes: " + alert.adminNotes,
                             style = MaterialTheme.typography.bodySmall.copy(color = SpeedoOrange, fontWeight = FontWeight.Medium)
                         )
                     }
@@ -326,15 +360,32 @@ fun SosAlertCard(
 
             if (isActive) {
                 Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = onResolve,
-                    colors = ButtonDefaults.buttonColors(containerColor = SpeedoSuccess),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Resolve & Close Incident", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    Button(
+                        onClick = onQuickResolve,
+                        enabled = !isSubmitting,
+                        colors = ButtonDefaults.buttonColors(containerColor = SpeedoSuccess),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1.2f)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Resolve & Close Incident", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    }
+
+                    OutlinedButton(
+                        onClick = onResolveCustom,
+                        enabled = !isSubmitting,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(0.8f)
+                    ) {
+                        Icon(Icons.Default.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Action Log", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    }
                 }
             }
         }
@@ -344,11 +395,12 @@ fun SosAlertCard(
 @Composable
 fun ResolveSosDialog(
     alert: SosAlert,
+    isSubmitting: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmResolve: (String, String) -> Unit
 ) {
     var selectedStatus by remember { mutableStateOf("resolved") }
-    var notes by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("Passenger called, confirmed safe at location.") }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -359,10 +411,20 @@ fun ResolveSosDialog(
                 .wrapContentHeight()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "Resolve SOS Incident",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Resolve SOS Incident",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+
                 Text(
                     text = "Incident for " + alert.userName + " (" + alert.userPhone + ")",
                     style = MaterialTheme.typography.bodySmall,
@@ -371,7 +433,7 @@ fun ResolveSosDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Text(text = "Select Outcome:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                Text(text = "Select Incident Outcome:", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -383,7 +445,12 @@ fun ResolveSosDialog(
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = if (selectedStatus == stKey) SpeedoOrange else SpeedoSurfaceVariant,
-                            modifier = Modifier.clickable { selectedStatus = stKey }
+                            modifier = Modifier.clickable {
+                                selectedStatus = stKey
+                                if (stKey == "resolved") notes = "Passenger called, confirmed safe at destination."
+                                else if (stKey == "false_alarm") notes = "User triggered SOS by mistake, confirmed no emergency."
+                                else if (stKey == "in_progress") notes = "Police emergency control (112) dispatched to coordinates."
+                            }
                         ) {
                             Text(
                                 text = stLabel,
@@ -399,11 +466,43 @@ fun ResolveSosDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
+                Text(text = "Quick Action Presets:", style = MaterialTheme.typography.labelSmall.copy(color = SpeedoTextSecondary))
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(
+                        "Passenger Safe & Destination Reached ✅" to "resolved",
+                        "False Alarm / User Accidental Click ⚠️" to "false_alarm",
+                        "Police Dispatched & Actively Assisting 🚔" to "in_progress",
+                        "Driver Reached Passenger & Assisted 🛵" to "resolved"
+                    ).forEach { (presetText, presetStatus) ->
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = SpeedoSurfaceVariant.copy(alpha = 0.6f),
+                            border = BorderStroke(1.dp, SpeedoDivider),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    notes = presetText
+                                    selectedStatus = presetStatus
+                                }
+                        ) {
+                            Text(
+                                text = presetText,
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 SpeedoTextField(
                     value = notes,
                     onValueChange = { notes = it },
                     label = "Action Log / Resolution Notes",
-                    placeholder = "e.g. Passenger called, confirmed they reached destination safely.",
+                    placeholder = "Enter resolution details...",
                     singleLine = false
                 )
 
@@ -418,12 +517,26 @@ fun ResolveSosDialog(
                         Text("Cancel")
                     }
                     Button(
-                        onClick = { onConfirmResolve(selectedStatus, notes) },
+                        onClick = {
+                            val finalNotes = if (notes.isBlank()) "Resolved by Admin" else notes
+                            onConfirmResolve(selectedStatus, finalNotes)
+                        },
+                        enabled = !isSubmitting,
                         colors = ButtonDefaults.buttonColors(containerColor = SpeedoSuccess),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1.5f)
                     ) {
-                        Text("Submit Log")
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = SpeedoWhite,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Resolve & Close", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        }
                     }
                 }
             }

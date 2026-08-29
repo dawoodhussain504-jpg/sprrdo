@@ -46,6 +46,8 @@ router.delete('/surge-zones/:id', deleteSurgeZone);
 router.get('/sos-alerts', getSosAlerts);
 router.post('/sos-alerts/trigger', triggerSosEmergency);
 router.post('/sos-alerts/:id/resolve', resolveSosAlert);
+router.put('/sos-alerts/:id/resolve', resolveSosAlert);
+router.post('/sos-alerts/:id/close', resolveSosAlert);
 
 // 4. Targeted City-Wide Broadcasts
 router.post('/broadcast', sendBroadcast);
