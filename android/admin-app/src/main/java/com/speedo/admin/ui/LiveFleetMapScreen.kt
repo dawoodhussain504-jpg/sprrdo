@@ -1,8 +1,12 @@
 package com.speedo.admin.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,6 +82,8 @@ fun LiveFleetMapScreen(
         list
     }
 
+    var recenterTrigger by remember { mutableStateOf(1L) }
+
     Scaffold(
         topBar = {
             SpeedoTopBar(
@@ -91,13 +97,15 @@ fun LiveFleetMapScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // OSM Map
+            // OSM Map (Rapido Voyager styled)
             OsmMapView(
                 modifier = Modifier.fillMaxSize(),
                 centerLat = 12.9716,
                 centerLng = 77.5946,
                 zoomLevel = 13.5,
-                markers = mapMarkers
+                recenterTrigger = recenterTrigger,
+                markers = mapMarkers,
+                autoFitBounds = mapMarkers.isNotEmpty()
             )
 
             // Real-Time Fleet Counters Overlay
@@ -126,7 +134,7 @@ fun LiveFleetMapScreen(
                         )
                     }
 
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier
                             .height(30.dp)
                             .width(1.dp),
@@ -141,7 +149,7 @@ fun LiveFleetMapScreen(
                         )
                     }
 
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier
                             .height(30.dp)
                             .width(1.dp),
@@ -155,6 +163,33 @@ fun LiveFleetMapScreen(
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = SpeedoTextPrimary)
                         )
                     }
+                }
+            }
+
+            // Floating Recenter Fleet FAB
+            Surface(
+                shape = CircleShape,
+                color = SpeedoWhite,
+                shadowElevation = 8.dp,
+                border = BorderStroke(1.dp, SpeedoCardBorder),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .clickable {
+                        viewModel.startLiveMapPolling()
+                        recenterTrigger = System.currentTimeMillis()
+                    }
+            ) {
+                Box(
+                    modifier = Modifier.size(48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Recenter Fleet",
+                        tint = SpeedoOrange,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }

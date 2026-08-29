@@ -50,11 +50,17 @@ fun RiderHomeScreen(
         }
     }
 
+    // Auto-fetch device live location on launch
+    LaunchedEffect(Unit) {
+        viewModel.fetchCurrentLocation()
+    }
+
     var showSearchDialog by remember { mutableStateOf(false) }
     var showSafetySheet by remember { mutableStateOf(false) }
-    var showSupportSheet by remember { mutableStateOf(false) }
     var paymentMethod by remember { mutableStateOf("cash") } // "cash", "upi", "wallet"
     var isCouponApplied by remember { mutableStateOf(true) }
+    var recenterTrigger by remember { mutableStateOf(1L) }
+    var isDrawerCollapsed by remember { mutableStateOf(false) }
 
     // Quick destination shortcuts
     val quickShortcuts = listOf(
@@ -68,14 +74,14 @@ fun RiderHomeScreen(
     val mapMarkers = remember(uiState.pickupLat, uiState.pickupLng, uiState.dropLat, uiState.dropLng, uiState.dropAddress, uiState.nearbyCaptains) {
         val list = mutableListOf<MapMarkerData>()
 
-        // Pickup Marker
+        // Pickup / Current User Location Marker
         list.add(
             MapMarkerData(
                 id = "pickup_pin",
                 lat = uiState.pickupLat,
                 lng = uiState.pickupLng,
                 title = "Pickup: ${uiState.pickupAddress}",
-                markerType = MarkerType.PICKUP
+                markerType = if (uiState.dropAddress.isEmpty()) MarkerType.USER_LOCATION else MarkerType.PICKUP
             )
         )
 
@@ -141,15 +147,21 @@ fun RiderHomeScreen(
     val defaultLng = if (uiState.pickupLng != 0.0) uiState.pickupLng else 77.5946
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Full-Screen 100% Free Leaflet / OpenStreetMap Interactive Map (No Watermark)
+        // 1. Full-Screen Rapido-Styled Voyager Interactive Map
         OsmMapView(
             modifier = Modifier.fillMaxSize(),
             centerLat = if (uiState.dropLat != 0.0) (uiState.pickupLat + uiState.dropLat) / 2 else defaultLat,
             centerLng = if (uiState.dropLng != 0.0) (uiState.pickupLng + uiState.dropLng) / 2 else defaultLng,
-            zoomLevel = 15.0,
+            zoomLevel = 16.5,
+            recenterTrigger = recenterTrigger,
             markers = mapMarkers,
             polylinePoints = polylinePoints,
-            autoFitBounds = uiState.dropAddress.isNotEmpty() && uiState.dropLat != 0.0,
+            autoFitBounds = uiState.dropAddress.isNotEmpty() && uiState.dropLat != 0.0 && !isDrawerCollapsed,
+            onMapTouchStateChanged = { isDragging ->
+                if (isDragging && uiState.dropAddress.isNotEmpty()) {
+                    isDrawerCollapsed = true
+                }
+            },
             onMapClick = { geoPoint ->
                 viewModel.setPinDropLocation(geoPoint.latitude, geoPoint.longitude)
             }
@@ -175,21 +187,7 @@ fun RiderHomeScreen(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(RapidoYellow),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "S",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = RapidoBlack
-                            )
-                        )
-                    }
+                    com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 28)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Speedo",
@@ -202,29 +200,6 @@ fun RiderHomeScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Speedo 24/7 Support Desk Button
-                Surface(
-                    shape = CircleShape,
-                    color = SpeedoWhite,
-                    shadowElevation = 6.dp,
-                    border = BorderStroke(1.dp, SpeedoCardBorder),
-                    modifier = Modifier.clickable { showSupportSheet = true }
-                ) {
-                    Box(
-                        modifier = Modifier.size(44.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SupportAgent,
-                            contentDescription = "Speedo Support Desk",
-                            tint = Color(0xFF1565C0),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
                 // Safety Shield Button
                 Surface(
                     shape = CircleShape,
@@ -357,230 +332,365 @@ fun RiderHomeScreen(
             }
         }
 
-        // 4. Bottom Sheet Vehicle Selection & Booking Tray (Only when drop location is set)
-        if (uiState.dropAddress.isNotBlank()) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = SpeedoWhite,
-                shadowElevation = 24.dp,
-                border = BorderStroke(1.dp, SpeedoCardBorder)
+        // 4. Floating Rapido My Location / Recenter Target Button (Compact & Positioned Below Search Box to avoid any overlap)
+        Surface(
+            shape = CircleShape,
+            color = SpeedoWhite,
+            shadowElevation = 5.dp,
+            border = BorderStroke(1.dp, SpeedoCardBorder),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 220.dp, end = 16.dp)
+                .clickable {
+                    viewModel.fetchCurrentLocation()
+                    recenterTrigger = System.currentTimeMillis()
+                }
+        ) {
+            Box(
+                modifier = Modifier.size(38.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Recenter Location",
+                    tint = SpeedoOrange,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // 5. Bottom Sheet Vehicle Selection & Booking Tray (Only when drop location is set)
+        if (uiState.dropAddress.isNotBlank()) {
+            if (isDrawerCollapsed) {
+                // Collapsed State: Sleek pill at bottom allowing unobstructed map view & quick expand
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 14.dp)
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
+                        .clickable { isDrawerCollapsed = false },
+                    shape = RoundedCornerShape(20.dp),
+                    color = SpeedoWhite,
+                    shadowElevation = 16.dp,
+                    border = BorderStroke(1.5.dp, SpeedoOrange)
                 ) {
-                    // Header & Distance Pill
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
-                            Text(
-                                text = "Choose Your Ride",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = RapidoBlack
-                                )
-                            )
-                            Text(
-                                text = "Fastest pick-ups in your area",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = SpeedoTextSecondary
-                            )
-                        }
-
-                    if (uiState.fareEstimates != null) {
-                        Surface(
-                            color = RapidoYellowLight,
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, RapidoYellowDark)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Text(
-                                text = "${uiState.fareEstimates!!.distanceKm} km",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = RapidoBlack
-                                ),
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(SpeedoOrange)
                             )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Vehicle Category Options (Compact Rapido style)
-                VehicleCategory.values().forEach { category ->
-                    val isSelected = uiState.selectedVehicleType == category.key
-                    val est = estimates?.get(category.key)
-                    val catFare = est?.totalFare?.toInt() ?: when (category) {
-                        VehicleCategory.BIKE -> 35
-                        VehicleCategory.AUTO -> 58
-                        VehicleCategory.CAB -> 115
-                    }
-                    val catEta = est?.estimatedTimeMin ?: when (category) {
-                        VehicleCategory.BIKE -> 2
-                        VehicleCategory.AUTO -> 3
-                        VehicleCategory.CAB -> 5
-                    }
-
-                    RapidoVehicleOptionCard(
-                        category = category,
-                        isSelected = isSelected,
-                        fare = (catFare - discount).coerceAtLeast(20),
-                        discountFare = if (isCouponApplied) catFare else null,
-                        etaMinutes = catEta,
-                        badgeText = when (category) {
-                            VehicleCategory.BIKE -> "FASTEST"
-                            VehicleCategory.AUTO -> "POPULAR"
-                            VehicleCategory.CAB -> "COMFY"
-                        },
-                        onSelect = { viewModel.selectVehicleType(category.key) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Payment Method & Coupon Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Payment Selector Pill
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = SpeedoSurfaceVariant,
-                        modifier = Modifier.clickable {
-                            paymentMethod = when (paymentMethod) {
-                                "cash" -> "upi"
-                                "upi" -> "wallet"
-                                else -> "cash"
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Drop Pin Adjusted",
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = RapidoBlack
+                                    )
+                                )
+                                Text(
+                                    text = "Tap to choose Speedo rides & fares",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SpeedoTextSecondary
+                                )
                             }
                         }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = SpeedoOrange
                         ) {
-                            Icon(
-                                imageVector = when (paymentMethod) {
-                                    "upi" -> Icons.Default.QrCode
-                                    "wallet" -> Icons.Default.AccountBalanceWallet
-                                    else -> Icons.Default.Payments
-                                },
-                                contentDescription = null,
-                                tint = SpeedoSuccess,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = when (paymentMethod) {
-                                    "upi" -> "UPI QR"
-                                    "wallet" -> "Speedo Wallet"
-                                    else -> "Cash on Drop"
-                                },
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                            )
-                        }
-                    }
-
-                    // Coupon Chip
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (isCouponApplied) Color(0xFFE8F5E9) else SpeedoSurfaceVariant,
-                        border = BorderStroke(1.dp, if (isCouponApplied) SpeedoSuccess else Color.Transparent),
-                        modifier = Modifier.clickable { isCouponApplied = !isCouponApplied }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.LocalOffer,
-                                contentDescription = null,
-                                tint = if (isCouponApplied) SpeedoSuccess else SpeedoTextSecondary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (isCouponApplied) "SPEEDO50 (-₹15)" else "Apply Coupon",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCouponApplied) SpeedoSuccess else SpeedoTextPrimary
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "SELECT RIDE",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = SpeedoWhite
+                                    )
                                 )
-                            )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.KeyboardArrowUp,
+                                    contentDescription = null,
+                                    tint = SpeedoWhite,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Big Rapido Book Button (100% Reliable Clickable)
-                Button(
-                    onClick = {
-                        viewModel.bookRide {
-                            onNavigateToActiveRide()
-                        }
-                    },
-                    enabled = !uiState.isBookingRide,
+            } else {
+                // Expanded State: Full Vehicle Selection Drawer
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = RapidoYellow,
-                        contentColor = RapidoBlack,
-                        disabledContainerColor = RapidoYellow.copy(alpha = 0.7f),
-                        disabledContentColor = RapidoBlack.copy(alpha = 0.7f)
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        .align(Alignment.BottomCenter),
+                    shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                    color = SpeedoWhite,
+                    shadowElevation = 24.dp,
+                    border = BorderStroke(1.dp, SpeedoCardBorder)
                 ) {
-                    if (uiState.isBookingRide) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = RapidoBlack,
-                            strokeWidth = 2.5.dp
-                        )
-                    } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 10.dp)
+                    ) {
+                        // Top Drag Handle & Minimize Indicator
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isDrawerCollapsed = true }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(44.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(SpeedoSurfaceVariant)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Header, Distance Pill & Minimize Button
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Book ${selectedCategory.displayName}",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = RapidoBlack
-                                )
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column {
                                 Text(
-                                    text = "₹$finalFare",
+                                    text = "Choose Your Ride",
                                     style = MaterialTheme.typography.titleLarge.copy(
                                         fontWeight = FontWeight.ExtraBold,
                                         color = RapidoBlack
                                     )
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint = RapidoBlack
+                                Text(
+                                    text = "Fastest pick-ups in your area",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SpeedoTextSecondary
                                 )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (uiState.fareEstimates != null) {
+                                    Surface(
+                                        color = RapidoYellowLight,
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = BorderStroke(1.dp, RapidoYellowDark)
+                                    ) {
+                                        Text(
+                                            text = "${uiState.fareEstimates!!.distanceKm} km",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = RapidoBlack
+                                            ),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+
+                                Surface(
+                                    shape = CircleShape,
+                                    color = SpeedoSurfaceVariant,
+                                    modifier = Modifier.clickable { isDrawerCollapsed = true }
+                                ) {
+                                    Icon(
+                                        Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Collapse to Map",
+                                        tint = SpeedoTextSecondary,
+                                        modifier = Modifier.padding(4.dp).size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Vehicle Category Options (Compact Rapido style)
+                        VehicleCategory.values().forEach { category ->
+                            val isSelected = uiState.selectedVehicleType == category.key
+                            val est = estimates?.get(category.key)
+                            val catFare = est?.totalFare?.toInt() ?: when (category) {
+                                VehicleCategory.BIKE -> 35
+                                VehicleCategory.AUTO -> 58
+                                VehicleCategory.CAB -> 115
+                            }
+                            val catEta = est?.estimatedTimeMin ?: when (category) {
+                                VehicleCategory.BIKE -> 2
+                                VehicleCategory.AUTO -> 3
+                                VehicleCategory.CAB -> 5
+                            }
+
+                            RapidoVehicleOptionCard(
+                                category = category,
+                                isSelected = isSelected,
+                                fare = (catFare - discount).coerceAtLeast(20),
+                                discountFare = if (isCouponApplied) catFare else null,
+                                etaMinutes = catEta,
+                                badgeText = when (category) {
+                                    VehicleCategory.BIKE -> "FASTEST"
+                                    VehicleCategory.AUTO -> "POPULAR"
+                                    VehicleCategory.CAB -> "COMFY"
+                                },
+                                onSelect = { viewModel.selectVehicleType(category.key) }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Payment Method & Coupon Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Payment Selector Pill
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = SpeedoSurfaceVariant,
+                                modifier = Modifier.clickable {
+                                    paymentMethod = when (paymentMethod) {
+                                        "cash" -> "upi"
+                                        "upi" -> "wallet"
+                                        else -> "cash"
+                                    }
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = when (paymentMethod) {
+                                            "upi" -> Icons.Default.QrCode
+                                            "wallet" -> Icons.Default.AccountBalanceWallet
+                                            else -> Icons.Default.Payments
+                                        },
+                                        contentDescription = null,
+                                        tint = SpeedoSuccess,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = when (paymentMethod) {
+                                            "upi" -> "UPI QR"
+                                            "wallet" -> "Speedo Wallet"
+                                            else -> "Cash on Drop"
+                                        },
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+                                    )
+                                }
+                            }
+
+                            // Coupon Chip
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isCouponApplied) Color(0xFFE8F5E9) else SpeedoSurfaceVariant,
+                                border = BorderStroke(1.dp, if (isCouponApplied) SpeedoSuccess else Color.Transparent),
+                                modifier = Modifier.clickable { isCouponApplied = !isCouponApplied }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.LocalOffer,
+                                        contentDescription = null,
+                                        tint = if (isCouponApplied) SpeedoSuccess else SpeedoTextSecondary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = if (isCouponApplied) "SPEEDO50 (-₹15)" else "Apply Coupon",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isCouponApplied) SpeedoSuccess else SpeedoTextPrimary
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Big Rapido Book Button (100% Reliable Clickable)
+                        Button(
+                            onClick = {
+                                viewModel.bookRide {
+                                    onNavigateToActiveRide()
+                                }
+                            },
+                            enabled = !uiState.isBookingRide,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = RapidoYellow,
+                                contentColor = RapidoBlack,
+                                disabledContainerColor = RapidoYellow.copy(alpha = 0.7f),
+                                disabledContentColor = RapidoBlack.copy(alpha = 0.7f)
+                            ),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        ) {
+                            if (uiState.isBookingRide) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = RapidoBlack,
+                                    strokeWidth = 2.5.dp
+                                )
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Book ${selectedCategory.displayName}",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = RapidoBlack
+                                        )
+                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "₹$finalFare",
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = RapidoBlack
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowForward,
+                                            contentDescription = null,
+                                            tint = RapidoBlack
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
         // 5. Radar Pulse Searching Overlay when booking is in progress
         if (uiState.isBookingRide) {
@@ -614,14 +724,6 @@ fun RiderHomeScreen(
         // 7. Safety Shield Sheet
         if (showSafetySheet) {
             RapidoSafetySheet(onDismiss = { showSafetySheet = false })
-        }
-
-        // 8. Speedo 24/7 Support Desk Modal
-        if (showSupportSheet) {
-            com.speedo.core.components.SpeedoSupportChatSheet(
-                userRole = "rider",
-                onDismiss = { showSupportSheet = false }
-            )
         }
     }
 }

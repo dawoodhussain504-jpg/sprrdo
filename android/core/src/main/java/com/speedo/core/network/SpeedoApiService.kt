@@ -120,6 +120,66 @@ interface SpeedoApiService {
         @Body body: Map<String, String>
     ): Response<ApiResponse<Any>>
 
+    @POST("admin/kyc/{captainId}/ai-scan")
+    suspend fun aiScanKycDocuments(
+        @Path("captainId") captainId: String
+    ): Response<ApiResponse<KycAiScanResult>>
+
+    @POST("admin/kyc/{captainId}/instant-approve")
+    suspend fun instantApproveCaptainKyc(
+        @Path("captainId") captainId: String,
+        @Body body: InstantApproveKycRequest
+    ): Response<ApiResponse<Any>>
+
+    // --- GEOFENCED SURGE ZONES ---
+    @GET("admin/surge-zones")
+    suspend fun getSurgeZones(): Response<ApiResponse<List<SurgeZone>>>
+
+    @POST("admin/surge-zones")
+    suspend fun createSurgeZone(
+        @Body body: CreateSurgeZoneRequest
+    ): Response<ApiResponse<SurgeZone>>
+
+    @PUT("admin/surge-zones/{id}")
+    suspend fun updateSurgeZone(
+        @Path("id") id: String,
+        @Body body: UpdateSurgeZoneRequest
+    ): Response<ApiResponse<Any>>
+
+    @DELETE("admin/surge-zones/{id}")
+    suspend fun deleteSurgeZone(
+        @Path("id") id: String
+    ): Response<ApiResponse<Any>>
+
+    // --- LIVE SOS EMERGENCY COMMAND CENTER ---
+    @POST("sos/trigger")
+    suspend fun triggerSos(
+        @Body body: TriggerSosRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("admin/sos-alerts")
+    suspend fun getSosAlerts(): Response<ApiResponse<List<SosAlert>>>
+
+    @POST("admin/sos-alerts/trigger")
+    suspend fun triggerSosEmergency(
+        @Body body: TriggerSosRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @POST("admin/sos-alerts/{id}/resolve")
+    suspend fun resolveSosAlert(
+        @Path("id") id: String,
+        @Body body: ResolveSosRequest
+    ): Response<ApiResponse<Any>>
+
+    // --- TARGETED CITY BROADCASTS ---
+    @POST("admin/broadcast")
+    suspend fun sendBroadcast(
+        @Body body: SendBroadcastRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("admin/broadcasts")
+    suspend fun getBroadcasts(): Response<ApiResponse<List<BroadcastAnnouncement>>>
+
     @GET("admin/map/live")
     suspend fun getAdminLiveMap(): Response<ApiResponse<LiveMapResponse>>
 

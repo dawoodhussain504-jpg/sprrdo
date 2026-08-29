@@ -207,45 +207,39 @@ object LocationSearchHelper {
 
         val results = mutableListOf<AddressSuggestion>()
 
-        // 1. Try Photon OpenStreetMap Autocomplete API
+        // 1. Try Ola Maps Places Autocomplete API using user's Ola Maps API Key
         try {
             val encoded = java.net.URLEncoder.encode(cleanQuery, "UTF-8")
-            val urlStr = "https://photon.komoot.io/api/?q=$encoded&lat=$userLat&lon=$userLng&limit=8"
+            val urlStr = "https://api.olamaps.io/places/v1/autocomplete?input=$encoded&location=$userLat,$userLng&api_key=${com.speedo.core.utils.Constants.OLA_MAPS_API_KEY}"
             val url = java.net.URL(urlStr)
             val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
                 connectTimeout = 3000
                 readTimeout = 3000
-                setRequestProperty("User-Agent", "SpeedoRiderApp/2.0")
+                setRequestProperty("Content-Type", "application/json")
             }
 
             if (connection.responseCode == 200) {
                 val responseText = connection.inputStream.bufferedReader().use { it.readText() }
                 val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
-                val features = root.getAsJsonArray("features")
+                val predictions = root.getAsJsonArray("predictions")
 
-                features?.forEach { element ->
-                    val feature = element.asJsonObject
-                    val properties = feature.getAsJsonObject("properties")
-                    val geometry = feature.getAsJsonObject("geometry")
-                    val coords = geometry.getAsJsonArray("coordinates")
+                predictions?.forEach { elem ->
+                    val pred = elem.asJsonObject
+                    val desc = pred.get("description")?.asString ?: cleanQuery
+                    val struct = pred.getAsJsonObject("structured_formatting")
+                    val mainText = struct?.get("main_text")?.asString ?: desc.split(",").firstOrNull() ?: cleanQuery
+                    val secondaryText = struct?.get("secondary_text")?.asString ?: desc
 
-                    val lng = coords[0].asDouble
-                    val lat = coords[1].asDouble
-
-                    val name = properties.get("name")?.asString ?: cleanQuery
-                    val street = properties.get("street")?.asString
-                    val city = properties.get("city")?.asString ?: properties.get("county")?.asString ?: "Bangalore"
-                    val state = properties.get("state")?.asString ?: "Karnataka"
-
-                    val subtitle = listOfNotNull(street, city, state).joinToString(", ")
-                    val fullAddr = "$name, $subtitle"
-
+                    val geom = pred.getAsJsonObject("geometry")?.getAsJsonObject("location")
+                    val lat = geom?.get("lat")?.asDouble ?: userLat
+                    val lng = geom?.get("lng")?.asDouble ?: userLng
                     val dist = DistanceUtils.calculateDistanceKm(userLat, userLng, lat, lng)
+
                     results.add(
                         AddressSuggestion(
-                            title = name,
-                            subtitle = subtitle,
-                            fullAddress = fullAddr,
+                            title = mainText,
+                            subtitle = secondaryText,
+                            fullAddress = desc,
                             lat = lat,
                             lng = lng,
                             distanceKm = dist
@@ -254,10 +248,62 @@ object LocationSearchHelper {
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.w(TAG, "Photon OSM search fallback: ${e.message}")
+            android.util.Log.w(TAG, "Ola Maps autocomplete fallback: ${e.message}")
         }
 
-        // 2. Fallback to Android platform Geocoder
+        // 2. Try Photon OpenStreetMap Autocomplete API
+        if (results.isEmpty()) {
+            try {
+                val encoded = java.net.URLEncoder.encode(cleanQuery, "UTF-8")
+                val urlStr = "https://photon.komoot.io/api/?q=$encoded&lat=$userLat&lon=$userLng&limit=8"
+                val url = java.net.URL(urlStr)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 3000
+                    readTimeout = 3000
+                    setRequestProperty("User-Agent", "SpeedoRiderApp/2.0")
+                }
+
+                if (connection.responseCode == 200) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
+                    val features = root.getAsJsonArray("features")
+
+                    features?.forEach { element ->
+                        val feature = element.asJsonObject
+                        val properties = feature.getAsJsonObject("properties")
+                        val geometry = feature.getAsJsonObject("geometry")
+                        val coords = geometry.getAsJsonArray("coordinates")
+
+                        val lng = coords[0].asDouble
+                        val lat = coords[1].asDouble
+
+                        val name = properties.get("name")?.asString ?: cleanQuery
+                        val street = properties.get("street")?.asString
+                        val city = properties.get("city")?.asString ?: properties.get("county")?.asString ?: "Bangalore"
+                        val state = properties.get("state")?.asString ?: "Karnataka"
+
+                        val subtitle = listOfNotNull(street, city, state).joinToString(", ")
+                        val fullAddr = "$name, $subtitle"
+
+                        val dist = DistanceUtils.calculateDistanceKm(userLat, userLng, lat, lng)
+                        results.add(
+                            AddressSuggestion(
+                                title = name,
+                                subtitle = subtitle,
+                                fullAddress = fullAddr,
+                                lat = lat,
+                                lng = lng,
+                                distanceKm = dist
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "Photon OSM search fallback: ${e.message}")
+            }
+        }
+
+        // 3. Fallback to Android platform Geocoder
         if (results.size < 4 && android.location.Geocoder.isPresent()) {
             try {
                 val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
@@ -312,7 +358,35 @@ object LocationSearchHelper {
         lat: Double,
         lng: Double
     ): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        // 1. Try Android Native Geocoder
+        // 1. Try Ola Maps Reverse Geocoding with user's Ola Maps API Key
+        try {
+            val urlStr = "https://api.olamaps.io/places/v1/reverse-geocode?latlng=$lat,$lng&api_key=${com.speedo.core.utils.Constants.OLA_MAPS_API_KEY}"
+            val url = java.net.URL(urlStr)
+            val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 3000
+                readTimeout = 3000
+                setRequestProperty("Content-Type", "application/json")
+            }
+
+            if (connection.responseCode == 200) {
+                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
+                val results = root.getAsJsonArray("results")
+                if (results != null && results.size() > 0) {
+                    val firstResult = results[0].asJsonObject
+                    val formattedAddress = firstResult.get("formatted_address")?.asString
+                    val name = firstResult.get("name")?.asString
+                    val chosen = if (!name.isNullOrBlank()) name else formattedAddress
+                    if (!chosen.isNullOrBlank()) {
+                        return@withContext chosen.split(",").take(2).joinToString(", ")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "Ola Maps reverse geocode fallback: ${e.message}")
+        }
+
+        // 2. Try Android Native Geocoder
         if (android.location.Geocoder.isPresent()) {
             try {
                 val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())

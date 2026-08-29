@@ -146,7 +146,12 @@ fun RidesMonitoringScreen(
                                 ) {
                                     Column {
                                         Text(text = "Rider: ${ride.riderName ?: "User"}", style = MaterialTheme.typography.bodySmall)
-                                        Text(text = "Captain: ${ride.captainName ?: "Unassigned"} (${ride.vehicleNumber ?: "N/A"})", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                        val vName = when {
+                                            ride.vehicleType.lowercase().contains("toto") || ride.vehicleType.lowercase().contains("auto") -> "Speedo Toto"
+                                            ride.vehicleType.lowercase().contains("4") || ride.vehicleType.lowercase().contains("cab") -> "Speedo 4"
+                                            else -> "Speedo Moto"
+                                        }
+                                        Text(text = "Captain: ${ride.captainName ?: "Unassigned"} • $vName (${ride.vehicleNumber ?: "N/A"})", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
                                     }
                                     Text(
                                         text = "₹${ride.fare.toInt()}",

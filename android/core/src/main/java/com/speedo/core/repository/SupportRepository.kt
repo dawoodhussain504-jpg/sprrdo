@@ -25,6 +25,14 @@ class SupportRepository(private val context: Context) {
         socketManager.joinAdminSupportRoom()
     }
 
+    fun emitNewSupportTicket(ticket: SupportTicket) {
+        socketManager.emitNewSupportTicket(ticket)
+    }
+
+    fun emitSupportMessage(msg: SupportMessage) {
+        socketManager.emitSupportMessage(msg)
+    }
+
     suspend fun createTicket(
         subject: String,
         category: String = "general",

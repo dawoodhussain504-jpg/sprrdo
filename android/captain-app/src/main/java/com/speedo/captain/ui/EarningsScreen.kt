@@ -38,7 +38,6 @@ fun EarningsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val captain = uiState.captain
     val rides by viewModel.cachedRides.collectAsState(initial = emptyList())
-    var showSupportSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchProfile()
@@ -48,16 +47,7 @@ fun EarningsScreen(
     Scaffold(
         topBar = {
             SpeedoTopBar(
-                title = "Earnings & Payouts",
-                actions = {
-                    IconButton(onClick = { showSupportSheet = true }) {
-                        Icon(
-                            imageVector = Icons.Default.SupportAgent,
-                            contentDescription = "24/7 Support",
-                            tint = Color(0xFF1565C0)
-                        )
-                    }
-                }
+                title = "Earnings & Payouts"
             )
         }
     ) { padding ->
@@ -215,12 +205,5 @@ fun EarningsScreen(
                 }
             }
         }
-    }
-
-    if (showSupportSheet) {
-        com.speedo.core.components.SpeedoSupportChatSheet(
-            userRole = "captain",
-            onDismiss = { showSupportSheet = false }
-        )
     }
 }

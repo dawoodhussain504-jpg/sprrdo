@@ -38,12 +38,28 @@ fun CaptainDashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val captain = uiState.captain
     val isKycApproved = uiState.kycStatus?.isApproved == true || captain?.kycStatus == "approved"
-    var showSupportSheet by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    var captainLat by remember { mutableStateOf(captain?.lat ?: 12.9716) }
+    var captainLng by remember { mutableStateOf(captain?.lng ?: 77.5946) }
+    var captainBearing by remember { mutableStateOf(captain?.bearing?.toFloat() ?: 0f) }
+    var recenterTrigger by remember { mutableStateOf(1L) }
 
     LaunchedEffect(Unit) {
         viewModel.fetchProfile()
         viewModel.fetchKycStatus()
         viewModel.checkActiveRide()
+
+        // Fetch live high-accuracy GPS coordinates
+        val locHelper = com.speedo.core.maps.LocationHelper(context)
+        locHelper.getCurrentLiveLocation(
+            onSuccess = { loc ->
+                captainLat = loc.lat
+                captainLng = loc.lng
+                captainBearing = loc.bearing
+                recenterTrigger = System.currentTimeMillis()
+            }
+        )
     }
 
     LaunchedEffect(uiState.activeRide) {
@@ -53,11 +69,7 @@ fun CaptainDashboardScreen(
         }
     }
 
-    // Map Center Coordinates (Bangalore Indiranagar Default / Captain Location)
-    val captainLat = 12.9716
-    val captainLng = 77.5946
-
-    val mapMarkers = remember(captain?.id, uiState.isOnline) {
+    val mapMarkers = remember(captain?.id, uiState.isOnline, captainLat, captainLng, captainBearing) {
         listOf(
             MapMarkerData(
                 id = captain?.id ?: "captain_pin",
@@ -66,19 +78,20 @@ fun CaptainDashboardScreen(
                 title = "${captain?.name ?: "Captain"} (You)",
                 snippet = "${captain?.vehicleNumber ?: "KA-01-EQ-9876"} • ${if (uiState.isOnline) "ONLINE" else "OFFLINE"}",
                 markerType = MarkerType.CAPTAIN,
-                bearing = 45f,
+                bearing = captainBearing,
                 vehicleType = captain?.vehicleType ?: "bike"
             )
         )
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Full-Screen Interactive Driver GPS Map
+        // 1. Full-Screen Interactive Driver GPS Map (Rapido Voyager)
         OsmMapView(
             modifier = Modifier.fillMaxSize(),
             centerLat = captainLat,
             centerLng = captainLng,
-            zoomLevel = 15.0,
+            zoomLevel = 16.5,
+            recenterTrigger = recenterTrigger,
             markers = mapMarkers
         )
 
@@ -294,38 +307,41 @@ fun CaptainDashboardScreen(
             }
         }
 
-        // 4. Floating 24/7 Speedo Helpdesk FAB (Right Side above Bottom HUD)
+        // Floating Rapido My Location Recenter FAB (Compact Top-Right HUD)
         Surface(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 230.dp)
-                .clickable { showSupportSheet = true },
             shape = CircleShape,
             color = SpeedoWhite,
-            shadowElevation = 8.dp,
-            border = BorderStroke(1.5.dp, Color(0xFFFF9800))
+            shadowElevation = 5.dp,
+            border = BorderStroke(1.dp, SpeedoCardBorder),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 180.dp, end = 16.dp)
+                .clickable {
+                    val locHelper = com.speedo.core.maps.LocationHelper(context)
+                    locHelper.getCurrentLiveLocation(
+                        onSuccess = { loc ->
+                            captainLat = loc.lat
+                            captainLng = loc.lng
+                            captainBearing = loc.bearing
+                            recenterTrigger = System.currentTimeMillis()
+                        }
+                    )
+                }
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier.size(38.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.SupportAgent,
-                    contentDescription = "Support",
-                    tint = Color(0xFFE65100),
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Support",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp,
-                    color = Color(0xFFE65100)
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Recenter GPS",
+                    tint = RapidoCaptainGreenDark,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
 
-        // 5. Full-Screen Incoming Ride Flash Overlay (Rapido Signature)
+        // 4. Full-Screen Incoming Ride Flash Overlay (Rapido Signature)
         if (uiState.incomingRequests.isNotEmpty()) {
             val firstRequest = uiState.incomingRequests.first()
             Box(
@@ -347,14 +363,6 @@ fun CaptainDashboardScreen(
                     }
                 )
             }
-        }
-
-        // 6. Speedo 24/7 Captain Support Desk Modal
-        if (showSupportSheet) {
-            com.speedo.core.components.SpeedoSupportChatSheet(
-                userRole = "captain",
-                onDismiss = { showSupportSheet = false }
-            )
         }
     }
 }

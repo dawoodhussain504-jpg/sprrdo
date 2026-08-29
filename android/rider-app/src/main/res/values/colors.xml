@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#F85D03</color>
+    <color name="speedo_orange">#F85D03</color>
+    <color name="speedo_white">#FFFFFF</color>
+</resources>

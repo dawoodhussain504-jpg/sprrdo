@@ -224,6 +224,32 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        // 4. Real-time Geofenced Surge Zone Updates
+        viewModelScope.launch {
+            socketManager.liveSurgeUpdateFlow.collect {
+                // If user is currently looking at fare estimates, recalculate fares with new surge
+                if (_uiState.value.isLoggedIn && _uiState.value.dropAddress.isNotBlank() && _uiState.value.activeRide == null) {
+                    calculateFares()
+                }
+            }
+        }
+
+        // 5. Real-time City-Wide Broadcasts & Promo Vouchers
+        viewModelScope.launch {
+            socketManager.liveBroadcastFlow.collect { bcast ->
+                if (bcast.targetAudience == "all" || bcast.targetAudience == "riders") {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "📢 ${bcast.title}: ${bcast.message}"
+                    )
+                    NotificationHelper.showNotification(
+                        getApplication(),
+                        "📢 " + bcast.title,
+                        bcast.message + (if (!bcast.couponCode.isNullOrBlank()) " • Code: ${bcast.couponCode}" else "")
+                    )
+                }
+            }
+        }
     }
 
     fun login(email: String, pass: String, onComplete: (Boolean) -> Unit) {
@@ -556,6 +582,20 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
     fun markNotificationRead(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
             notifRepo.markRiderRead(id)
+        }
+    }
+
+    fun triggerSosEmergency(rideId: String?, lat: Double, lng: Double, address: String?, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            // 1. Emit instant socket event
+            SpeedoSocketManager.getInstance(getApplication()).emitSosTrigger(rideId, lat, lng, address)
+            // 2. Call REST API backup
+            val adminRepo = com.speedo.core.repository.AdminRepository(getApplication())
+            adminRepo.triggerSosAlert(com.speedo.core.model.TriggerSosRequest(rideId, lat, lng, address))
+            _uiState.value = _uiState.value.copy(
+                successMessage = "🚨 SOS Emergency Broadcasted to Speedo Command Center & Police!"
+            )
+            onComplete()
         }
     }
 

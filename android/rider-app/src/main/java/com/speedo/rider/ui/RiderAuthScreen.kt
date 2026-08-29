@@ -56,25 +56,12 @@ fun RiderAuthScreen(
             verticalArrangement = Arrangement.Center
         ) {
             // Speedo Brand Header
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(SpeedoOrangeContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DirectionsBike,
-                    contentDescription = null,
-                    tint = SpeedoOrange,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+            com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 72)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Speedo Rider",
+                text = "Speedo",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.ExtraBold,
                     color = SpeedoOrange,
@@ -82,7 +69,7 @@ fun RiderAuthScreen(
                 )
             )
             Text(
-                text = if (isSignUp) "Create your rider account" else "Fast & affordable city rides",
+                text = if (isSignUp) "Create your rider account to start booking" else "Book bike, auto & cab rides in seconds",
                 style = MaterialTheme.typography.bodyMedium,
                 color = SpeedoTextSecondary
             )

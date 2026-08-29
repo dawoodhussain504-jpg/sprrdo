@@ -107,8 +107,12 @@ fun UserManagementScreen(
                                             StatusBadge(status = capt.kycStatus)
                                         }
                                         Spacer(modifier = Modifier.height(2.dp))
-                                        Text(text = "${capt.phone} • ${capt.email}", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
-                                        Text(text = "Vehicle: ${capt.vehicleNumber} (${capt.vehicleType.uppercase()}) • Rating: ★ ${capt.rating}", style = MaterialTheme.typography.bodySmall, color = SpeedoOrange)
+                                        val vName = when {
+                                            capt.vehicleType.lowercase().contains("toto") || capt.vehicleType.lowercase().contains("auto") -> "Speedo Toto"
+                                            capt.vehicleType.lowercase().contains("4") || capt.vehicleType.lowercase().contains("cab") -> "Speedo 4"
+                                            else -> "Speedo Moto"
+                                        }
+                                        Text(text = "Vehicle: ${capt.vehicleNumber} ($vName) • Rating: ★ ${capt.rating}", style = MaterialTheme.typography.bodySmall, color = SpeedoOrange)
                                     }
 
                                     Spacer(modifier = Modifier.width(8.dp))

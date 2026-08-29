@@ -1,6 +1,7 @@
 package com.speedo.captain.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.speedo.captain.service.CaptainLocationService
@@ -166,6 +167,47 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
                             msg.messageText
                         )
                     }
+                }
+            }
+        }
+
+        // 4. Live KYC Status Sync from Admin Verification / Instant AI Approval
+        viewModelScope.launch {
+            socketManager.liveKycStatusFlow.collect { map ->
+                val status = map["status"] ?: return@collect
+                val remarks = map["admin_remarks"]
+                Log.i("CaptainViewModel", "⚡ Realtime KYC status updated to $status")
+                fetchKycStatus()
+                fetchProfile()
+                if (status == "approved") {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "🎉 KYC Approved! You can now switch ONLINE."
+                    )
+                    NotificationHelper.showNotification(
+                        getApplication(),
+                        "🎉 Speedo KYC Approved!",
+                        "Your documents are verified! You can now switch ONLINE and accept rides."
+                    )
+                } else if (status == "rejected") {
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "KYC Rejected: ${remarks ?: "Please re-upload clear documents"}"
+                    )
+                }
+            }
+        }
+
+        // 5. Live City Broadcasts & Incentive Alerts
+        viewModelScope.launch {
+            socketManager.liveBroadcastFlow.collect { bcast ->
+                if (bcast.targetAudience == "all" || bcast.targetAudience == "captains") {
+                    _uiState.value = _uiState.value.copy(
+                        successMessage = "📢 ${bcast.title}: ${bcast.message}"
+                    )
+                    NotificationHelper.showNotification(
+                        getApplication(),
+                        "📢 " + bcast.title,
+                        bcast.message + (if (bcast.bonusAmount > 0) " (+₹${bcast.bonusAmount.toInt()} Bonus)" else "")
+                    )
                 }
             }
         }
@@ -545,6 +587,20 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
     fun markNotificationRead(id: String) {
         viewModelScope.launch {
             notifRepo.markCaptainRead(id)
+        }
+    }
+
+    fun triggerSosEmergency(rideId: String?, lat: Double, lng: Double, address: String?, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            // 1. Emit instant socket event
+            SpeedoSocketManager.getInstance(getApplication()).emitSosTrigger(rideId, lat, lng, address)
+            // 2. Call REST API backup
+            val adminRepo = com.speedo.core.repository.AdminRepository(getApplication())
+            adminRepo.triggerSosAlert(com.speedo.core.model.TriggerSosRequest(rideId, lat, lng, address))
+            _uiState.value = _uiState.value.copy(
+                successMessage = "🚨 SOS Emergency Broadcasted to Speedo Command Center & Police!"
+            )
+            onComplete()
         }
     }
 

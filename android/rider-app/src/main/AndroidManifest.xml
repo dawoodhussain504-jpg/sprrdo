@@ -10,19 +10,19 @@
     <application
         android:name=".RiderApplication"
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_dialog_map"
-        android:label="Speedo Rider"
-        android:roundIcon="@android:drawable/ic_dialog_map"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Speedo"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:hardwareAccelerated="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:theme="@style/Theme.Speedo.App"
         android:usesCleartextTraffic="true">
         
         <activity
             android:name=".ui.RiderMainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
-            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            android:theme="@style/Theme.Speedo.App">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

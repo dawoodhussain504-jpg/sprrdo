@@ -48,9 +48,9 @@ fun CaptainActiveRideScreen(
 
     var showOtpKeypad by remember { mutableStateOf(false) }
     var showPaymentSheet by remember { mutableStateOf(false) }
-    var showCancelDialog by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
-    var showSupportSheet by remember { mutableStateOf(false) }
+    var showSosDialog by remember { mutableStateOf(false) }
+    var recenterTrigger by remember { mutableStateOf(1L) }
 
     LaunchedEffect(currentRide?.id) {
         if (currentRide != null) {
@@ -120,6 +120,7 @@ fun CaptainActiveRideScreen(
             centerLat = if (ride.status == "ongoing") ride.dropLat else ride.pickupLat,
             centerLng = if (ride.status == "ongoing") ride.dropLng else ride.pickupLng,
             zoomLevel = 15.5,
+            recenterTrigger = recenterTrigger,
             markers = mapMarkers,
             polylinePoints = polylinePoints,
             autoFitBounds = true
@@ -289,15 +290,15 @@ fun CaptainActiveRideScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Speedo 24/7 Support Desk Button
+                        // Emergency SOS Button
                         IconButton(
-                            onClick = { showSupportSheet = true },
+                            onClick = { showSosDialog = true },
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFFFF3E0))
+                                .background(Color(0xFFFFEBEE))
                         ) {
-                            Icon(Icons.Default.SupportAgent, contentDescription = "Support", tint = Color(0xFFE65100))
+                            Icon(Icons.Default.Warning, contentDescription = "SOS", tint = SpeedoError)
                         }
                     }
                 }
@@ -307,17 +308,38 @@ fun CaptainActiveRideScreen(
                 // Stage Actions:
                 when (ride.status) {
                     "accepted" -> {
-                        Button(
-                            onClick = { viewModel.updateRideStatus(ride.id, "arrived") },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(54.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = RapidoCaptainGreen)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Default.Place, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = "ARRIVED AT PICKUP", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                            Button(
+                                onClick = { viewModel.updateRideStatus(ride.id, "arrived") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = RapidoCaptainGreen)
+                            ) {
+                                Icon(Icons.Default.Place, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = "ARRIVED", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                            }
+
+                            Button(
+                                onClick = { showOtpKeypad = true },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(54.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = RapidoCaptainYellowDark,
+                                    contentColor = RapidoCaptainBlack
+                                )
+                            ) {
+                                Icon(Icons.Default.Pin, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = "ENTER OTP", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                            }
                         }
                     }
 
@@ -375,9 +397,37 @@ fun CaptainActiveRideScreen(
             }
         }
 
+        // Floating Rapido Recenter Route FAB
+        Surface(
+            shape = CircleShape,
+            color = SpeedoWhite,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, SpeedoCardBorder),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 260.dp)
+                .clickable {
+                    recenterTrigger = System.currentTimeMillis()
+                }
+        ) {
+            Box(
+                modifier = Modifier.size(46.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Recenter Location",
+                    tint = SpeedoOrange,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
         // 4. OTP Keypad Bottom Sheet Modal
         if (showOtpKeypad) {
             CaptainOtpKeypadSheet(
+                isLoading = uiState.isLoading,
+                errorMessage = uiState.errorMessage,
                 onVerifyOtp = { enteredOtp ->
                     viewModel.startRideWithOtp(ride.id, enteredOtp) { success ->
                         if (success) {
@@ -425,12 +475,37 @@ fun CaptainActiveRideScreen(
             )
         }
 
-        // 7. Speedo 24/7 Support Desk Modal
-        if (showSupportSheet) {
-            com.speedo.core.components.SpeedoSupportChatSheet(
-                userRole = "captain",
-                currentRideId = ride.id,
-                onDismiss = { showSupportSheet = false }
+        // 7. Emergency SOS Confirmation Dialog
+        if (showSosDialog) {
+            AlertDialog(
+                onDismissRequest = { showSosDialog = false },
+                title = { Text("🚨 Trigger Emergency SOS?") },
+                text = {
+                    Text("This will immediately transmit your real-time vehicle GPS coordinates and ride incident signal to the Speedo HQ Emergency Command Center and prompt you to dial 112 Police.")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showSosDialog = false
+                            viewModel.triggerSosEmergency(
+                                rideId = ride.id,
+                                lat = ride.pickupLat,
+                                lng = ride.pickupLng,
+                                address = ride.pickupAddress
+                            )
+                            val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:112"))
+                            context.startActivity(intent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SpeedoError)
+                    ) {
+                        Text("Broadcast SOS & Dial 112", color = SpeedoWhite, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSosDialog = false }) {
+                        Text("Cancel", color = SpeedoTextPrimary)
+                    }
+                }
             )
         }
     }

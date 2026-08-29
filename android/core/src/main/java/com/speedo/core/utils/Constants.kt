@@ -15,6 +15,10 @@ object Constants {
     // Default API URL (Railway Live Cloud URL)
     const val DEFAULT_BASE_URL = "https://web-production-5d826.up.railway.app/api/"
 
+    // Ola Maps API Key & Service Endpoints
+    const val OLA_MAPS_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhIjoiYWNfOTJpbDFzMzIiLCJqdGkiOiIzM2U0ZWE5MyJ9.aBZsvaEcZVSpFU_4jJQpW90xqKJWW41-zct6mLYfVj4"
+    const val OLA_MAPS_TILE_URL = "https://api.olamaps.io/tiles/v1/styles/default-light-standard/tiles/"
+
     // Free Leaflet / OpenStreetMap Standard Tile URL (No watermark, No API key required)
     const val LEAFLET_OSM_TILE_URL = "https://tile.openstreetmap.org/"
 

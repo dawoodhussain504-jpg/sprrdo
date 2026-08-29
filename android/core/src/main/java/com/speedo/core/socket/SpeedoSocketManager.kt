@@ -68,6 +68,21 @@ class SpeedoSocketManager private constructor(private val context: Context) {
     private val _liveSupportTicketFlow = MutableSharedFlow<com.speedo.core.model.SupportTicket>(extraBufferCapacity = 32)
     val liveSupportTicketFlow: SharedFlow<com.speedo.core.model.SupportTicket> = _liveSupportTicketFlow.asSharedFlow()
 
+    private val _liveSosAlertFlow = MutableSharedFlow<com.speedo.core.model.SosAlert>(extraBufferCapacity = 32)
+    val liveSosAlertFlow: SharedFlow<com.speedo.core.model.SosAlert> = _liveSosAlertFlow.asSharedFlow()
+
+    private val _liveSosResolvedFlow = MutableSharedFlow<Map<String, String>>(extraBufferCapacity = 32)
+    val liveSosResolvedFlow: SharedFlow<Map<String, String>> = _liveSosResolvedFlow.asSharedFlow()
+
+    private val _liveKycStatusFlow = MutableSharedFlow<Map<String, String>>(extraBufferCapacity = 32)
+    val liveKycStatusFlow: SharedFlow<Map<String, String>> = _liveKycStatusFlow.asSharedFlow()
+
+    private val _liveSurgeUpdateFlow = MutableSharedFlow<Map<String, Any>>(extraBufferCapacity = 32)
+    val liveSurgeUpdateFlow: SharedFlow<Map<String, Any>> = _liveSurgeUpdateFlow.asSharedFlow()
+
+    private val _liveBroadcastFlow = MutableSharedFlow<com.speedo.core.model.BroadcastAnnouncement>(extraBufferCapacity = 32)
+    val liveBroadcastFlow: SharedFlow<com.speedo.core.model.BroadcastAnnouncement> = _liveBroadcastFlow.asSharedFlow()
+
     companion object {
         private const val TAG = "SpeedoSocket"
 
@@ -246,6 +261,99 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                         Log.e(TAG, "Error parsing support ticket socket event", e)
                     }
                 }
+
+                // 6. Live Emergency SOS Alerts (Sub-second dispatch to Admin Command Center)
+                on("admin:sos_alert") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val alert = gson.fromJson(jsonStr, com.speedo.core.model.SosAlert::class.java)
+                        if (alert != null) {
+                            Log.i(TAG, "🚨 [REALTIME SOS RECEIVED] Alert ID: ${alert.id} from ${alert.userName}")
+                            scope.launch {
+                                _liveSosAlertFlow.emit(alert)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing SOS alert socket event", e)
+                    }
+                }
+
+                on("admin:sos_resolved") { args ->
+                    try {
+                        val json = args.getOrNull(0) as? JSONObject ?: return@on
+                        val map = mapOf(
+                            "id" to json.optString("id", ""),
+                            "status" to json.optString("status", "resolved"),
+                            "admin_notes" to json.optString("admin_notes", "")
+                        )
+                        scope.launch {
+                            _liveSosResolvedFlow.emit(map)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing SOS resolved socket event", e)
+                    }
+                }
+
+                // 7. Live KYC Status Sync (Instant Captain Profile Unlock)
+                on("captain:kyc_status") { args ->
+                    try {
+                        val json = args.getOrNull(0) as? JSONObject ?: return@on
+                        val map = mapOf(
+                            "status" to json.optString("status", ""),
+                            "admin_remarks" to json.optString("admin_remarks", "")
+                        )
+                        Log.i(TAG, "📑 [REALTIME KYC UPDATE] Status: ${map["status"]}")
+                        scope.launch {
+                            _liveKycStatusFlow.emit(map)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing KYC status socket event", e)
+                    }
+                }
+
+                // 8. Live Surge Zone Dynamic Updates
+                on("surge:zones_updated") { args ->
+                    try {
+                        val json = args.getOrNull(0) as? JSONObject ?: return@on
+                        val map = mutableMapOf<String, Any>()
+                        val keys = json.keys()
+                        while (keys.hasNext()) {
+                            val k = keys.next()
+                            map[k] = json.get(k)
+                        }
+                        scope.launch {
+                            _liveSurgeUpdateFlow.emit(map)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing surge update socket event", e)
+                    }
+                }
+
+                // 9. Targeted City-Wide Broadcasts (Real-time Mass Notification)
+                on("broadcast:announcement") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val bcast = gson.fromJson(jsonStr, com.speedo.core.model.BroadcastAnnouncement::class.java)
+                        if (bcast != null) {
+                            Log.i(TAG, "📢 [REALTIME BROADCAST RECEIVED] ${bcast.title}")
+                            scope.launch {
+                                _liveBroadcastFlow.emit(bcast)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing broadcast socket event", e)
+                    }
+                }
             }
 
             socket?.connect()
@@ -300,6 +408,40 @@ class SpeedoSocketManager private constructor(private val context: Context) {
     }
 
     /**
+     * Emit a new support ticket in real-time across the socket network and local flows
+     */
+    fun emitNewSupportTicket(ticket: com.speedo.core.model.SupportTicket) {
+        try {
+            val jsonStr = gson.toJson(ticket)
+            val payload = JSONObject(jsonStr)
+            socket?.emit("support:new_ticket", payload)
+            scope.launch {
+                _liveSupportTicketFlow.emit(ticket)
+            }
+            Log.d(TAG, "Emitted support:new_ticket for ${ticket.id}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error emitting new support ticket", e)
+        }
+    }
+
+    /**
+     * Emit a support message in real-time across the socket network and local flows
+     */
+    fun emitSupportMessage(msg: com.speedo.core.model.SupportMessage) {
+        try {
+            val jsonStr = gson.toJson(msg)
+            val payload = JSONObject(jsonStr)
+            socket?.emit("support:ticket_message", payload)
+            scope.launch {
+                _liveSupportMessageFlow.emit(msg)
+            }
+            Log.d(TAG, "Emitted support:ticket_message for ticket ${msg.ticketId}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error emitting support message", e)
+        }
+    }
+
+    /**
      * Captain high-frequency sub-second GPS stream (500ms - 1000ms)
      */
     fun emitCaptainLocation(
@@ -323,6 +465,24 @@ class SpeedoSocketManager private constructor(private val context: Context) {
             }
         }
         socket?.emit("captain:location_update", payload)
+    }
+
+    /**
+     * Trigger immediate real-time SOS Emergency across socket cluster
+     */
+    fun emitSosTrigger(rideId: String?, lat: Double, lng: Double, address: String?) {
+        try {
+            val payload = JSONObject().apply {
+                if (!rideId.isNullOrBlank()) put("ride_id", rideId)
+                put("lat", lat)
+                put("lng", lng)
+                put("address", address ?: "Live GPS Coordinates")
+            }
+            socket?.emit("sos:trigger", payload)
+            Log.i(TAG, "🚨 Emitted sos:trigger over WebSocket")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error emitting sos:trigger", e)
+        }
     }
 
     fun disconnect() {

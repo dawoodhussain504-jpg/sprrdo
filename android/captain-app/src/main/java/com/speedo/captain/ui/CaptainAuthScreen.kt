@@ -55,25 +55,12 @@ fun CaptainAuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(SpeedoOrangeContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.TwoWheeler,
-                    contentDescription = null,
-                    tint = SpeedoOrange,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+            com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 72)
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Speedo Captain",
+                text = "Captian",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.ExtraBold,
                     color = SpeedoOrange,
@@ -120,7 +107,7 @@ fun CaptainAuthScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("bike" to "Bike", "auto" to "Auto", "cab" to "Cab").forEach { (key, label) ->
+                    listOf("bike" to "Speedo Moto", "auto" to "Speedo Toto", "cab" to "Speedo 4").forEach { (key, label) ->
                         val selected = vehicleType == key
                         Button(
                             onClick = { vehicleType = key },
@@ -129,9 +116,10 @@ fun CaptainAuthScreen(
                                 containerColor = if (selected) SpeedoOrange else SpeedoSurfaceVariant,
                                 contentColor = if (selected) SpeedoWhite else SpeedoTextPrimary
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
                         ) {
-                            Text(text = label, fontWeight = FontWeight.Bold)
+                            Text(text = label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }

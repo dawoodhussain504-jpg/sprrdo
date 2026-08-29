@@ -12,10 +12,12 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -176,22 +178,82 @@ fun SpeedoTextField(
     }
 }
 
+@Composable
+fun SpeedoAppIconBadge(
+    modifier: Modifier = Modifier,
+    sizeDp: Int = 32,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape((sizeDp / 4).dp)
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appIcon = remember(context) {
+        try {
+            val drawable = context.packageManager.getApplicationIcon(context.packageName)
+            val targetSize = (sizeDp * 3).coerceAtLeast(128)
+            val bitmap = android.graphics.Bitmap.createBitmap(
+                targetSize,
+                targetSize,
+                android.graphics.Bitmap.Config.ARGB_8888
+            )
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, canvas.width, canvas.height)
+            drawable.draw(canvas)
+            bitmap.asImageBitmap()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .size(sizeDp.dp)
+            .clip(shape),
+        contentAlignment = Alignment.Center
+    ) {
+        if (appIcon != null) {
+            androidx.compose.foundation.Image(
+                bitmap = appIcon,
+                contentDescription = "App Icon",
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(SpeedoOrange),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("S", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpeedoTopBar(
     title: String,
     onBackClick: (() -> Unit)? = null,
     onMenuClick: (() -> Unit)? = null,
+    showAppIcon: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     TopAppBar(
         title = {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showAppIcon && onBackClick == null && onMenuClick == null) {
+                    SpeedoAppIconBadge(sizeDp = 28)
+                    Spacer(modifier = Modifier.width(10.dp))
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         },
         navigationIcon = {
             if (onBackClick != null) {

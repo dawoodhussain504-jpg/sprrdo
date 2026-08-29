@@ -258,145 +258,269 @@ fun IncomingRideFlashBanner(
  */
 @Composable
 fun CaptainOtpKeypadSheet(
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
     onVerifyOtp: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
     var pin by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
+    var localError by remember { mutableStateOf<String?>(null) }
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        color = SpeedoWhite,
-        shadowElevation = 24.dp
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            localError = errorMessage
+        }
+    }
+
+    // Full-screen modal overlay with dark scrim
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.65f))
+            .clickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null
+            ) {
+                if (!isLoading) onDismiss()
+            },
+        contentAlignment = Alignment.BottomCenter
     ) {
-        Column(
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { /* intercept click so sheet doesn't close */ },
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = SpeedoWhite,
+            shadowElevation = 24.dp
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "Enter Rider Start PIN",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        color = RapidoCaptainBlack
-                    )
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
-                }
-            }
-
-            Text(
-                text = "Ask rider for the 4-digit OTP shown on their screen",
-                style = MaterialTheme.typography.bodySmall,
-                color = SpeedoTextSecondary
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 4 PIN Digit Display Boxes
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                (0..3).forEach { index ->
-                    val digit = pin.getOrNull(index)?.toString() ?: ""
-                    Surface(
-                        modifier = Modifier.size(56.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (digit.isNotEmpty()) RapidoCaptainGreenLight else SpeedoSurfaceVariant,
-                        border = BorderStroke(
-                            2.dp,
-                            if (isError) SpeedoError else if (digit.isNotEmpty()) RapidoCaptainGreen else SpeedoCardBorder
-                        )
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = digit,
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (isError) SpeedoError else RapidoCaptainBlack
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (isError) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Incorrect 4-digit PIN. Please re-enter.", color = SpeedoError, style = MaterialTheme.typography.bodySmall)
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Numeric Keypad (1-9, 0, Backspace)
-            val keys = listOf(
-                listOf("1", "2", "3"),
-                listOf("4", "5", "6"),
-                listOf("7", "8", "9"),
-                listOf("", "0", "DEL")
-            )
-
-            keys.forEach { row ->
+                // Header with Title & Close
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    row.forEach { key ->
-                        if (key.isEmpty()) {
-                            Spacer(modifier = Modifier.size(68.dp))
-                        } else if (key == "DEL") {
-                            Surface(
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .clickable {
-                                        if (pin.isNotEmpty()) pin = pin.dropLast(1)
-                                        isError = false
-                                    },
-                                shape = CircleShape,
-                                color = SpeedoSurfaceVariant
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Backspace, contentDescription = "Delete", tint = RapidoCaptainBlack)
+                    Column {
+                        Text(
+                            text = "Enter Rider Start PIN",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RapidoCaptainBlack
+                            )
+                        )
+                        Text(
+                            text = "Ask passenger for the 4-digit OTP",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = SpeedoTextSecondary
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        enabled = !isLoading
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = RapidoCaptainBlack)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // 4 PIN Digit Display Boxes
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    (0..3).forEach { index ->
+                        val digit = pin.getOrNull(index)?.toString() ?: ""
+                        val hasDigit = digit.isNotEmpty()
+                        val isCurrentIndex = pin.length == index
+                        val hasError = localError != null
+
+                        Surface(
+                            modifier = Modifier.size(58.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = when {
+                                hasError -> SpeedoErrorContainer
+                                hasDigit -> RapidoCaptainGreenLight
+                                else -> SpeedoSurfaceVariant
+                            },
+                            border = BorderStroke(
+                                2.dp,
+                                when {
+                                    hasError -> SpeedoError
+                                    isCurrentIndex -> SpeedoOrange
+                                    hasDigit -> RapidoCaptainGreen
+                                    else -> SpeedoCardBorder
                                 }
-                            }
-                        } else {
-                            Surface(
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .clickable {
-                                        if (pin.length < 4) {
-                                            pin += key
-                                            isError = false
-                                            if (pin.length == 4) {
-                                                onVerifyOtp(pin)
-                                            }
+                            )
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = digit,
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = when {
+                                            hasError -> SpeedoError
+                                            hasDigit -> RapidoCaptainGreenDark
+                                            else -> RapidoCaptainBlack
                                         }
-                                    },
-                                shape = CircleShape,
-                                color = SpeedoSurfaceVariant
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = key,
-                                        style = MaterialTheme.typography.titleLarge.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = RapidoCaptainBlack
-                                        )
                                     )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (localError != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = localError ?: "Incorrect OTP. Please check with rider.",
+                        color = SpeedoError,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Numeric Dialpad (1-9, Clear, 0, Backspace)
+                val keys = listOf(
+                    listOf("1", "2", "3"),
+                    listOf("4", "5", "6"),
+                    listOf("7", "8", "9"),
+                    listOf("C", "0", "DEL")
+                )
+
+                keys.forEach { row ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        row.forEach { key ->
+                            when (key) {
+                                "C" -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFFFEBEE))
+                                            .clickable(enabled = !isLoading) {
+                                                pin = ""
+                                                localError = null
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "CLR",
+                                            style = MaterialTheme.typography.titleMedium.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = SpeedoError
+                                            )
+                                        )
+                                    }
+                                }
+                                "DEL" -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(CircleShape)
+                                            .background(SpeedoSurfaceVariant)
+                                            .clickable(enabled = !isLoading) {
+                                                if (pin.isNotEmpty()) {
+                                                    pin = pin.dropLast(1)
+                                                    localError = null
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Backspace,
+                                            contentDescription = "Delete",
+                                            tint = RapidoCaptainBlack
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clip(CircleShape)
+                                            .background(SpeedoSurfaceVariant)
+                                            .clickable(enabled = !isLoading) {
+                                                if (pin.length < 4) {
+                                                    val newPin = pin + key
+                                                    pin = newPin
+                                                    localError = null
+                                                    if (newPin.length == 4) {
+                                                        onVerifyOtp(newPin)
+                                                    }
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = key,
+                                            style = MaterialTheme.typography.headlineSmall.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = RapidoCaptainBlack
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Big Explicit "START TRIP" Action Button
+                Button(
+                    onClick = {
+                        if (pin.length == 4 && !isLoading) {
+                            onVerifyOtp(pin)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    enabled = pin.length == 4 && !isLoading,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RapidoCaptainGreen,
+                        contentColor = SpeedoWhite,
+                        disabledContainerColor = SpeedoSurfaceVariant,
+                        disabledContentColor = SpeedoTextSecondary
+                    )
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = SpeedoWhite,
+                            strokeWidth = 2.5.dp
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(text = "VERIFYING PIN...", fontWeight = FontWeight.ExtraBold)
+                    } else {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (pin.length == 4) "START TRIP ($pin)" else "ENTER 4-DIGIT PIN TO START",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
             }
         }

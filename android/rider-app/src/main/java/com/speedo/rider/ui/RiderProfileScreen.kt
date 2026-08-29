@@ -20,10 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.speedo.core.components.SpeedoOutlinedButton
 import com.speedo.core.components.SpeedoPrimaryButton
-import com.speedo.core.components.SpeedoSupportChatSheet
 import com.speedo.core.components.SpeedoTextField
 import com.speedo.core.components.SpeedoTopBar
 import com.speedo.core.theme.*
@@ -37,10 +35,6 @@ fun RiderProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-
-    var customApiUrl by remember { mutableStateOf(Constants.getBaseUrl(context)) }
-    var showUrlDialog by remember { mutableStateOf(false) }
-    var showSupportSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -59,14 +53,15 @@ fun RiderProfileScreen(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(SpeedoOrangeContainer),
+                    .background(SpeedoOrange),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = SpeedoOrange,
-                    modifier = Modifier.size(44.dp)
+                Text(
+                    text = uiState.currentUserName?.take(1)?.uppercase() ?: "R",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = SpeedoWhite
+                    )
                 )
             }
 
@@ -74,8 +69,9 @@ fun RiderProfileScreen(
 
             Text(
                 text = uiState.currentUserName ?: "Speedo Rider",
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = uiState.currentUserEmail ?: "rider@speedo.com",
                 style = MaterialTheme.typography.bodyMedium,
@@ -84,81 +80,61 @@ fun RiderProfileScreen(
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // 24/7 Support & Help Desk card
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showSupportSheet = true },
-                shape = RoundedCornerShape(14.dp),
-                color = SpeedoWhite,
-                border = BorderStroke(1.dp, Color(0xFF90CAF9)),
-                shadowElevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE3F2FD)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SupportAgent,
-                            contentDescription = null,
-                            tint = Color(0xFF1565C0),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(14.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Speedo 24/7 Support Desk",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = SpeedoTextPrimary
-                        )
-                        Text(
-                            text = "Raise complaints, fare issues, or safety queries",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = SpeedoTextSecondary
-                        )
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                        contentDescription = null,
-                        tint = SpeedoTextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Settings options
+            // Account & App Details Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
                 color = SpeedoWhite,
                 border = BorderStroke(1.dp, SpeedoCardBorder)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "NETWORK & SERVER",
+                        text = "ACCOUNT DETAILS",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = SpeedoOrange)
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "API Base URL: ${Constants.getBaseUrl(context)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SpeedoTextSecondary
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Role", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
+                        Text("Speedo Rider", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                    }
                     Spacer(modifier = Modifier.height(10.dp))
-                    SpeedoOutlinedButton(
-                        text = "Change API URL",
-                        onClick = { showUrlDialog = true }
-                    )
+                    HorizontalDivider(color = SpeedoCardBorder.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Status", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = SpeedoSuccess.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                "Active",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = SpeedoSuccess,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = SpeedoCardBorder.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("App Version", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
+                        Text("v2.0.0 (Production)", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                    }
                 }
             }
 
@@ -166,7 +142,7 @@ fun RiderProfileScreen(
 
             SpeedoPrimaryButton(
                 text = "Log Out",
-                leadingIcon = Icons.Default.Logout,
+                leadingIcon = Icons.Default.ExitToApp,
                 onClick = {
                     viewModel.logout()
                     onLogout()
@@ -177,50 +153,5 @@ fun RiderProfileScreen(
                 )
             )
         }
-    }
-
-    if (showUrlDialog) {
-        AlertDialog(
-            onDismissRequest = { showUrlDialog = false },
-            title = { Text("Configure API Server URL") },
-            text = {
-                Column {
-                    Text(
-                        text = "Enter the host backend URL (e.g. Railway URL or Local IP):",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = SpeedoTextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    SpeedoTextField(
-                        value = customApiUrl,
-                        onValueChange = { customApiUrl = it },
-                        label = "API Base URL"
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        Constants.setCustomBaseUrl(context, customApiUrl)
-                        showUrlDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange)
-                ) {
-                    Text("Save & Apply", color = SpeedoWhite)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showUrlDialog = false }) {
-                    Text("Cancel", color = SpeedoTextPrimary)
-                }
-            }
-        )
-    }
-
-    if (showSupportSheet) {
-        SpeedoSupportChatSheet(
-            userRole = "rider",
-            onDismiss = { showSupportSheet = false }
-        )
     }
 }

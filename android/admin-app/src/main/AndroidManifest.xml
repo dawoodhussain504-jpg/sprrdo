@@ -10,17 +10,17 @@
     <application
         android:name=".AdminApplication"
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_dialog_alert"
-        android:label="Speedo Admin"
-        android:roundIcon="@android:drawable/ic_dialog_alert"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Authority"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:theme="@style/Theme.Speedo.App"
         android:usesCleartextTraffic="true">
 
         <activity
             android:name=".ui.AdminMainActivity"
             android:exported="true"
-            android:theme="@android:style/Theme.Material.Light.NoActionBar">
+            android:theme="@style/Theme.Speedo.App">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

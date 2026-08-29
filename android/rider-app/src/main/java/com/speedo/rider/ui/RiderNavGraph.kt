@@ -29,8 +29,25 @@ fun RiderMainScaffold(
     viewModel: RiderViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("speedo_rider_prefs", android.content.Context.MODE_PRIVATE) }
 
-    // 1. If not authenticated, render RiderAuthScreen directly with zero navigation conflicts
+    var showIntro by remember {
+        mutableStateOf(!prefs.getBoolean("intro_seen", false) && !uiState.isLoggedIn)
+    }
+
+    // 1. Interactive Feature Intro Screen Slider (if first-time user)
+    if (showIntro && !uiState.isLoggedIn) {
+        RiderIntroScreen(
+            onFinishIntro = {
+                prefs.edit().putBoolean("intro_seen", true).apply()
+                showIntro = false
+            }
+        )
+        return
+    }
+
+    // 2. If not authenticated, render RiderAuthScreen
     if (!uiState.isLoggedIn) {
         RiderAuthScreen(
             viewModel = viewModel,

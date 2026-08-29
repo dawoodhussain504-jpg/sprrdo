@@ -2,10 +2,12 @@ package com.speedo.admin.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -18,10 +20,12 @@ import kotlinx.coroutines.launch
 
 sealed class AdminScreen(val route: String, val title: String, val icon: ImageVector) {
     object Dashboard : AdminScreen("dashboard", "Dashboard", Icons.Default.Dashboard)
-    object KycQueue : AdminScreen("kyc_queue", "KYC Queue", Icons.Default.VerifiedUser)
+    object KycQueue : AdminScreen("kyc_queue", "KYC Queue & OCR", Icons.Default.VerifiedUser)
+    object SurgeEngine : AdminScreen("surge_engine", "Surge & Geofencing", Icons.Default.Bolt)
+    object SosCenter : AdminScreen("sos_center", "Emergency SOS Center", Icons.Default.Shield)
+    object Broadcasts : AdminScreen("broadcasts", "City Broadcasts", Icons.Default.Campaign)
     object LiveMap : AdminScreen("live_map", "Live Fleet Map", Icons.Default.Map)
     object Rides : AdminScreen("rides", "Ride Monitoring", Icons.Default.DirectionsCar)
-    object SupportDesk : AdminScreen("support_desk", "Support Desk", Icons.Default.SupportAgent)
     object Users : AdminScreen("users", "User Moderation", Icons.Default.People)
     object Auth : AdminScreen("auth", "Sign In", Icons.Default.Lock)
 }
@@ -41,9 +45,11 @@ fun AdminMainScaffold(
     val navItems = listOf(
         AdminScreen.Dashboard,
         AdminScreen.KycQueue,
+        AdminScreen.SurgeEngine,
+        AdminScreen.SosCenter,
+        AdminScreen.Broadcasts,
         AdminScreen.LiveMap,
         AdminScreen.Rides,
-        AdminScreen.SupportDesk,
         AdminScreen.Users
     )
 
@@ -87,18 +93,58 @@ fun AdminMainScaffold(
 
                 navItems.forEach { item ->
                     val isSelected = currentRoute == item.route
+                    val isSosBadge = item == AdminScreen.SosCenter && uiState.activeSosCount > 0
                     NavigationDrawerItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                        icon = {
+                            Icon(
+                                item.icon,
+                                contentDescription = item.title,
+                                tint = if (isSosBadge) SpeedoError else if (isSelected) SpeedoOrange else SpeedoTextSecondary
+                            )
+                        },
+                        label = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    item.title,
+                                    fontWeight = if (isSelected || isSosBadge) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSosBadge) SpeedoError else if (isSelected) SpeedoOrange else SpeedoTextPrimary
+                                )
+                                if (isSosBadge) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = SpeedoError
+                                    ) {
+                                        Text(
+                                            text = "${uiState.activeSosCount}",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = SpeedoWhite
+                                            ),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        },
                         selected = isSelected,
                         onClick = {
                             scope.launch { drawerState.close() }
-                            navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                            if (currentRoute != item.route) {
+                                if (item.route == AdminScreen.Dashboard.route) {
+                                    navController.popBackStack(AdminScreen.Dashboard.route, false)
+                                } else {
+                                    navController.navigate(item.route) {
+                                        popUpTo(AdminScreen.Dashboard.route) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
                         },
                         colors = NavigationDrawerItemDefaults.colors(
@@ -115,7 +161,7 @@ fun AdminMainScaffold(
                 Spacer(modifier = Modifier.weight(1f))
 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Logout, contentDescription = "Log Out", tint = SpeedoError) },
+                    icon = { Icon(Icons.Default.ExitToApp, contentDescription = "Log Out", tint = SpeedoError) },
                     label = { Text("Log Out", color = SpeedoError, fontWeight = FontWeight.Bold) },
                     selected = false,
                     onClick = {
@@ -136,15 +182,38 @@ fun AdminMainScaffold(
                     viewModel = viewModel,
                     onMenuClick = { scope.launch { drawerState.open() } },
                     onNavigateToKyc = { navController.navigate(AdminScreen.KycQueue.route) },
+                    onNavigateToSurge = { navController.navigate(AdminScreen.SurgeEngine.route) },
+                    onNavigateToSos = { navController.navigate(AdminScreen.SosCenter.route) },
+                    onNavigateToBroadcasts = { navController.navigate(AdminScreen.Broadcasts.route) },
                     onNavigateToMap = { navController.navigate(AdminScreen.LiveMap.route) },
                     onNavigateToRides = { navController.navigate(AdminScreen.Rides.route) },
-                    onNavigateToSupport = { navController.navigate(AdminScreen.SupportDesk.route) },
                     onNavigateToUsers = { navController.navigate(AdminScreen.Users.route) }
                 )
             }
 
             composable(AdminScreen.KycQueue.route) {
                 KycReviewQueueScreen(
+                    viewModel = viewModel,
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable(AdminScreen.SurgeEngine.route) {
+                GeofenceSurgeEngineScreen(
+                    viewModel = viewModel,
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable(AdminScreen.SosCenter.route) {
+                SosEmergencyCenterScreen(
+                    viewModel = viewModel,
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable(AdminScreen.Broadcasts.route) {
+                CityBroadcastScreen(
                     viewModel = viewModel,
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
@@ -159,13 +228,6 @@ fun AdminMainScaffold(
 
             composable(AdminScreen.Rides.route) {
                 RidesMonitoringScreen(
-                    viewModel = viewModel,
-                    onMenuClick = { scope.launch { drawerState.open() } }
-                )
-            }
-
-            composable(AdminScreen.SupportDesk.route) {
-                SupportDeskScreen(
                     viewModel = viewModel,
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )

@@ -14,7 +14,6 @@ import androidx.lifecycle.LifecycleEventObserver
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.CustomZoomButtonsController
@@ -46,13 +45,15 @@ fun OsmMapView(
     modifier: Modifier = Modifier,
     centerLat: Double = 12.9716, // Bangalore default
     centerLng: Double = 77.5946,
-    zoomLevel: Double = 15.0,
+    zoomLevel: Double = 16.0,
+    recenterTrigger: Long = 0L,
     markers: List<MapMarkerData> = emptyList(),
     polylinePoints: List<GeoPoint> = emptyList(),
     driverPolylinePoints: List<GeoPoint> = emptyList(),
     autoFitBounds: Boolean = true,
     onMapClick: ((GeoPoint) -> Unit)? = null,
     onMapMoveEnd: ((GeoPoint) -> Unit)? = null,
+    onMapTouchStateChanged: ((Boolean) -> Unit)? = null,
     onMarkerClick: ((MapMarkerData) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -60,6 +61,7 @@ fun OsmMapView(
 
     var mapViewRef by remember { mutableStateOf<MapView?>(null) }
     var lastBoundsKey by remember { mutableStateOf<String>("") }
+    var lastRecenterTrigger by remember { mutableStateOf<Long>(0L) }
 
     // Lifecycle event handling for MapView
     DisposableEffect(lifecycleOwner) {
@@ -80,11 +82,17 @@ fun OsmMapView(
 
     AndroidView(
         factory = { ctx ->
+            // Standard Leaflet User-Agent for fast tile loading
+            Configuration.getInstance().userAgentValue = "Mozilla/5.0 (Linux; Android 14) SpeedoApp/2.0 org.osmdroid"
+            Configuration.getInstance().isMapViewHardwareAccelerated = true
+
             MapView(ctx).apply {
-                // 100% Free Leaflet / OpenStreetMap Standard Tiles (No Watermark, No API Key Required)
+                // 100% Free Leaflet / OpenStreetMap Standard (No Watermark, No API Key Required)
                 setTileSource(TileSourceFactory.MAPNIK)
 
+                setUseDataConnection(true)
                 setMultiTouchControls(true)
+                setTilesScaledToDpi(true)
                 zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
                 controller.setZoom(zoomLevel)
                 controller.setCenter(GeoPoint(centerLat, centerLng))
@@ -110,13 +118,17 @@ fun OsmMapView(
                         android.view.MotionEvent.ACTION_DOWN,
                         android.view.MotionEvent.ACTION_MOVE -> {
                             isUserInteracting = true
+                            onMapTouchStateChanged?.invoke(true)
                         }
                         android.view.MotionEvent.ACTION_UP,
                         android.view.MotionEvent.ACTION_CANCEL -> {
-                            if (isUserInteracting && onMapMoveEnd != null) {
-                                postDelayed({
-                                    (mapCenter as? GeoPoint)?.let { onMapMoveEnd.invoke(it) }
-                                }, 350)
+                            if (isUserInteracting) {
+                                onMapTouchStateChanged?.invoke(false)
+                                if (onMapMoveEnd != null) {
+                                    postDelayed({
+                                        (mapCenter as? GeoPoint)?.let { onMapMoveEnd.invoke(it) }
+                                    }, 350)
+                                }
                             }
                             isUserInteracting = false
                         }
@@ -137,18 +149,18 @@ fun OsmMapView(
                             mapView.overlays.add(baseOverlay)
                         }
 
-                        // 1. Draw Driver-to-Pickup Polyline (Amber/Gold #FFA000)
+                        // 1. Draw Driver-to-Pickup Polyline (Rapido Signature Amber/Gold #FFA000)
                         if (driverPolylinePoints.size >= 2) {
                             val driverCasing = Polyline().apply {
                                 setPoints(driverPolylinePoints)
-                                outlinePaint.color = AndroidColor.parseColor("#37474F")
+                                outlinePaint.color = AndroidColor.parseColor("#263238")
                                 outlinePaint.strokeWidth = 14f
                                 outlinePaint.strokeCap = Paint.Cap.ROUND
                                 outlinePaint.strokeJoin = Paint.Join.ROUND
                             }
                             val driverInner = Polyline().apply {
                                 setPoints(driverPolylinePoints)
-                                outlinePaint.color = AndroidColor.parseColor("#FFA000")
+                                outlinePaint.color = AndroidColor.parseColor("#FFB300")
                                 outlinePaint.strokeWidth = 9f
                                 outlinePaint.strokeCap = Paint.Cap.ROUND
                                 outlinePaint.strokeJoin = Paint.Join.ROUND
@@ -157,7 +169,7 @@ fun OsmMapView(
                             mapView.overlays.add(driverInner)
                         }
 
-                        // 2. Draw Main Road Polyline (Pickup -> Drop in #00C853 Speedo Green)
+                        // 2. Draw Main Road Polyline (Rapido Electric Green #00E676 with Dark Outer Glow)
                         if (polylinePoints.size >= 2) {
                             val polylineCasing = Polyline().apply {
                                 setPoints(polylinePoints)
@@ -168,7 +180,7 @@ fun OsmMapView(
                             }
                             val polylineInner = Polyline().apply {
                                 setPoints(polylinePoints)
-                                outlinePaint.color = AndroidColor.parseColor("#00C853")
+                                outlinePaint.color = AndroidColor.parseColor("#00E676")
                                 outlinePaint.strokeWidth = 10f
                                 outlinePaint.strokeCap = Paint.Cap.ROUND
                                 outlinePaint.strokeJoin = Paint.Join.ROUND
@@ -177,7 +189,7 @@ fun OsmMapView(
                             mapView.overlays.add(polylineInner)
                         }
 
-                        // 3. Add Custom Cached Markers
+                        // 3. Add Custom Rapido Styled Markers
                         markers.forEach { markerData ->
                             val marker = Marker(mapView).apply {
                                 position = GeoPoint(markerData.lat, markerData.lng)
@@ -188,7 +200,10 @@ fun OsmMapView(
                                 icon = when (markerData.markerType) {
                                     MarkerType.PICKUP -> MapMarkerUtils.createPinDrawable(context, AndroidColor.parseColor("#00C853"), "P")
                                     MarkerType.DROP -> MapMarkerUtils.createPinDrawable(context, AndroidColor.parseColor("#D50000"), "D")
-                                    MarkerType.USER_LOCATION -> MapMarkerUtils.createPinDrawable(context, AndroidColor.parseColor("#2979FF"))
+                                    MarkerType.USER_LOCATION -> {
+                                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                                        MapMarkerUtils.createUserLocationDrawable(context)
+                                    }
                                     MarkerType.CAPTAIN -> {
                                         setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
                                         rotation = markerData.bearing
@@ -206,8 +221,14 @@ fun OsmMapView(
                         }
                     }
 
-                    // 4. Safe Auto-fit camera framing
-                    if (autoFitBounds && (polylinePoints.size >= 2 || markers.size >= 2)) {
+                    // 4. Smooth Recenter Trigger Handling
+                    if (recenterTrigger != 0L && recenterTrigger != lastRecenterTrigger) {
+                        lastRecenterTrigger = recenterTrigger
+                        if (centerLat != 0.0 && centerLng != 0.0) {
+                            mapView.controller.animateTo(GeoPoint(centerLat, centerLng), zoomLevel, 600L)
+                        }
+                    } else if (autoFitBounds && (polylinePoints.size >= 2 || markers.size >= 2)) {
+                        // 5. Safe Auto-fit camera framing with padding
                         val allPoints = mutableListOf<GeoPoint>()
                         if (polylinePoints.isNotEmpty()) allPoints.addAll(polylinePoints)
                         if (driverPolylinePoints.isNotEmpty()) allPoints.addAll(driverPolylinePoints)
@@ -230,9 +251,9 @@ fun OsmMapView(
                             if (boundsKey != lastBoundsKey) {
                                 lastBoundsKey = boundsKey
                                 if (mapView.width > 0 && mapView.height > 0) {
-                                    val padding = 0.005
+                                    val padding = 0.003
                                     val boundingBox = BoundingBox(maxLat + padding, maxLng + padding, minLat - padding, minLng - padding)
-                                    mapView.zoomToBoundingBox(boundingBox, true, 100)
+                                    mapView.zoomToBoundingBox(boundingBox, true, 110)
                                 }
                             }
                         }

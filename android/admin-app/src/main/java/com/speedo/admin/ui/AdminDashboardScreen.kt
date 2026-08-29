@@ -29,16 +29,33 @@ fun AdminDashboardScreen(
     viewModel: AdminViewModel,
     onMenuClick: () -> Unit = {},
     onNavigateToKyc: () -> Unit,
+    onNavigateToSurge: () -> Unit,
+    onNavigateToSos: () -> Unit,
+    onNavigateToBroadcasts: () -> Unit,
     onNavigateToMap: () -> Unit,
     onNavigateToRides: () -> Unit,
-    onNavigateToSupport: () -> Unit,
     onNavigateToUsers: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val stats = uiState.dashboardStats
 
+    // Dynamic stats computation from loaded state if server stats empty
+    val totalRevenue = stats?.totalRevenue ?: uiState.rides.filter { it.status == "completed" }.sumOf { it.fare }
+    val completedRides = stats?.completedRides ?: uiState.rides.count { it.status == "completed" }
+    val activeRides = stats?.activeRides ?: uiState.rides.count { it.status in listOf("requested", "accepted", "arrived", "ongoing") }
+    val pendingKycCount = stats?.pendingKycCount ?: uiState.kycQueue.size
+    val onlineCaptains = stats?.onlineCaptains ?: uiState.captains.count { it.isOnline }
+    val totalRiders = stats?.totalRiders ?: uiState.riders.size
+    val activeSosCount = uiState.activeSosCount
+
     LaunchedEffect(Unit) {
         viewModel.startDashboardPolling()
+        viewModel.fetchKycQueue()
+        viewModel.fetchRides()
+        viewModel.fetchUsers()
+        viewModel.fetchSurgeZones()
+        viewModel.fetchSosAlerts()
+        viewModel.fetchBroadcasts()
     }
 
     Scaffold(
@@ -47,7 +64,15 @@ fun AdminDashboardScreen(
                 title = "Platform Dashboard",
                 onMenuClick = onMenuClick,
                 actions = {
-                    IconButton(onClick = { viewModel.startDashboardPolling() }) {
+                    IconButton(onClick = {
+                        viewModel.startDashboardPolling()
+                        viewModel.fetchKycQueue()
+                        viewModel.fetchRides()
+                        viewModel.fetchUsers()
+                        viewModel.fetchSurgeZones()
+                        viewModel.fetchSosAlerts()
+                        viewModel.fetchBroadcasts()
+                    }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = SpeedoTextPrimary)
                     }
                 }
@@ -61,6 +86,50 @@ fun AdminDashboardScreen(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            // SOS Emergency Flashing Banner
+            if (activeSosCount > 0) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClick = onNavigateToSos),
+                    shape = RoundedCornerShape(16.dp),
+                    color = SpeedoError,
+                    shadowElevation = 6.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(SpeedoWhite)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "🚨 $activeSosCount ACTIVE EMERGENCY",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = SpeedoWhite
+                                    )
+                                )
+                                Text(
+                                    text = "Tap to open SOS Command Center & dispatch police",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SpeedoWhite.copy(alpha = 0.9f)
+                                )
+                            }
+                        }
+                        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = SpeedoWhite)
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
+
             // Main Revenue Banner
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -75,7 +144,7 @@ fun AdminDashboardScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "₹${stats?.totalRevenue?.toInt() ?: 0}",
+                        text = "₹${totalRevenue.toInt()}",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = SpeedoWhite,
@@ -84,7 +153,7 @@ fun AdminDashboardScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Completed Rides: ${stats?.completedRides ?: 0}",
+                        text = "Completed Rides: $completedRides",
                         style = MaterialTheme.typography.bodyMedium.copy(color = SpeedoWhite)
                     )
                 }
@@ -93,7 +162,7 @@ fun AdminDashboardScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             Text(
-                text = "Key Metrics",
+                text = "Key Metrics & Operations",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
 
@@ -103,7 +172,7 @@ fun AdminDashboardScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AdminMetricCard(
                     title = "Active Rides",
-                    value = "${stats?.activeRides ?: 0}",
+                    value = "$activeRides",
                     icon = Icons.Default.DirectionsCar,
                     accentColor = SpeedoSuccess,
                     modifier = Modifier.weight(1f),
@@ -111,7 +180,7 @@ fun AdminDashboardScreen(
                 )
                 AdminMetricCard(
                     title = "Pending KYC",
-                    value = "${stats?.pendingKycCount ?: 0}",
+                    value = "$pendingKycCount",
                     icon = Icons.Default.VerifiedUser,
                     accentColor = SpeedoAmber,
                     modifier = Modifier.weight(1f),
@@ -123,46 +192,64 @@ fun AdminDashboardScreen(
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AdminMetricCard(
-                    title = "Online Captains",
-                    value = "${stats?.onlineCaptains ?: 0}",
-                    icon = Icons.Default.TwoWheeler,
+                    title = "Surge Zones",
+                    value = "${uiState.surgeZones.size}",
+                    icon = Icons.Default.Bolt,
                     accentColor = SpeedoOrange,
                     modifier = Modifier.weight(1f),
-                    onClick = onNavigateToMap
+                    onClick = onNavigateToSurge
                 )
                 AdminMetricCard(
-                    title = "Total Riders",
-                    value = "${stats?.totalRiders ?: 0}",
-                    icon = Icons.Default.People,
-                    accentColor = SpeedoInfo,
+                    title = "SOS Alerts",
+                    value = "$activeSosCount",
+                    icon = Icons.Default.Shield,
+                    accentColor = if (activeSosCount > 0) SpeedoError else SpeedoSuccess,
                     modifier = Modifier.weight(1f),
-                    onClick = onNavigateToUsers
+                    onClick = onNavigateToSos
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Operational Shortcuts",
+                text = "Enterprise Operations Shortcuts",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             AdminShortcutRow(
-                icon = Icons.Default.SupportAgent,
-                title = "24/7 Support & Queries Desk",
-                subtitle = "Manage rider & captain complaints and live chat threads",
-                onClick = onNavigateToSupport
+                icon = Icons.Default.VerifiedUser,
+                title = "AI Document OCR & KYC Queue",
+                subtitle = "Auto-scan driver documents & 1-click approve",
+                onClick = onNavigateToKyc
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             AdminShortcutRow(
-                icon = Icons.Default.AssignmentLate,
-                title = "KYC Verification Queue",
-                subtitle = "Review driver vehicle, Aadhaar, selfie & QR docs",
-                onClick = onNavigateToKyc
+                icon = Icons.Default.Bolt,
+                title = "Geofenced Surge Pricing Engine",
+                subtitle = "Configure live multipliers for airports & peak areas",
+                onClick = onNavigateToSurge
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AdminShortcutRow(
+                icon = Icons.Default.Shield,
+                title = "Live SOS Emergency Command Center",
+                subtitle = "Real-time incident feed, police dispatch & user safety",
+                onClick = onNavigateToSos
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AdminShortcutRow(
+                icon = Icons.Default.Campaign,
+                title = "Targeted City-Wide Broadcasts",
+                subtitle = "Dispatch instant push offers, promo codes & bonuses",
+                onClick = onNavigateToBroadcasts
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -181,6 +268,15 @@ fun AdminDashboardScreen(
                 title = "Ride Monitoring & History",
                 subtitle = "Inspect ride status lifecycles, fares, and routes",
                 onClick = onNavigateToRides
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AdminShortcutRow(
+                icon = Icons.Default.People,
+                title = "User Moderation & Access Control",
+                subtitle = "Inspect riders and captains, manage accounts and permissions",
+                onClick = onNavigateToUsers
             )
         }
     }

@@ -47,10 +47,10 @@ fun ActiveRideScreen(
     var showCancelDialog by remember { mutableStateOf(false) }
     var showSafetySheet by remember { mutableStateOf(false) }
     var showChatSheet by remember { mutableStateOf(false) }
-    var showSupportSheet by remember { mutableStateOf(false) }
     var selectedRating by remember { mutableStateOf(5) }
     var selectedTip by remember { mutableStateOf(0) }
     var sentMessageText by remember { mutableStateOf<String?>(null) }
+    var recenterTrigger by remember { mutableStateOf(1L) }
 
     LaunchedEffect(ride?.id) {
         if (ride != null) {
@@ -294,7 +294,8 @@ fun ActiveRideScreen(
             modifier = Modifier.fillMaxSize(),
             centerLat = centerLat,
             centerLng = centerLng,
-            zoomLevel = 15.5,
+            zoomLevel = 16.0,
+            recenterTrigger = recenterTrigger,
             markers = mapMarkers,
             polylinePoints = polylinePoints,
             driverPolylinePoints = uiState.driverPolyline,
@@ -548,19 +549,6 @@ fun ActiveRideScreen(
                             ) {
                                 Icon(Icons.Default.Phone, contentDescription = "Call Driver", tint = SpeedoSuccess)
                             }
-
-                            Spacer(modifier = Modifier.width(6.dp))
-
-                            // Speedo 24/7 Support Desk Button
-                            IconButton(
-                                onClick = { showSupportSheet = true },
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFFFF3E0))
-                            ) {
-                                Icon(Icons.Default.SupportAgent, contentDescription = "Speedo Support", tint = Color(0xFFE65100))
-                            }
                         }
                     }
 
@@ -634,6 +622,32 @@ fun ActiveRideScreen(
             }
         }
 
+        // Floating Rapido Recenter / Focus Route FAB (Top-Right HUD)
+        Surface(
+            shape = CircleShape,
+            color = SpeedoWhite,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, SpeedoCardBorder),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 110.dp, end = 16.dp)
+                .clickable {
+                    recenterTrigger = System.currentTimeMillis()
+                }
+        ) {
+            Box(
+                modifier = Modifier.size(46.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Recenter Location",
+                    tint = SpeedoOrange,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
         // 4. Cancel Ride Confirmation Dialog
         if (showCancelDialog) {
             AlertDialog(
@@ -661,7 +675,17 @@ fun ActiveRideScreen(
 
         // 5. Safety Sheet Modal
         if (showSafetySheet) {
-            RapidoSafetySheet(onDismiss = { showSafetySheet = false })
+            RapidoSafetySheet(
+                onTriggerSos = {
+                    viewModel.triggerSosEmergency(
+                        rideId = ride.id,
+                        lat = ride.pickupLat,
+                        lng = ride.pickupLng,
+                        address = ride.pickupAddress
+                    )
+                },
+                onDismiss = { showSafetySheet = false }
+            )
         }
 
         // 6. In-App Real-Time Chat Sheet Modal
@@ -679,15 +703,6 @@ fun ActiveRideScreen(
                     viewModel.sendChatMessage(text, type)
                 },
                 onDismiss = { showChatSheet = false }
-            )
-        }
-
-        // 7. Speedo 24/7 Support & Helpdesk Modal
-        if (showSupportSheet) {
-            com.speedo.core.components.SpeedoSupportChatSheet(
-                userRole = "rider",
-                currentRideId = ride.id,
-                onDismiss = { showSupportSheet = false }
             )
         }
     }

@@ -59,9 +59,9 @@ data class FareOption(
 )
 
 enum class VehicleCategory(val key: String, val displayName: String, val description: String) {
-    BIKE("bike", "Speedo Bike", "Fastest for solo travel & heavy traffic"),
-    AUTO("auto", "Speedo Auto", "Affordable & comfortable 3-seater"),
-    CAB("cab", "Speedo Cab", "AC ride with premium comfort")
+    BIKE("bike", "Speedo Moto", "Fastest for solo travel & heavy traffic"),
+    AUTO("auto", "Speedo Toto", "Affordable & comfortable 3-seater"),
+    CAB("cab", "Speedo 4", "AC 4-wheeler with premium comfort")
 }
 
 data class RideRequestBody(

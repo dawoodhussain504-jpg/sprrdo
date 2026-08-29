@@ -183,8 +183,14 @@ fun RadarPulseSearchingOverlay(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
+                val vehicleDisplayName = when {
+                    vehicleType.lowercase().contains("toto") || vehicleType.lowercase().contains("auto") -> "Speedo Toto"
+                    vehicleType.lowercase().contains("4") || vehicleType.lowercase().contains("cab") -> "Speedo 4"
+                    else -> "Speedo Moto"
+                }
+
                 Text(
-                    text = "Searching ${if (nearbyCount > 0) "$nearbyCount" else "active"} ${vehicleType.uppercase()} captains within 2.5 km",
+                    text = "Searching ${if (nearbyCount > 0) "$nearbyCount" else "active"} $vehicleDisplayName captains within 2.5 km",
                     style = MaterialTheme.typography.bodySmall,
                     color = SpeedoTextSecondary
                 )
@@ -313,11 +319,7 @@ fun RapidoVehicleOptionCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = when (category) {
-                            VehicleCategory.BIKE -> "Rapido Bike"
-                            VehicleCategory.AUTO -> "Rapido Auto"
-                            VehicleCategory.CAB -> "Speedo Cab Economy"
-                        },
+                        text = category.displayName,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = RapidoBlack
@@ -643,7 +645,10 @@ fun RapidoLocationSearchDialog(
  * 24x7 Safety Shield Dialog with SOS, Police 100/112 dialer, and Emergency Contact sharing
  */
 @Composable
-fun RapidoSafetySheet(onDismiss: () -> Unit) {
+fun RapidoSafetySheet(
+    onTriggerSos: () -> Unit = {},
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
 
     Surface(
@@ -685,11 +690,13 @@ fun RapidoSafetySheet(onDismiss: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Police SOS 112 Button
+            // Real-Time Emergency SOS Button
             Button(
                 onClick = {
+                    onTriggerSos()
                     val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:112"))
                     context.startActivity(intent)
+                    onDismiss()
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -697,9 +704,9 @@ fun RapidoSafetySheet(onDismiss: () -> Unit) {
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SpeedoError)
             ) {
-                Icon(Icons.Default.LocalPolice, contentDescription = null)
+                Icon(Icons.Default.Warning, contentDescription = null, tint = SpeedoWhite)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Call Police (112)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(text = "🚨 Broadcast SOS & Call 112", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp, color = SpeedoWhite)
             }
 
             Spacer(modifier = Modifier.height(10.dp))
