@@ -6,25 +6,43 @@ import org.osmdroid.tileprovider.tilesource.XYTileSource
 import java.io.File
 
 object SpeedoMapConfig {
-    // Ultra fast, CDN-accelerated raster tiles with complete road networks & landmarks
-    val CARTO_VOYAGER = XYTileSource(
-        "CartoVoyager",
-        0, 20, 256, ".png",
+    // 100% FREE, NO WATERMARK, NO API KEY REQUIRED TILE SERVERS
+
+    // 1. OpenStreetMap Humanitarian (HOT) - Crystal clear roads, transit & building colors, 0 watermark
+    val OSM_HOT = XYTileSource(
+        "OpenStreetMapHOT",
+        0, 19, 256, ".png",
         arrayOf(
-            "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
-            "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
-            "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
-            "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
+            "https://a.tile.openstreetmap.fr/hot/",
+            "https://b.tile.openstreetmap.fr/hot/",
+            "https://c.tile.openstreetmap.fr/hot/"
         )
     )
 
+    // 2. OpenStreetMap Standard (Worldwide Free Public CDN) - 0 watermark
     val OSM_STANDARD = XYTileSource(
         "OpenStreetMap",
         0, 19, 256, ".png",
         arrayOf(
-            "https://tile.openstreetmap.org/"
+            "https://a.tile.openstreetmap.org/",
+            "https://b.tile.openstreetmap.org/",
+            "https://c.tile.openstreetmap.org/"
         )
     )
+
+    // 3. OpenStreetMap France - High definition road network & clear labels - 0 watermark
+    val OSM_FRANCE = XYTileSource(
+        "OpenStreetMapFR",
+        0, 20, 256, ".png",
+        arrayOf(
+            "https://a.tile.openstreetmap.fr/osmfr/",
+            "https://b.tile.openstreetmap.fr/osmfr/",
+            "https://c.tile.openstreetmap.fr/osmfr/"
+        )
+    )
+
+    // Default primary tile source: OSM_HOT (Vibrant, high-contrast, zero watermark)
+    val DEFAULT_TILE_SOURCE = OSM_HOT
 
     fun init(context: Context) {
         try {
@@ -33,15 +51,21 @@ object SpeedoMapConfig {
             if (!basePath.exists()) basePath.mkdirs()
             if (!tileCache.exists()) tileCache.mkdirs()
 
+            // Purge old watermarked Carto tiles if present in cache
+            val oldCartoFolder = File(tileCache, "CartoVoyager")
+            if (oldCartoFolder.exists()) {
+                oldCartoFolder.deleteRecursively()
+            }
+
             val config = Configuration.getInstance()
             config.osmdroidBasePath = basePath
             config.osmdroidTileCache = tileCache
-            config.userAgentValue = "SpeedoRideHailing/2.0 (${context.packageName}; Android ${android.os.Build.VERSION.RELEASE})"
-            config.load(context, context.getSharedPreferences("speedo_osmdroid", Context.MODE_PRIVATE))
+            config.userAgentValue = "SpeedoApp-RideHailing/${context.packageName} (Android ${android.os.Build.VERSION.RELEASE}; Linux)"
+            config.load(context, context.getSharedPreferences("speedo_osmdroid_v2", Context.MODE_PRIVATE))
             config.isMapViewHardwareAccelerated = true
             config.expirationExtendedDuration = 1000L * 60 * 60 * 24 * 7 // 7 days cache
-            config.tileFileSystemCacheMaxBytes = 100L * 1024 * 1024 // 100 MB
-            config.tileFileSystemCacheTrimBytes = 80L * 1024 * 1024 // 80 MB
+            config.tileFileSystemCacheMaxBytes = 150L * 1024 * 1024 // 150 MB
+            config.tileFileSystemCacheTrimBytes = 120L * 1024 * 1024 // 120 MB
         } catch (e: Exception) {
             android.util.Log.e("SpeedoMapConfig", "Failed to configure Osmdroid storage cache", e)
         }

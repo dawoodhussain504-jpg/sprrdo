@@ -85,8 +85,8 @@ fun OsmMapView(
             SpeedoMapConfig.init(ctx)
 
             MapView(ctx).apply {
-                // High-performance CDN Carto Voyager tiles (Complete roads, landmarks, fast transit tiles)
-                setTileSource(SpeedoMapConfig.CARTO_VOYAGER)
+                // 100% Free, NO Watermark, NO API Key Required Tile Engine (OpenStreetMap HOT)
+                setTileSource(SpeedoMapConfig.DEFAULT_TILE_SOURCE)
 
                 setUseDataConnection(true)
                 setMultiTouchControls(true)
