@@ -28,6 +28,26 @@ import com.speedo.core.model.Captain
 import com.speedo.core.model.KycDocument
 import com.speedo.core.theme.*
 
+fun normalizeDocUrl(rawUrl: String?): String? {
+    if (rawUrl.isNullOrBlank()) return null
+    if (rawUrl.startsWith("http://localhost:5000/")) {
+        return rawUrl.replace("http://localhost:5000", "https://web-production-5d826.up.railway.app")
+    }
+    if (rawUrl.startsWith("http://127.0.0.1:5000/")) {
+        return rawUrl.replace("http://127.0.0.1:5000", "https://web-production-5d826.up.railway.app")
+    }
+    if (rawUrl.startsWith("http://10.0.2.2:5000/")) {
+        return rawUrl.replace("http://10.0.2.2:5000", "https://web-production-5d826.up.railway.app")
+    }
+    if (rawUrl.startsWith("/uploads/")) {
+        return "https://web-production-5d826.up.railway.app$rawUrl"
+    }
+    if (rawUrl.startsWith("uploads/")) {
+        return "https://web-production-5d826.up.railway.app/$rawUrl"
+    }
+    return rawUrl
+}
+
 @Composable
 fun KycReviewQueueScreen(
     viewModel: AdminViewModel,
@@ -295,23 +315,34 @@ fun KycReviewQueueScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Document Preview Cards
+                    // Document Preview Cards (Real Uploaded Captain Documents)
+                    val rcDoc = capt.documents.firstOrNull { it.documentType == "vehicle_reg" }
+                    val aadhaarDoc = capt.documents.firstOrNull { it.documentType == "aadhaar" }
+                    val selfieDoc = capt.documents.firstOrNull { it.documentType == "selfie" }
+                    val qrDoc = capt.documents.firstOrNull { it.documentType == "payment_qr" }
+
+                    val rcUrl = normalizeDocUrl(rcDoc?.fileUrl ?: capt.avatarUrl)
+                    val aadhaarUrl = normalizeDocUrl(aadhaarDoc?.fileUrl)
+                    val selfieUrl = normalizeDocUrl(selfieDoc?.fileUrl)
+                    val qrUrl = normalizeDocUrl(qrDoc?.fileUrl ?: capt.paymentQrUrl)
+
                     val docList = listOf(
-                        "Vehicle RC" to (capt.avatarUrl ?: "https://picsum.photos/seed/rc/500/300"),
-                        "Aadhaar Card" to "https://picsum.photos/seed/aadhaar/500/300",
-                        "Live Driver Selfie" to "https://picsum.photos/seed/selfie/500/300",
-                        "UPI Payment QR" to (capt.paymentQrUrl ?: "https://picsum.photos/seed/qr/500/300")
+                        Triple("Vehicle RC", rcUrl, rcDoc?.status ?: if (rcUrl != null) "uploaded" else "missing"),
+                        Triple("Aadhaar Card", aadhaarUrl, aadhaarDoc?.status ?: if (aadhaarUrl != null) "uploaded" else "missing"),
+                        Triple("Live Driver Selfie", selfieUrl, selfieDoc?.status ?: if (selfieUrl != null) "uploaded" else "missing"),
+                        Triple("UPI Payment QR", qrUrl, qrDoc?.status ?: if (qrUrl != null) "uploaded" else "missing")
                     )
 
-                    docList.forEach { (docTitle, docUrl) ->
+                    docList.forEach { (docTitle, docUrl, _) ->
+                        val hasDoc = !docUrl.isNullOrBlank()
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .clickable { previewImageUrl = docUrl },
+                                .then(if (hasDoc) Modifier.clickable { previewImageUrl = docUrl } else Modifier),
                             shape = RoundedCornerShape(10.dp),
                             color = SpeedoSurfaceVariant,
-                            border = BorderStroke(1.dp, SpeedoDivider)
+                            border = BorderStroke(1.dp, if (hasDoc) SpeedoSuccess.copy(alpha = 0.5f) else SpeedoDivider)
                         ) {
                             Row(
                                 modifier = Modifier.padding(10.dp),
@@ -319,21 +350,42 @@ fun KycReviewQueueScreen(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    modifier = Modifier.size(50.dp)
+                                    color = if (hasDoc) SpeedoWhite else SpeedoDivider,
+                                    modifier = Modifier.size(54.dp)
                                 ) {
-                                    AsyncImage(
-                                        model = docUrl,
-                                        contentDescription = docTitle,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                    if (hasDoc) {
+                                        AsyncImage(
+                                            model = docUrl,
+                                            contentDescription = docTitle,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.HideImage,
+                                                contentDescription = null,
+                                                tint = SpeedoTextTertiary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = docTitle, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                                    Text(text = "Tap to view high-res image", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                    Text(
+                                        text = if (hasDoc) "Tap to view uploaded original image" else "Document not uploaded yet",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (hasDoc) SpeedoSuccess else SpeedoTextSecondary
+                                    )
                                 }
-                                Icon(Icons.Default.ZoomIn, contentDescription = null, tint = SpeedoOrange)
+                                if (hasDoc) {
+                                    Icon(Icons.Default.ZoomIn, contentDescription = null, tint = SpeedoOrange)
+                                }
                             }
                         }
                     }

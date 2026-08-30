@@ -28,6 +28,7 @@ data class Captain(
     @SerializedName("total_earnings") val totalEarnings: Double = 0.0,
     @SerializedName("avatar_url") val avatarUrl: String? = null,
     @SerializedName("payment_qr_url") val paymentQrUrl: String? = null,
+    @SerializedName("documents") val documents: List<KycDocument> = emptyList(),
     @SerializedName("is_active") val isActive: Int = 1,
     @SerializedName("lat") val lat: Double? = null,
     @SerializedName("lng") val lng: Double? = null,
