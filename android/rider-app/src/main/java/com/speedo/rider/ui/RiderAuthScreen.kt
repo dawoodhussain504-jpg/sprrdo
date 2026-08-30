@@ -38,9 +38,9 @@ fun RiderAuthScreen(
     var isSignUp by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("rider@speedo.com") }
-    var password by remember { mutableStateOf("Rider@123") }
-    var phone by remember { mutableStateOf("+919988776655") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     Surface(
@@ -82,7 +82,7 @@ fun RiderAuthScreen(
                     value = name,
                     onValueChange = { name = it },
                     label = "Full Name",
-                    placeholder = "e.g. Sneha Patel",
+                    placeholder = "Enter your full name",
                     leadingIcon = Icons.Default.Person
                 )
                 Spacer(modifier = Modifier.height(14.dp))
@@ -91,7 +91,7 @@ fun RiderAuthScreen(
                     value = phone,
                     onValueChange = { phone = it },
                     label = "Phone Number",
-                    placeholder = "+91 9876543210",
+                    placeholder = "Enter mobile number",
                     leadingIcon = Icons.Default.Phone,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                 )
@@ -102,7 +102,7 @@ fun RiderAuthScreen(
                 value = email,
                 onValueChange = { email = it },
                 label = "Email Address",
-                placeholder = "rider@speedo.com",
+                placeholder = "Enter email address",
                 leadingIcon = Icons.Default.Email,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
@@ -112,7 +112,7 @@ fun RiderAuthScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = "Password",
-                placeholder = "••••••••",
+                placeholder = "Enter password",
                 leadingIcon = Icons.Default.Lock,
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {

@@ -36,11 +36,11 @@ fun CaptainAuthScreen(
     var isSignUp by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("captain@speedo.com") }
-    var password by remember { mutableStateOf("Captain@123") }
-    var phone by remember { mutableStateOf("+919876543210") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var vehicleType by remember { mutableStateOf("bike") }
-    var vehicleNumber by remember { mutableStateOf("KA-01-EQ-9876") }
+    var vehicleNumber by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     Surface(
@@ -80,7 +80,7 @@ fun CaptainAuthScreen(
                     value = name,
                     onValueChange = { name = it },
                     label = "Captain Full Name",
-                    placeholder = "Rajesh Kumar",
+                    placeholder = "Enter your full name",
                     leadingIcon = Icons.Default.Person
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -89,7 +89,7 @@ fun CaptainAuthScreen(
                     value = phone,
                     onValueChange = { phone = it },
                     label = "Mobile Number",
-                    placeholder = "+91 9876543210",
+                    placeholder = "Enter mobile number",
                     leadingIcon = Icons.Default.Phone,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                 )
@@ -129,7 +129,7 @@ fun CaptainAuthScreen(
                     value = vehicleNumber,
                     onValueChange = { vehicleNumber = it.uppercase() },
                     label = "Vehicle Registration No.",
-                    placeholder = "KA-01-EQ-9876",
+                    placeholder = "e.g. KA-01-EQ-9876",
                     leadingIcon = Icons.Default.Pin
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -139,7 +139,7 @@ fun CaptainAuthScreen(
                 value = email,
                 onValueChange = { email = it },
                 label = "Email Address",
-                placeholder = "captain@speedo.com",
+                placeholder = "Enter email address",
                 leadingIcon = Icons.Default.Email,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
@@ -149,7 +149,7 @@ fun CaptainAuthScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = "Password",
-                placeholder = "••••••••",
+                placeholder = "Enter password",
                 leadingIcon = Icons.Default.Lock,
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
