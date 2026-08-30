@@ -2,6 +2,14 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../config/db';
 import { createNotification } from '../services/notification';
+import { performCaptainKycOcr } from '../services/ocr.service';
+import {
+  emitSosAlert,
+  emitSosResolved,
+  emitKycStatus,
+  emitSurgeUpdate,
+  emitBroadcast,
+} from '../services/socket';
 
 export async function getDashboardStats(_req: AuthenticatedRequest, res: Response) {
   try {
@@ -95,6 +103,13 @@ export async function reviewKyc(req: AuthenticatedRequest, res: Response) {
         : `Your KYC submission was rejected. Reason: ${admin_remarks || 'Please re-upload clear document copies.'}`,
       type: 'kyc_update',
       metadata: { status, admin_remarks },
+    });
+
+    // Broadcast real-time Socket.IO event to instantly update captain app & admin queues
+    emitKycStatus(captainId, {
+      status,
+      admin_remarks: admin_remarks || null,
+      updated_at: new Date().toISOString(),
     });
 
     return res.json({
@@ -234,5 +249,417 @@ export async function getAdminNotifications(req: AuthenticatedRequest, res: Resp
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to fetch admin notifications', error: error.message });
+  }
+}
+
+// -------------------------------------------------------------
+// 1. AI DOCUMENT OCR & INSTANT KYC SCAN
+// -------------------------------------------------------------
+export async function aiScanKycDocuments(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { captainId } = req.params;
+    const ocrData = await performCaptainKycOcr(captainId);
+
+    return res.json({
+      success: true,
+      data: ocrData,
+      message: 'AI Document OCR Scan completed successfully',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'AI KYC Scan failed', error: error.message });
+  }
+}
+
+export async function instantApproveKyc(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { captainId } = req.params;
+    const { admin_remarks } = req.body;
+
+    const remarks = admin_remarks || 'Auto-verified & approved by Speedo AI Document Engine';
+
+    await db.query(
+      `UPDATE captains SET kyc_status = 'approved', admin_remarks = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+      [remarks, captainId]
+    );
+
+    await db.query(
+      `UPDATE kyc_documents SET status = 'approved', admin_remarks = $1, updated_at = CURRENT_TIMESTAMP WHERE captain_id = $2`,
+      [remarks, captainId]
+    );
+
+    await createNotification({
+      recipientId: captainId,
+      recipientRole: 'captain',
+      title: '🎉 Instant AI KYC Approved!',
+      message: 'Congratulations! Your documents were verified with high confidence. You can now go ONLINE to accept Speedo rides!',
+      type: 'kyc_update',
+      metadata: { status: 'approved', remarks },
+    });
+
+    emitKycStatus(captainId, {
+      status: 'approved',
+      admin_remarks: remarks || 'Instant AI Approved',
+      updated_at: new Date().toISOString(),
+    });
+
+    return res.json({
+      success: true,
+      message: 'Captain instantly approved via AI Verification!',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Instant approval failed', error: error.message });
+  }
+}
+
+// -------------------------------------------------------------
+// 2. GEOFENCED CUSTOM FARE & SURGE ENGINE
+// -------------------------------------------------------------
+export async function getSurgeZones(_req: AuthenticatedRequest, res: Response) {
+  try {
+    const zonesRes = await db.query('SELECT * FROM geofence_surge_zones ORDER BY created_at DESC');
+    return res.json({
+      success: true,
+      data: zonesRes.rows.map((z) => ({
+        ...z,
+        is_active: Boolean(z.is_active),
+      })),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch surge zones', error: error.message });
+  }
+}
+
+export async function createSurgeZone(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { name, zone_type, center_lat, center_lng, radius_km, surge_multiplier, base_fare_multiplier, per_km_multiplier } = req.body;
+
+    if (!name || center_lat == null || center_lng == null) {
+      return res.status(400).json({ success: false, message: 'Name, center latitude and longitude are required' });
+    }
+
+    const id = 'zone_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const zType = zone_type || 'custom';
+    const radius = radius_km || 3.0;
+    const surge = surge_multiplier || 1.3;
+    const baseMul = base_fare_multiplier || 1.25;
+    const perKmMul = per_km_multiplier || 1.25;
+
+    await db.query(
+      `INSERT INTO geofence_surge_zones (id, name, zone_type, center_lat, center_lng, radius_km, surge_multiplier, base_fare_multiplier, per_km_multiplier, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)`,
+      [id, name, zType, center_lat, center_lng, radius, surge, baseMul, perKmMul]
+    );
+
+    const createdZone = { id, name, zone_type: zType, center_lat, center_lng, radius_km: radius, surge_multiplier: surge, is_active: true };
+    emitSurgeUpdate({ type: 'created', zone: createdZone });
+
+    return res.json({
+      success: true,
+      data: createdZone,
+      message: 'Geofenced surge zone created successfully',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to create surge zone', error: error.message });
+  }
+}
+
+export async function updateSurgeZone(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    const { name, surge_multiplier, base_fare_multiplier, per_km_multiplier, radius_km, is_active } = req.body;
+
+    const existing = await db.query('SELECT * FROM geofence_surge_zones WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Surge zone not found' });
+    }
+
+    const zone = existing.rows[0];
+    const newName = name !== undefined ? name : zone.name;
+    const newSurge = surge_multiplier !== undefined ? surge_multiplier : zone.surge_multiplier;
+    const newBase = base_fare_multiplier !== undefined ? base_fare_multiplier : zone.base_fare_multiplier;
+    const newPerKm = per_km_multiplier !== undefined ? per_km_multiplier : zone.per_km_multiplier;
+    const newRadius = radius_km !== undefined ? radius_km : zone.radius_km;
+    const newActive = is_active !== undefined ? (is_active ? 1 : 0) : zone.is_active;
+
+    await db.query(
+      `UPDATE geofence_surge_zones
+       SET name = $1, surge_multiplier = $2, base_fare_multiplier = $3, per_km_multiplier = $4, radius_km = $5, is_active = $6, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $7`,
+      [newName, newSurge, newBase, newPerKm, newRadius, newActive, id]
+    );
+
+    emitSurgeUpdate({
+      type: 'updated',
+      zone: { id, name: newName, surge_multiplier: newSurge, radius_km: newRadius, is_active: Boolean(newActive) },
+    });
+
+    return res.json({
+      success: true,
+      message: 'Surge zone updated successfully',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to update surge zone', error: error.message });
+  }
+}
+
+export async function deleteSurgeZone(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM geofence_surge_zones WHERE id = $1', [id]);
+    emitSurgeUpdate({ type: 'deleted', zoneId: id });
+    return res.json({ success: true, message: 'Surge zone removed' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to delete surge zone', error: error.message });
+  }
+}
+
+// -------------------------------------------------------------
+// 3. LIVE SOS EMERGENCY COMMAND CENTER
+// -------------------------------------------------------------
+export async function getSosAlerts(_req: AuthenticatedRequest, res: Response) {
+  try {
+    const alertsRes = await db.query('SELECT * FROM sos_alerts ORDER BY CASE WHEN status = \'active\' THEN 1 WHEN status = \'in_progress\' THEN 2 ELSE 3 END, created_at DESC');
+    return res.json({
+      success: true,
+      data: alertsRes.rows,
+      active_count: alertsRes.rows.filter((a) => a.status === 'active' || a.status === 'in_progress').length,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch SOS alerts', error: error.message });
+  }
+}
+
+export async function triggerSosEmergency(req: AuthenticatedRequest, res: Response) {
+  try {
+    const user = req.user;
+    const userRole = user?.role || 'rider';
+    const userId = user?.id || 'guest';
+    const { ride_id, lat, lng, address } = req.body;
+
+    const id = 'sos_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+
+    let userName = user?.name || 'Speedo User';
+    let userPhone = '9876543210';
+    let captainId: string | null = null;
+    let captainName: string | null = null;
+    let captainPhone: string | null = null;
+    let vehicleNum: string | null = null;
+
+    if (user) {
+      if (user.role === 'captain') {
+        const cRes = await db.query('SELECT name, phone, vehicle_number FROM captains WHERE id = $1', [user.id]);
+        if (cRes.rows.length > 0) {
+          userName = cRes.rows[0].name || userName;
+          userPhone = cRes.rows[0].phone || userPhone;
+          captainId = user.id;
+          captainName = userName;
+          captainPhone = userPhone;
+          vehicleNum = cRes.rows[0].vehicle_number;
+        }
+      } else {
+        const uRes = await db.query('SELECT name, phone FROM users WHERE id = $1', [user.id]);
+        if (uRes.rows.length > 0) {
+          userName = uRes.rows[0].name || userName;
+          userPhone = uRes.rows[0].phone || userPhone;
+        }
+      }
+    }
+
+    if (ride_id) {
+      const rideRes = await db.query('SELECT r.*, c.name as c_name, c.phone as c_phone, c.vehicle_number FROM rides r LEFT JOIN captains c ON r.captain_id = c.id WHERE r.id = $1', [ride_id]);
+      if (rideRes.rows.length > 0) {
+        const r = rideRes.rows[0];
+        captainId = r.captain_id;
+        captainName = r.c_name;
+        captainPhone = r.c_phone;
+        vehicleNum = r.vehicle_number;
+      }
+    }
+
+    await db.query(
+      `INSERT INTO sos_alerts (id, ride_id, triggered_by, user_id, user_name, user_phone, captain_id, captain_name, captain_phone, vehicle_number, lat, lng, address, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active')`,
+      [id, ride_id || null, userRole, userId, userName, userPhone, captainId, captainName, captainPhone, vehicleNum, lat || 12.9716, lng || 77.5946, address || 'Live GPS Coordinates']
+    );
+
+    const sosAlertPayload = {
+      id,
+      ride_id: ride_id || null,
+      triggered_by: userRole,
+      user_id: userId,
+      user_name: userName,
+      user_phone: userPhone,
+      captain_id: captainId,
+      captain_name: captainName,
+      captain_phone: captainPhone,
+      vehicle_number: vehicleNum,
+      lat: lat || 12.9716,
+      lng: lng || 77.5946,
+      address: address || 'Live GPS Coordinates',
+      status: 'active',
+      created_at: new Date().toISOString(),
+    };
+
+    // Notify admins in database & push
+    await createNotification({
+      recipientId: 'admin_all',
+      recipientRole: 'admin',
+      title: '🚨 HIGH PRIORITY: SOS Emergency Triggered!',
+      message: `Emergency SOS triggered by ${userName} (${userRole.toUpperCase()}) at ${address || 'Live Map Location'}. Immediate response required!`,
+      type: 'sos_alert',
+      metadata: { sos_id: id, ride_id, lat, lng },
+    });
+
+    // Real-Time Socket Broadcast to Admin SOS Command Center
+    emitSosAlert(sosAlertPayload);
+
+    return res.json({
+      success: true,
+      data: { id, status: 'active', message: 'SOS signal broadcasted to Speedo Emergency Command Center!' },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to trigger SOS', error: error.message });
+  }
+}
+
+export async function resolveSosAlert(req: AuthenticatedRequest, res: Response) {
+  try {
+    const alertId = req.params.id || req.body.id || req.body.sos_id || (req.query.id as string);
+    const status = (req.body.status || req.body.outcome || 'resolved').toLowerCase().trim();
+    const adminNotes = req.body.admin_notes || req.body.adminNotes || req.body.notes || req.body.remarks || 'Resolved by Administrator';
+
+    if (!alertId) {
+      return res.status(400).json({ success: false, message: 'Alert ID is required to resolve incident.' });
+    }
+
+    console.log(`🚨 [RESOLVE SOS INITIATED] ID: ${alertId}, Status: ${status}, Notes: ${adminNotes}`);
+
+    const isResolved = status === 'resolved' || status === 'false_alarm' || status === 'closed';
+
+    if (isResolved) {
+      await db.query(
+        `UPDATE sos_alerts 
+         SET status = $1, 
+             admin_notes = $2, 
+             resolved_at = CURRENT_TIMESTAMP 
+         WHERE id = $3 OR ride_id = $3`,
+        [status, adminNotes, alertId]
+      );
+    } else {
+      await db.query(
+        `UPDATE sos_alerts 
+         SET status = $1, 
+             admin_notes = $2, 
+             resolved_at = NULL 
+         WHERE id = $3 OR ride_id = $3`,
+        [status, adminNotes, alertId]
+      );
+    }
+
+    const resolutionPayload = {
+      id: alertId,
+      status,
+      admin_notes: adminNotes,
+      resolved_at: new Date().toISOString(),
+    };
+
+    emitSosResolved(resolutionPayload);
+
+    return res.json({
+      success: true,
+      message: `SOS alert updated to ${status.toUpperCase()}`,
+      data: resolutionPayload,
+    });
+  } catch (error: any) {
+    console.error('❌ Error resolving SOS alert:', error.message);
+    return res.status(500).json({ success: false, message: 'Failed to resolve SOS alert', error: error.message });
+  }
+}
+
+// -------------------------------------------------------------
+// 4. TARGETED CITY-WIDE BROADCASTS
+// -------------------------------------------------------------
+export async function sendBroadcast(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { title, message, target_audience, target_city, coupon_code, discount_percent, bonus_amount } = req.body;
+
+    if (!title || !message) {
+      return res.status(400).json({ success: false, message: 'Broadcast title and message are required' });
+    }
+
+    const id = 'bcast_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+    const audience = target_audience || 'all'; // 'all' | 'riders' | 'captains'
+    const city = target_city || 'All Cities';
+
+    let recipientsCount = 0;
+    if (audience === 'all' || audience === 'riders') {
+      const riders = await db.query('SELECT id FROM users WHERE is_active = 1');
+      recipientsCount += riders.rows.length;
+      for (const r of riders.rows) {
+        await createNotification({
+          recipientId: r.id,
+          recipientRole: 'rider',
+          title: `📢 ${title}`,
+          message: `${message}${coupon_code ? ` (Use Code: ${coupon_code} for ${discount_percent || 20}% OFF!)` : ''}`,
+          type: 'general',
+          metadata: { broadcast_id: id, coupon_code, discount_percent },
+        });
+      }
+    }
+
+    if (audience === 'all' || audience === 'captains') {
+      const capts = await db.query('SELECT id FROM captains WHERE is_active = 1');
+      recipientsCount += capts.rows.length;
+      for (const c of capts.rows) {
+        await createNotification({
+          recipientId: c.id,
+          recipientRole: 'captain',
+          title: `📢 ${title}`,
+          message: `${message}${bonus_amount ? ` (Earn +₹${bonus_amount} extra incentive bonus!)` : ''}`,
+          type: 'general',
+          metadata: { broadcast_id: id, bonus_amount },
+        });
+      }
+    }
+
+    await db.query(
+      `INSERT INTO broadcast_announcements (id, title, message, target_audience, target_city, coupon_code, discount_percent, bonus_amount, total_recipients)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [id, title, message, audience, city, coupon_code || null, discount_percent || 0.0, bonus_amount || 0.0, recipientsCount]
+    );
+
+    const bcastPayload = {
+      id,
+      title,
+      message,
+      target_audience: audience,
+      target_city: city,
+      coupon_code: coupon_code || null,
+      discount_percent: discount_percent || 0.0,
+      bonus_amount: bonus_amount || 0.0,
+      total_recipients: recipientsCount,
+      created_at: new Date().toISOString(),
+    };
+    emitBroadcast(bcastPayload);
+
+    return res.json({
+      success: true,
+      data: { id, total_recipients: recipientsCount },
+      message: `Broadcast delivered to ${recipientsCount} active users in ${city}!`,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Broadcast failed', error: error.message });
+  }
+}
+
+export async function getBroadcasts(_req: AuthenticatedRequest, res: Response) {
+  try {
+    const listRes = await db.query('SELECT * FROM broadcast_announcements ORDER BY created_at DESC LIMIT 50');
+    return res.json({
+      success: true,
+      data: listRes.rows,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch broadcasts', error: error.message });
   }
 }

@@ -9,6 +9,7 @@ import captainRoutes from './routes/captain.routes';
 import adminRoutes from './routes/admin.routes';
 import chatRoutes from './routes/chat.routes';
 import supportRoutes from './routes/support.routes';
+import sosRoutes from './routes/sos.routes';
 import { runMigrations } from './database/migrate';
 import { initSocketServer } from './services/socket';
 
@@ -36,8 +37,8 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
+// Health check endpoint (Root, /health, /api/health)
+app.get(['/', '/health', '/api/health'], (_req, res) => {
   res.json({
     status: 'healthy',
     platform: 'Speedo Centralized Ride-Hailing Backend',
@@ -54,6 +55,7 @@ app.use('/api/captain', captainRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/sos', sosRoutes);
 
 // 404 handler
 app.use((_req, res) => {

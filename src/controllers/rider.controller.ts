@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../config/db';
-import { calculateDistanceKm, calculateFares, generateRideOtp, VehicleType } from '../services/distance';
+import { calculateDistanceKm, calculateFares, generateRideOtp, VehicleType, normalizeVehicleType } from '../services/distance';
 import { createNotification } from '../services/notification';
 import { emitRideEvent, emitToCaptains } from '../services/socket';
 
@@ -23,7 +23,8 @@ export async function getNearbyCaptains(req: AuthenticatedRequest, res: Response
     const lat = parseFloat(req.query.lat as string);
     const lng = parseFloat(req.query.lng as string);
     const radiusKm = parseFloat((req.query.radius as string) || '5.0');
-    const vehicleType = (req.query.vehicle_type as string)?.toLowerCase();
+    const vehicleTypeRaw = req.query.vehicle_type as string;
+    const vehicleType = vehicleTypeRaw ? normalizeVehicleType(vehicleTypeRaw) : undefined;
 
     if (isNaN(lat) || isNaN(lng)) {
       return res.status(400).json({ success: false, message: 'Valid lat and lng query params are required' });
@@ -38,7 +39,7 @@ export async function getNearbyCaptains(req: AuthenticatedRequest, res: Response
     `;
     const params: any[] = [];
 
-    if (vehicleType && ['bike', 'auto', 'cab'].includes(vehicleType)) {
+    if (vehicleType) {
       params.push(vehicleType);
       sql += ` AND c.vehicle_type = $${params.length}`;
     }
@@ -78,7 +79,28 @@ export async function estimateFares(req: AuthenticatedRequest, res: Response) {
 
     const route = await calculateRoadRoute(pickup_lat, pickup_lng, drop_lat, drop_lng);
     const distanceKm = route.distanceKm;
-    const fares = calculateFares(distanceKm);
+
+    // Check if pickup or drop falls within any active geofenced surge zone
+    let appliedSurgeMultiplier = 1.0;
+    let surgeZoneName: string | null = null;
+
+    try {
+      const activeZones = await db.query('SELECT * FROM geofence_surge_zones WHERE is_active = 1');
+      for (const zone of activeZones.rows) {
+        const dPickup = calculateDistanceKm(pickup_lat, pickup_lng, zone.center_lat, zone.center_lng);
+        const dDrop = calculateDistanceKm(drop_lat, drop_lng, zone.center_lat, zone.center_lng);
+        if (dPickup <= (zone.radius_km || 3.0) || dDrop <= (zone.radius_km || 3.0)) {
+          if (zone.surge_multiplier > appliedSurgeMultiplier) {
+            appliedSurgeMultiplier = zone.surge_multiplier;
+            surgeZoneName = zone.name;
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn('Surge zone check fallback:', e.message);
+    }
+
+    const fares = calculateFares(distanceKm, appliedSurgeMultiplier);
 
     return res.json({
       success: true,
@@ -88,6 +110,9 @@ export async function estimateFares(req: AuthenticatedRequest, res: Response) {
         summary: route.summary,
         polyline: route.coordinates,
         estimates: fares,
+        surge_applied: appliedSurgeMultiplier > 1.0,
+        surge_multiplier: appliedSurgeMultiplier,
+        surge_zone: surgeZoneName,
       },
     });
   } catch (error: any) {
@@ -123,10 +148,11 @@ export async function requestRide(req: AuthenticatedRequest, res: Response) {
       });
     }
 
+    const normalizedVehicleType = normalizeVehicleType(vehicle_type);
     const route = await calculateRoadRoute(pickup_lat, pickup_lng, drop_lat, drop_lng);
     const distanceKm = route.distanceKm;
     const fares = calculateFares(distanceKm);
-    const selectedEstimate = fares[vehicle_type.toLowerCase() as VehicleType] || fares.bike;
+    const selectedEstimate = fares[normalizedVehicleType] || fares.bike;
     const otp = generateRideOtp();
     const rideId = 'ride_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 

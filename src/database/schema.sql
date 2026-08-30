@@ -161,3 +161,53 @@ CREATE TABLE IF NOT EXISTS support_messages (
   FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS geofence_surge_zones (
+  id VARCHAR(64) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  zone_type VARCHAR(64) DEFAULT 'custom', -- 'airport', 'tech_park', 'railway_station', 'city_center', 'custom'
+  center_lat REAL NOT NULL,
+  center_lng REAL NOT NULL,
+  radius_km REAL DEFAULT 3.0,
+  polygon_coords_json TEXT,
+  base_fare_multiplier REAL DEFAULT 1.25,
+  per_km_multiplier REAL DEFAULT 1.25,
+  surge_multiplier REAL DEFAULT 1.3,
+  is_active INTEGER DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sos_alerts (
+  id VARCHAR(64) PRIMARY KEY,
+  ride_id VARCHAR(64),
+  triggered_by VARCHAR(32) NOT NULL, -- 'rider', 'captain'
+  user_id VARCHAR(64) NOT NULL,
+  user_name VARCHAR(255) NOT NULL,
+  user_phone VARCHAR(32) NOT NULL,
+  captain_id VARCHAR(64),
+  captain_name VARCHAR(255),
+  captain_phone VARCHAR(32),
+  vehicle_number VARCHAR(64),
+  lat REAL NOT NULL,
+  lng REAL NOT NULL,
+  address TEXT,
+  status VARCHAR(32) DEFAULT 'active', -- 'active', 'in_progress', 'resolved', 'false_alarm'
+  admin_notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS broadcast_announcements (
+  id VARCHAR(64) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  target_audience VARCHAR(64) DEFAULT 'all', -- 'all', 'riders', 'captains', 'city_zone'
+  target_city VARCHAR(128) DEFAULT 'All Cities',
+  coupon_code VARCHAR(64),
+  discount_percent REAL DEFAULT 0.0,
+  bonus_amount REAL DEFAULT 0.0,
+  sent_by VARCHAR(64) DEFAULT 'admin',
+  total_recipients INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

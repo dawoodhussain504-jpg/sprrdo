@@ -130,6 +130,110 @@ export function initSocketServer(httpServer: HttpServer): Server {
       }
     });
 
+    // Role room join & Admin join
+    socket.on('role:join', (data: { role: string }) => {
+      if (data?.role) {
+        socket.join(`role_${data.role}`);
+        console.log(`🛡️ Socket ${socket.id} joined role_${data.role}`);
+      }
+    });
+
+    socket.on('admin:join', () => {
+      socket.join('role_admin');
+      console.log(`👑 Socket ${socket.id} joined role_admin`);
+    });
+
+    // 3. Emergency SOS Trigger via WebSocket
+    socket.on('sos:trigger', async (data: { ride_id?: string; lat: number; lng: number; address?: string }) => {
+      try {
+        const sosId = 'sos_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+        const { ride_id, lat = 12.9716, lng = 77.5946, address = 'Live GPS Coordinates' } = data || {};
+
+        let userName = user ? `${user.role.toUpperCase()} User` : 'Emergency Caller';
+        let userPhone = '9876543210';
+        let userRole = user?.role || 'rider';
+        let captainId: string | null = null;
+        let captainName: string | null = null;
+        let captainPhone: string | null = null;
+        let vehicleNum: string | null = null;
+
+        if (user) {
+          if (user.role === 'captain') {
+            const cRes = await db.query('SELECT name, phone, vehicle_number FROM captains WHERE id = $1', [user.id]);
+            if (cRes.rows.length > 0) {
+              userName = cRes.rows[0].name;
+              userPhone = cRes.rows[0].phone;
+              captainId = user.id;
+              captainName = userName;
+              captainPhone = userPhone;
+              vehicleNum = cRes.rows[0].vehicle_number;
+            }
+          } else {
+            const uRes = await db.query('SELECT name, phone FROM users WHERE id = $1', [user.id]);
+            if (uRes.rows.length > 0) {
+              userName = uRes.rows[0].name;
+              userPhone = uRes.rows[0].phone;
+            }
+          }
+        }
+
+        if (ride_id) {
+          const rRes = await db.query('SELECT r.*, c.name as c_name, c.phone as c_phone, c.vehicle_number FROM rides r LEFT JOIN captains c ON r.captain_id = c.id WHERE r.id = $1', [ride_id]);
+          if (rRes.rows.length > 0) {
+            const r = rRes.rows[0];
+            captainId = r.captain_id;
+            captainName = r.c_name;
+            captainPhone = r.c_phone;
+            vehicleNum = r.vehicle_number;
+          }
+        }
+
+        await db.query(
+          `INSERT INTO sos_alerts (id, ride_id, triggered_by, user_id, user_name, user_phone, captain_id, captain_name, captain_phone, vehicle_number, lat, lng, address, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'active')`,
+          [sosId, ride_id || null, userRole, user?.id || 'guest', userName, userPhone, captainId, captainName, captainPhone, vehicleNum, lat, lng, address]
+        );
+
+        const alertPayload = {
+          id: sosId,
+          ride_id: ride_id || null,
+          triggered_by: userRole,
+          user_id: user?.id || 'guest',
+          user_name: userName,
+          user_phone: userPhone,
+          captain_id: captainId,
+          captain_name: captainName,
+          captain_phone: captainPhone,
+          vehicle_number: vehicleNum,
+          lat,
+          lng,
+          address,
+          status: 'active',
+          created_at: new Date().toISOString(),
+        };
+
+        emitSosAlert(alertPayload);
+      } catch (err: any) {
+        console.error('❌ Error handling sos:trigger socket event:', err.message);
+      }
+    });
+
+    // 4. SOS Resolve via WebSocket
+    socket.on('sos:resolve', async (data: { id: string; status?: string; admin_notes?: string }) => {
+      try {
+        const { id, status = 'resolved', admin_notes } = data || {};
+        if (id) {
+          await db.query(
+            `UPDATE sos_alerts SET status = $1, admin_notes = $2, resolved_at = CASE WHEN $1 = 'resolved' OR $1 = 'false_alarm' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id = $3`,
+            [status, admin_notes || null, id]
+          );
+          emitSosResolved({ id, status, admin_notes: admin_notes || null });
+        }
+      } catch (err: any) {
+        console.error('❌ Error handling sos:resolve socket event:', err.message);
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`🔌 [Socket Disconnected] ${socket.id} (User: ${userId})`);
     });
@@ -166,5 +270,56 @@ export function emitToCaptains(eventName: string, payload: any) {
 export function emitToUser(userId: string, eventName: string, payload: any) {
   if (io) {
     io.to(`user_${userId}`).emit(eventName, payload);
+    io.emit(eventName, { targetUserId: userId, ...payload }); // fallback
+  }
+}
+
+export function emitSosAlert(payload: any) {
+  if (io) {
+    console.log(`🚨 [SOCKET SOS EMIT] Broadcasting emergency alert ${payload.id} to Admin Command Center`);
+    io.to('role_admin').emit('admin:sos_alert', payload);
+    io.emit('admin:sos_alert', payload);
+    io.emit('sos:alert', payload);
+  }
+}
+
+export function emitSosResolved(payload: any) {
+  if (io) {
+    console.log(`✅ [SOCKET SOS RESOLVED] Broadcasting resolution for alert ${payload.id}`);
+    io.to('role_admin').emit('admin:sos_resolved', payload);
+    io.emit('admin:sos_resolved', payload);
+    io.emit('sos:resolved', payload);
+  }
+}
+
+export function emitKycStatus(captainId: string, payload: any) {
+  if (io) {
+    console.log(`📑 [SOCKET KYC STATUS] Emitting status to captain ${captainId}:`, payload);
+    io.to(`user_${captainId}`).emit('captain:kyc_status', payload);
+    io.emit('captain:kyc_status', { captainId, ...payload });
+    io.to('role_admin').emit('admin:kyc_queue_updated', { captainId, ...payload });
+  }
+}
+
+export function emitSurgeUpdate(payload: any) {
+  if (io) {
+    console.log(`⚡ [SOCKET SURGE UPDATE] Emitting surge zones change:`, payload);
+    io.to('role_rider').emit('surge:zones_updated', payload);
+    io.to('role_admin').emit('surge:zones_updated', payload);
+    io.emit('surge:zones_updated', payload);
+  }
+}
+
+export function emitBroadcast(payload: any) {
+  if (io) {
+    console.log(`📢 [SOCKET BROADCAST] Emitting city broadcast ${payload.id}:`, payload.title);
+    if (payload.target_audience === 'riders' || payload.target_audience === 'all') {
+      io.to('role_rider').emit('broadcast:announcement', payload);
+    }
+    if (payload.target_audience === 'captains' || payload.target_audience === 'all') {
+      io.to('role_captain').emit('broadcast:announcement', payload);
+    }
+    io.to('role_admin').emit('broadcast:announcement', payload);
+    io.emit('broadcast:announcement', payload);
   }
 }

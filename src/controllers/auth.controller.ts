@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../config/db';
 import { generateToken } from '../config/jwt';
+import { normalizeVehicleType } from '../services/distance';
 
 export async function riderRegister(req: Request, res: Response) {
   try {
@@ -91,10 +92,12 @@ export async function captainRegister(req: Request, res: Response) {
     const id = 'capt_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const normalizedVehicleType = normalizeVehicleType(vehicle_type);
+
     await db.query(
       `INSERT INTO captains (id, name, email, password_hash, phone, vehicle_type, vehicle_number, kyc_status, is_online, rating, is_active, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', 0, 5.0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [id, name, email.toLowerCase(), passwordHash, phone, vehicle_type.toLowerCase(), vehicle_number.toUpperCase()]
+      [id, name, email.toLowerCase(), passwordHash, phone, normalizedVehicleType, vehicle_number.toUpperCase()]
     );
 
     const token = generateToken({ id, email: email.toLowerCase(), role: 'captain', name });
@@ -109,7 +112,7 @@ export async function captainRegister(req: Request, res: Response) {
           name,
           email: email.toLowerCase(),
           phone,
-          vehicle_type: vehicle_type.toLowerCase(),
+          vehicle_type: normalizedVehicleType,
           vehicle_number: vehicle_number.toUpperCase(),
           kyc_status: 'pending',
           is_online: false,

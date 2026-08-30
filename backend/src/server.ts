@@ -37,8 +37,8 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
+// Health check endpoint (Root, /health, /api/health)
+app.get(['/', '/health', '/api/health'], (_req, res) => {
   res.json({
     status: 'healthy',
     platform: 'Speedo Centralized Ride-Hailing Backend',
