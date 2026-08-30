@@ -62,8 +62,8 @@ fun SosEmergencyCenterScreen(
 
     val filteredAlerts = remember(alerts, selectedTab) {
         when (selectedTab) {
-            "active" -> alerts.filter { it.status == "active" || it.status == "in_progress" }
-            "resolved" -> alerts.filter { it.status == "resolved" || it.status == "false_alarm" }
+            "active" -> alerts.filter { (it.status ?: "active").lowercase().trim() in listOf("active", "in_progress", "pending") }
+            "resolved" -> alerts.filter { (it.status ?: "").lowercase().trim() in listOf("resolved", "false_alarm", "closed") }
             else -> alerts
         }
     }
@@ -128,8 +128,8 @@ fun SosEmergencyCenterScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
-                    "active" to "Active (" + alerts.count { it.status == "active" || it.status == "in_progress" } + ")",
-                    "resolved" to "Resolved (" + alerts.count { it.status == "resolved" || it.status == "false_alarm" } + ")",
+                    "active" to "Active (" + alerts.count { (it.status ?: "active").lowercase().trim() in listOf("active", "in_progress", "pending") } + ")",
+                    "resolved" to "Resolved (" + alerts.count { (it.status ?: "").lowercase().trim() in listOf("resolved", "false_alarm", "closed") } + ")",
                     "all" to "All History (" + alerts.size + ")"
                 ).forEach { (tabKey, tabLabel) ->
                     val isSelected = selectedTab == tabKey
@@ -227,7 +227,7 @@ fun SosAlertCard(
     onQuickResolve: () -> Unit,
     onResolveCustom: () -> Unit
 ) {
-    val isActive = alert.status == "active" || alert.status == "in_progress"
+    val isActive = (alert.status ?: "active").lowercase().trim() in listOf("active", "in_progress", "pending")
 
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -247,13 +247,13 @@ fun SosAlertCard(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(if (isActive) SpeedoError.copy(alpha = 0.15f) else SpeedoSurfaceVariant),
+                            .background(if (isActive) SpeedoError.copy(alpha = 0.15f) else SpeedoSuccess.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Shield,
+                            imageVector = if (isActive) Icons.Default.Shield else Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = if (isActive) SpeedoError else SpeedoTextSecondary,
+                            tint = if (isActive) SpeedoError else SpeedoSuccess,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -276,7 +276,7 @@ fun SosAlertCard(
                     color = if (isActive) SpeedoError else SpeedoSuccess
                 ) {
                     Text(
-                        text = alert.status.uppercase(),
+                        text = (alert.status ?: "active").uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = SpeedoWhite
@@ -309,7 +309,7 @@ fun SosAlertCard(
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Resolution Notes: " + alert.adminNotes,
-                            style = MaterialTheme.typography.bodySmall.copy(color = SpeedoOrange, fontWeight = FontWeight.Medium)
+                            style = MaterialTheme.typography.bodySmall.copy(color = if (isActive) SpeedoOrange else SpeedoSuccess, fontWeight = FontWeight.Bold)
                         )
                     }
                 }
@@ -385,6 +385,34 @@ fun SosAlertCard(
                         Icon(Icons.Default.EditNote, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Action Log", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = SpeedoSuccess.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, SpeedoSuccess.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SpeedoSuccess, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Incident Resolved & Closed",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = SpeedoSuccess)
+                            )
+                        }
+                        Text(
+                            text = alert.resolvedAt?.take(16) ?: "Completed",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SpeedoTextSecondary
+                        )
                     }
                 }
             }

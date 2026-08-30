@@ -343,9 +343,11 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             when (val res = adminRepo.getSosAlerts()) {
                 is NetworkResult.Success -> {
+                    val alerts = res.data
+                    val count = alerts.count { (it.status ?: "active").lowercase().trim() in listOf("active", "in_progress", "pending") }
                     _uiState.value = _uiState.value.copy(
-                        sosAlerts = res.data,
-                        activeSosCount = res.data.count { it.status == "active" || it.status == "in_progress" }
+                        sosAlerts = alerts,
+                        activeSosCount = count
                     )
                 }
                 is NetworkResult.Error -> {
@@ -358,17 +360,25 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resolveSosAlert(id: String, status: String = "resolved", notes: String? = null, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            // 1. Optimistic Instant Local State Update (0ms delay)
+            val normalizedStatus = status.lowercase().trim()
+            val finalNotes = notes ?: "Resolved by Administrator"
+            val targetId = id.trim()
+
+            // 1. Optimistic Instant Local State Update (0ms delay - moves to Resolved tab immediately)
             val updatedList = _uiState.value.sosAlerts.map { alert ->
-                if (alert.id == id) {
-                    alert.copy(status = status, adminNotes = notes)
+                if (alert.id.trim() == targetId) {
+                    alert.copy(
+                        status = normalizedStatus,
+                        adminNotes = finalNotes,
+                        resolvedAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                    )
                 } else alert
             }
-            val newActiveCount = updatedList.count { it.status == "active" || it.status == "in_progress" }
+            val newActiveCount = updatedList.count { (it.status ?: "active").lowercase().trim() in listOf("active", "in_progress", "pending") }
             _uiState.value = _uiState.value.copy(
                 sosAlerts = updatedList,
                 activeSosCount = newActiveCount,
-                successMessage = "Incident marked as ${status.uppercase()} and resolved successfully! ✅",
+                successMessage = "Incident marked as ${normalizedStatus.uppercase()} and moved to Resolved tab! ✅",
                 errorMessage = null
             )
 
@@ -376,11 +386,11 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
             onComplete()
 
             // 3. Emit real-time socket event across network
-            socketManager.emitSosResolve(id, status, notes)
+            socketManager.emitSosResolve(targetId, normalizedStatus, finalNotes)
 
             // 4. Persist to PostgreSQL backend via REST
             try {
-                when (val res = adminRepo.resolveSosAlert(id, status, notes)) {
+                when (val res = adminRepo.resolveSosAlert(targetId, normalizedStatus, finalNotes)) {
                     is NetworkResult.Success -> {
                         fetchSosAlerts()
                     }
