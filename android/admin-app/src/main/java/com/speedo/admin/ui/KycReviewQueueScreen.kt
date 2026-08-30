@@ -265,23 +265,37 @@ fun KycReviewQueueScreen(
                                 }
                             } else {
                                 Spacer(modifier = Modifier.height(10.dp))
-                                // Extracted OCR Key-Values
+                                // Extracted Real OCR Traces & Key-Values
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Extracted DL No:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
-                                        Text(aiScanResult.dlNumber, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
+                                        Text("Extracted RC Plate:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                        Text("${aiScanResult.rcNumber} (${aiScanResult.vehicleMatchConfidence.toInt()}% Match)", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SpeedoSuccess))
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Extracted RC No:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
-                                        Text(aiScanResult.rcNumber, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SpeedoSuccess))
+                                        Text("Extracted DL / ID No:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                        Text(aiScanResult.dlNumber, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
                                     }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                         Text("Masked Aadhaar UID:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
                                         Text(aiScanResult.aadhaarMasked, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
                                     }
+                                    val extName = aiScanResult.extractedName
+                                    if (!extName.isNullOrBlank()) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Name on ID Card:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                            Text("$extName (${aiScanResult.nameMatchConfidence.toInt()}%)", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SpeedoSuccess))
+                                        }
+                                    }
+                                    val extUpi = aiScanResult.extractedUpiId
+                                    if (!extUpi.isNullOrBlank()) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("Extracted UPI VPA:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                            Text(extUpi, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SpeedoOrange))
+                                        }
+                                    }
                                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Face Match Confidence:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
-                                        Text("${aiScanResult.faceMatchConfidence}% ✅", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SpeedoSuccess))
+                                        Text("Biometric Face Match:", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                        Text("${aiScanResult.faceMatchConfidence}% ✅ (Live Selfie Verified)", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SpeedoSuccess))
                                     }
                                 }
 

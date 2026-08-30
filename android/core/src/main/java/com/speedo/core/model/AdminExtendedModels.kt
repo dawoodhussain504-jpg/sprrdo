@@ -5,6 +5,15 @@ import com.google.gson.annotations.SerializedName
 // -------------------------------------------------------------
 // 1. AI DOCUMENT OCR & INSTANT KYC MODELS
 // -------------------------------------------------------------
+data class DocumentTraceSummary(
+    @SerializedName("documentType") val documentType: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("filename") val filename: String = "",
+    @SerializedName("extractedTextSnippet") val extractedTextSnippet: String = "",
+    @SerializedName("detectedPatterns") val detectedPatterns: List<String> = emptyList(),
+    @SerializedName("confidence") val confidence: Double = 90.0
+)
+
 data class KycAiScanResult(
     @SerializedName("captainId") val captainId: String,
     @SerializedName("captainName") val captainName: String,
@@ -13,12 +22,15 @@ data class KycAiScanResult(
     @SerializedName("dlNumber") val dlNumber: String,
     @SerializedName("rcNumber") val rcNumber: String,
     @SerializedName("aadhaarMasked") val aadhaarMasked: String,
+    @SerializedName("extractedName") val extractedName: String? = null,
+    @SerializedName("extractedUpiId") val extractedUpiId: String? = null,
     @SerializedName("expiryDate") val expiryDate: String,
     @SerializedName("nameMatchConfidence") val nameMatchConfidence: Double,
     @SerializedName("vehicleMatchConfidence") val vehicleMatchConfidence: Double,
     @SerializedName("faceMatchConfidence") val faceMatchConfidence: Double,
     @SerializedName("overallScore") val overallScore: Int,
     @SerializedName("isAutoApprovedEligible") val isAutoApprovedEligible: Boolean,
+    @SerializedName("rawTraces") val rawTraces: List<DocumentTraceSummary> = emptyList(),
     @SerializedName("verifiedAt") val verifiedAt: String
 )
 

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { db } from '../config/db';
 import { createNotification } from '../services/notification';
+import { performCaptainKycOcr } from '../services/ocr.service';
 import {
   emitSosAlert,
   emitSosResolved,
@@ -257,51 +258,7 @@ export async function getAdminNotifications(req: AuthenticatedRequest, res: Resp
 export async function aiScanKycDocuments(req: AuthenticatedRequest, res: Response) {
   try {
     const { captainId } = req.params;
-    const captRes = await db.query('SELECT * FROM captains WHERE id = $1', [captainId]);
-    if (captRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Captain not found' });
-    }
-    const captain = captRes.rows[0];
-
-    const docsRes = await db.query('SELECT * FROM kyc_documents WHERE captain_id = $1', [captainId]);
-    const docs = docsRes.rows;
-
-    if (docs.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No documents uploaded yet by this captain to scan.',
-      });
-    }
-
-    // Heuristic & AI OCR Simulation Engine
-    const stateCode = (captain.vehicle_number || 'KA01EQ9876').substring(0, 2).toUpperCase();
-    const cleanNum = (captain.vehicle_number || 'KA01EQ9876').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-    const randDigits = Math.floor(1000000000000 + Math.random() * 9000000000000);
-    const dlNumber = `${stateCode}${randDigits}`;
-    const rcNumber = cleanNum;
-    const aadhaarMasked = `XXXX-XXXX-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const nameMatchConfidence = 96.5;
-    const vehicleMatchConfidence = 98.2;
-    const faceMatchConfidence = 94.0;
-    const overallConfidence = Math.round((nameMatchConfidence + vehicleMatchConfidence + faceMatchConfidence) / 3);
-
-    const ocrData = {
-      captainId: captain.id,
-      captainName: captain.name,
-      registeredVehicle: captain.vehicle_number,
-      vehicleType: captain.vehicle_type,
-      dlNumber,
-      rcNumber,
-      aadhaarMasked,
-      expiryDate: '2034-08-15',
-      nameMatchConfidence,
-      vehicleMatchConfidence,
-      faceMatchConfidence,
-      overallScore: overallConfidence,
-      isAutoApprovedEligible: overallConfidence >= 85 && docs.length >= 3,
-      verifiedAt: new Date().toISOString(),
-    };
+    const ocrData = await performCaptainKycOcr(captainId);
 
     return res.json({
       success: true,
