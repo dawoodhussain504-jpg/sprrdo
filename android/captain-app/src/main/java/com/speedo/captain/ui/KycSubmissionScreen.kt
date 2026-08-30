@@ -1,5 +1,7 @@
 package com.speedo.captain.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
@@ -27,6 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.components.SpeedoPrimaryButton
@@ -72,7 +75,7 @@ fun KycSubmissionScreen(
 
                 viewModel.uploadKycDocument(activeUploadingDocType!!, tempFile)
             } catch (e: Exception) {
-                // Upload failed
+                android.util.Log.e("KycSubmission", "Failed to process gallery image", e)
             }
         }
     }
@@ -83,6 +86,31 @@ fun KycSubmissionScreen(
     ) { success: Boolean ->
         if (success && currentTempFile != null && activeUploadingDocType != null) {
             viewModel.uploadKycDocument(activeUploadingDocType!!, currentTempFile!!)
+        }
+    }
+
+    // Camera Permission launcher with fallback
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            try {
+                val tempFile = createTempImageFile()
+                currentTempFile = tempFile
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    tempFile
+                )
+                currentTempPhotoUri = uri
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                android.util.Log.e("KycSubmission", "Failed to launch camera, falling back to gallery", e)
+                galleryLauncher.launch("image/*")
+            }
+        } else {
+            // Permission denied -> gracefully fallback to gallery picker
+            galleryLauncher.launch("image/*")
         }
     }
 
@@ -190,21 +218,29 @@ fun KycSubmissionScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Action Buttons
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (type == "selfie") {
-                                // Live Camera capture required for selfie
+                        if (type == "selfie") {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = {
                                         activeUploadingDocType = type
-                                        val tempFile = createTempImageFile()
-                                        currentTempFile = tempFile
-                                        val uri = FileProvider.getUriForFile(
-                                            context,
-                                            "${context.packageName}.fileprovider",
-                                            tempFile
-                                        )
-                                        currentTempPhotoUri = uri
-                                        cameraLauncher.launch(uri)
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                            try {
+                                                val tempFile = createTempImageFile()
+                                                currentTempFile = tempFile
+                                                val uri = FileProvider.getUriForFile(
+                                                    context,
+                                                    "${context.packageName}.fileprovider",
+                                                    tempFile
+                                                )
+                                                currentTempPhotoUri = uri
+                                                cameraLauncher.launch(uri)
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("KycSubmission", "Failed to open camera", e)
+                                                galleryLauncher.launch("image/*")
+                                            }
+                                        } else {
+                                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                        }
                                     },
                                     shape = RoundedCornerShape(8.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange)
@@ -213,7 +249,21 @@ fun KycSubmissionScreen(
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(if (isUploaded) "Re-take Selfie" else "Take Selfie", fontSize = 13.sp)
                                 }
-                            } else {
+
+                                OutlinedButton(
+                                    onClick = {
+                                        activeUploadingDocType = type
+                                        galleryLauncher.launch("image/*")
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Gallery", fontSize = 13.sp)
+                                }
+                            }
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = {
                                         activeUploadingDocType = type
