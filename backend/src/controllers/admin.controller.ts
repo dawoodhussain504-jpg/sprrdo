@@ -568,7 +568,7 @@ export async function triggerSosEmergency(req: AuthenticatedRequest, res: Respon
 export async function resolveSosAlert(req: AuthenticatedRequest, res: Response) {
   try {
     const alertId = req.params.id || req.body.id || req.body.sos_id || (req.query.id as string);
-    const status = req.body.status || req.body.outcome || 'resolved';
+    const status = (req.body.status || req.body.outcome || 'resolved').toLowerCase().trim();
     const adminNotes = req.body.admin_notes || req.body.adminNotes || req.body.notes || req.body.remarks || 'Resolved by Administrator';
 
     if (!alertId) {
@@ -577,14 +577,27 @@ export async function resolveSosAlert(req: AuthenticatedRequest, res: Response) 
 
     console.log(`🚨 [RESOLVE SOS INITIATED] ID: ${alertId}, Status: ${status}, Notes: ${adminNotes}`);
 
-    await db.query(
-      `UPDATE sos_alerts 
-       SET status = $1, 
-           admin_notes = $2, 
-           resolved_at = CASE WHEN $1 = 'resolved' OR $1 = 'false_alarm' THEN CURRENT_TIMESTAMP ELSE NULL END 
-       WHERE id = $3 OR ride_id = $3`,
-      [status, adminNotes, alertId]
-    );
+    const isResolved = status === 'resolved' || status === 'false_alarm' || status === 'closed';
+
+    if (isResolved) {
+      await db.query(
+        `UPDATE sos_alerts 
+         SET status = $1, 
+             admin_notes = $2, 
+             resolved_at = CURRENT_TIMESTAMP 
+         WHERE id = $3 OR ride_id = $3`,
+        [status, adminNotes, alertId]
+      );
+    } else {
+      await db.query(
+        `UPDATE sos_alerts 
+         SET status = $1, 
+             admin_notes = $2, 
+             resolved_at = NULL 
+         WHERE id = $3 OR ride_id = $3`,
+        [status, adminNotes, alertId]
+      );
+    }
 
     const resolutionPayload = {
       id: alertId,

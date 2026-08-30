@@ -62,8 +62,8 @@ class SqliteAdapter implements DatabaseAdapter {
 
   async query<T = any>(sql: string, params: any[] = []): Promise<QueryResult<T>> {
     return new Promise((resolve, reject) => {
-      // Normalize PostgreSQL $1, $2 parameter placeholders to SQLite ?
-      let normalizedSql = sql.replace(/\$(\d+)/g, '?');
+      // Normalize PostgreSQL $1, $2, $3 parameter placeholders to SQLite indexed parameters ?1, ?2, ?3
+      let normalizedSql = sql.replace(/\$(\d+)/g, '?$1');
       const normalizedParams = [...params];
 
       const trimmed = normalizedSql.trim().toUpperCase();
