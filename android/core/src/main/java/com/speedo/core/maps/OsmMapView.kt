@@ -82,13 +82,11 @@ fun OsmMapView(
 
     AndroidView(
         factory = { ctx ->
-            // Standard Leaflet User-Agent for fast tile loading
-            Configuration.getInstance().userAgentValue = "Mozilla/5.0 (Linux; Android 14) SpeedoApp/2.0 org.osmdroid"
-            Configuration.getInstance().isMapViewHardwareAccelerated = true
+            SpeedoMapConfig.init(ctx)
 
             MapView(ctx).apply {
-                // 100% Free Leaflet / OpenStreetMap Standard (No Watermark, No API Key Required)
-                setTileSource(TileSourceFactory.MAPNIK)
+                // High-performance CDN Carto Voyager tiles (Complete roads, landmarks, fast transit tiles)
+                setTileSource(SpeedoMapConfig.CARTO_VOYAGER)
 
                 setUseDataConnection(true)
                 setMultiTouchControls(true)

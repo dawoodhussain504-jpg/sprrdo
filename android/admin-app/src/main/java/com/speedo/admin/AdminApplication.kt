@@ -1,17 +1,15 @@
 package com.speedo.admin
 
 import android.app.Application
-import android.content.Context
+import com.speedo.core.maps.SpeedoMapConfig
 import com.speedo.core.utils.NotificationHelper
 import com.speedo.core.work.WorkScheduler
-import org.osmdroid.config.Configuration
 
 class AdminApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Initialize osmdroid tile & cache configuration safely before any view loads
-        Configuration.getInstance().load(this, getSharedPreferences("speedo_osmdroid", Context.MODE_PRIVATE))
-        Configuration.getInstance().userAgentValue = packageName
+        // Initialize osmdroid internal cache, User-Agent, and tile storage configuration safely
+        SpeedoMapConfig.init(this)
 
         NotificationHelper.createNotificationChannels(this)
         WorkScheduler.schedulePeriodicNotificationPolling(this)
