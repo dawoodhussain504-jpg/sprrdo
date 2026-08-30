@@ -567,21 +567,41 @@ export async function triggerSosEmergency(req: AuthenticatedRequest, res: Respon
 
 export async function resolveSosAlert(req: AuthenticatedRequest, res: Response) {
   try {
-    const { id } = req.params;
-    const { status, admin_notes } = req.body; // 'resolved' | 'false_alarm' | 'in_progress'
+    const alertId = req.params.id || req.body.id || req.body.sos_id || (req.query.id as string);
+    const status = req.body.status || req.body.outcome || 'resolved';
+    const adminNotes = req.body.admin_notes || req.body.adminNotes || req.body.notes || req.body.remarks || 'Resolved by Administrator';
+
+    if (!alertId) {
+      return res.status(400).json({ success: false, message: 'Alert ID is required to resolve incident.' });
+    }
+
+    console.log(`🚨 [RESOLVE SOS INITIATED] ID: ${alertId}, Status: ${status}, Notes: ${adminNotes}`);
 
     await db.query(
-      `UPDATE sos_alerts SET status = $1, admin_notes = $2, resolved_at = CASE WHEN $1 = 'resolved' OR $1 = 'false_alarm' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id = $3`,
-      [status || 'resolved', admin_notes || null, id]
+      `UPDATE sos_alerts 
+       SET status = $1, 
+           admin_notes = $2, 
+           resolved_at = CASE WHEN $1 = 'resolved' OR $1 = 'false_alarm' THEN CURRENT_TIMESTAMP ELSE NULL END 
+       WHERE id = $3 OR ride_id = $3`,
+      [status, adminNotes, alertId]
     );
 
-    emitSosResolved({ id, status: status || 'resolved', admin_notes: admin_notes || null });
+    const resolutionPayload = {
+      id: alertId,
+      status,
+      admin_notes: adminNotes,
+      resolved_at: new Date().toISOString(),
+    };
+
+    emitSosResolved(resolutionPayload);
 
     return res.json({
       success: true,
-      message: `SOS alert updated to ${status?.toUpperCase() || 'RESOLVED'}`,
+      message: `SOS alert updated to ${status.toUpperCase()}`,
+      data: resolutionPayload,
     });
   } catch (error: any) {
+    console.error('❌ Error resolving SOS alert:', error.message);
     return res.status(500).json({ success: false, message: 'Failed to resolve SOS alert', error: error.message });
   }
 }

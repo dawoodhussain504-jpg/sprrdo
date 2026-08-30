@@ -358,36 +358,41 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resolveSosAlert(id: String, status: String = "resolved", notes: String? = null, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isSubmittingAction = true, errorMessage = null)
-            
-            // 1. Emit real-time socket event immediately
+            // 1. Optimistic Instant Local State Update (0ms delay)
+            val updatedList = _uiState.value.sosAlerts.map { alert ->
+                if (alert.id == id) {
+                    alert.copy(status = status, adminNotes = notes)
+                } else alert
+            }
+            val newActiveCount = updatedList.count { it.status == "active" || it.status == "in_progress" }
+            _uiState.value = _uiState.value.copy(
+                sosAlerts = updatedList,
+                activeSosCount = newActiveCount,
+                successMessage = "Incident marked as ${status.uppercase()} and resolved successfully! ✅",
+                errorMessage = null
+            )
+
+            // 2. Dismiss dialog / close modal immediately
+            onComplete()
+
+            // 3. Emit real-time socket event across network
             socketManager.emitSosResolve(id, status, notes)
 
-            // 2. Execute REST API request
-            when (val res = adminRepo.resolveSosAlert(id, status, notes)) {
-                is NetworkResult.Success -> {
-                    // Optimistic instant local state update (0ms latency)
-                    val updatedList = _uiState.value.sosAlerts.map { alert ->
-                        if (alert.id == id) {
-                            alert.copy(status = status, adminNotes = notes)
-                        } else alert
+            // 4. Persist to PostgreSQL backend via REST
+            try {
+                when (val res = adminRepo.resolveSosAlert(id, status, notes)) {
+                    is NetworkResult.Success -> {
+                        fetchSosAlerts()
                     }
-                    val newActiveCount = updatedList.count { it.status == "active" || it.status == "in_progress" }
-                    _uiState.value = _uiState.value.copy(
-                        isSubmittingAction = false,
-                        sosAlerts = updatedList,
-                        activeSosCount = newActiveCount,
-                        successMessage = "Incident marked as ${status.uppercase()} and resolved successfully! ✅"
-                    )
-                    fetchSosAlerts()
-                    onComplete()
+                    is NetworkResult.Error -> {
+                        android.util.Log.e("AdminViewModel", "Error resolving SOS on backend: ${res.message}")
+                    }
+                    else -> {}
                 }
-                is NetworkResult.Error -> {
-                    _uiState.value = _uiState.value.copy(isSubmittingAction = false, errorMessage = res.message)
-                }
-                else -> {
-                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
-                }
+            } catch (e: Exception) {
+                android.util.Log.e("AdminViewModel", "Exception resolving SOS", e)
+            } finally {
+                _uiState.value = _uiState.value.copy(isSubmittingAction = false)
             }
         }
     }

@@ -289,15 +289,27 @@ class SpeedoSocketManager private constructor(private val context: Context) {
 
                 val handleSosResolved: (Array<Any>) -> Unit = { args ->
                     try {
-                        val json = args.getOrNull(0) as? JSONObject
-                        if (json != null) {
-                            val map = mapOf(
-                                "id" to json.optString("id", ""),
-                                "status" to json.optString("status", "resolved"),
-                                "admin_notes" to json.optString("admin_notes", "")
-                            )
-                            scope.launch {
-                                _liveSosResolvedFlow.emit(map)
+                        val raw = args.getOrNull(0) ?: Unit
+                        if (raw != Unit) {
+                            val jsonStr = when (raw) {
+                                is JSONObject -> raw.toString()
+                                is String -> raw
+                                else -> raw.toString()
+                            }
+                            val json = JSONObject(jsonStr)
+                            val id = json.optString("id", "").ifBlank { json.optString("sos_id", "") }
+                            val status = json.optString("status", "resolved")
+                            val notes = json.optString("admin_notes", "").ifBlank { json.optString("notes", "") }
+                            if (id.isNotBlank()) {
+                                val map = mapOf(
+                                    "id" to id,
+                                    "status" to status,
+                                    "admin_notes" to notes
+                                )
+                                Log.i(TAG, "✅ [REALTIME SOS RESOLUTION RECEIVED] ID: $id -> $status")
+                                scope.launch {
+                                    _liveSosResolvedFlow.emit(map)
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -427,6 +439,13 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                 put("admin_notes", notes ?: "")
             }
             socket?.emit("sos:resolve", payload)
+            scope.launch {
+                _liveSosResolvedFlow.emit(mapOf(
+                    "id" to id,
+                    "status" to status,
+                    "admin_notes" to (notes ?: "")
+                ))
+            }
             Log.i(TAG, "✅ Emitted sos:resolve for $id ($status)")
         } catch (e: Exception) {
             Log.e(TAG, "Error emitting sos:resolve", e)
