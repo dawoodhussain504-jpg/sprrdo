@@ -585,13 +585,19 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun triggerSosEmergency(rideId: String?, lat: Double, lng: Double, address: String?, onComplete: () -> Unit = {}) {
+    fun triggerSosEmergency(rideId: String? = null, lat: Double = 0.0, lng: Double = 0.0, address: String? = null, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
+            val rId = rideId ?: _uiState.value.activeRide?.id
+            val finalLat = if (lat != 0.0) lat else if (_uiState.value.pickupLat != 0.0) _uiState.value.pickupLat else _uiState.value.currentLocation.lat
+            val finalLng = if (lng != 0.0) lng else if (_uiState.value.pickupLng != 0.0) _uiState.value.pickupLng else _uiState.value.currentLocation.lng
+            val finalAddress = address ?: _uiState.value.pickupAddress.takeIf { it.isNotBlank() } ?: "Live GPS Location"
+
             // 1. Emit instant socket event
-            SpeedoSocketManager.getInstance(getApplication()).emitSosTrigger(rideId, lat, lng, address)
+            SpeedoSocketManager.getInstance(getApplication()).emitSosTrigger(rId, finalLat, finalLng, finalAddress)
             // 2. Call REST API backup
             val adminRepo = com.speedo.core.repository.AdminRepository(getApplication())
-            adminRepo.triggerSosAlert(com.speedo.core.model.TriggerSosRequest(rideId, lat, lng, address))
+            adminRepo.triggerSosAlert(com.speedo.core.model.TriggerSosRequest(rId, finalLat, finalLng, finalAddress))
+            
             _uiState.value = _uiState.value.copy(
                 successMessage = "🚨 SOS Emergency Broadcasted to Speedo Command Center & Police!"
             )

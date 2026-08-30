@@ -359,6 +359,11 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     fun resolveSosAlert(id: String, status: String = "resolved", notes: String? = null, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmittingAction = true, errorMessage = null)
+            
+            // 1. Emit real-time socket event immediately
+            socketManager.emitSosResolve(id, status, notes)
+
+            // 2. Execute REST API request
             when (val res = adminRepo.resolveSosAlert(id, status, notes)) {
                 is NetworkResult.Success -> {
                     // Optimistic instant local state update (0ms latency)

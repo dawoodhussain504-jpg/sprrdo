@@ -263,41 +263,49 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                 }
 
                 // 6. Live Emergency SOS Alerts (Sub-second dispatch to Admin Command Center)
-                on("admin:sos_alert") { args ->
+                val handleSosAlert: (Array<Any>) -> Unit = { args ->
                     try {
-                        val raw = args.getOrNull(0) ?: return@on
-                        val jsonStr = when (raw) {
-                            is JSONObject -> raw.toString()
-                            is String -> raw
-                            else -> raw.toString()
-                        }
-                        val alert = gson.fromJson(jsonStr, com.speedo.core.model.SosAlert::class.java)
-                        if (alert != null) {
-                            Log.i(TAG, "🚨 [REALTIME SOS RECEIVED] Alert ID: ${alert.id} from ${alert.userName}")
-                            scope.launch {
-                                _liveSosAlertFlow.emit(alert)
+                        val raw = args.getOrNull(0) ?: Unit
+                        if (raw != Unit) {
+                            val jsonStr = when (raw) {
+                                is JSONObject -> raw.toString()
+                                is String -> raw
+                                else -> raw.toString()
+                            }
+                            val alert = gson.fromJson(jsonStr, com.speedo.core.model.SosAlert::class.java)
+                            if (alert != null) {
+                                Log.i(TAG, "🚨 [REALTIME SOS RECEIVED] Alert ID: ${alert.id} from ${alert.userName}")
+                                scope.launch {
+                                    _liveSosAlertFlow.emit(alert)
+                                }
                             }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing SOS alert socket event", e)
                     }
                 }
+                on("admin:sos_alert") { args -> handleSosAlert(args) }
+                on("sos:alert") { args -> handleSosAlert(args) }
 
-                on("admin:sos_resolved") { args ->
+                val handleSosResolved: (Array<Any>) -> Unit = { args ->
                     try {
-                        val json = args.getOrNull(0) as? JSONObject ?: return@on
-                        val map = mapOf(
-                            "id" to json.optString("id", ""),
-                            "status" to json.optString("status", "resolved"),
-                            "admin_notes" to json.optString("admin_notes", "")
-                        )
-                        scope.launch {
-                            _liveSosResolvedFlow.emit(map)
+                        val json = args.getOrNull(0) as? JSONObject
+                        if (json != null) {
+                            val map = mapOf(
+                                "id" to json.optString("id", ""),
+                                "status" to json.optString("status", "resolved"),
+                                "admin_notes" to json.optString("admin_notes", "")
+                            )
+                            scope.launch {
+                                _liveSosResolvedFlow.emit(map)
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing SOS resolved socket event", e)
                     }
                 }
+                on("admin:sos_resolved") { args -> handleSosResolved(args) }
+                on("sos:resolved") { args -> handleSosResolved(args) }
 
                 // 7. Live KYC Status Sync (Instant Captain Profile Unlock)
                 on("captain:kyc_status") { args ->
@@ -397,14 +405,32 @@ class SpeedoSocketManager private constructor(private val context: Context) {
     }
 
     /**
-     * Join room for admin real-time support alerts
+     * Join room for admin real-time support alerts & emergency command center
      */
     fun joinAdminSupportRoom() {
         val payload = JSONObject().apply {
             put("role", "admin")
         }
         socket?.emit("role:join", payload)
-        Log.d(TAG, "Emitted role:join for admin")
+        socket?.emit("admin:join", payload)
+        Log.d(TAG, "Emitted role:join & admin:join for admin")
+    }
+
+    /**
+     * Emit SOS Resolve event across socket cluster
+     */
+    fun emitSosResolve(id: String, status: String, notes: String?) {
+        try {
+            val payload = JSONObject().apply {
+                put("id", id)
+                put("status", status)
+                put("admin_notes", notes ?: "")
+            }
+            socket?.emit("sos:resolve", payload)
+            Log.i(TAG, "✅ Emitted sos:resolve for $id ($status)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error emitting sos:resolve", e)
+        }
     }
 
     /**

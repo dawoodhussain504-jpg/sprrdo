@@ -130,6 +130,19 @@ export function initSocketServer(httpServer: HttpServer): Server {
       }
     });
 
+    // Role room join & Admin join
+    socket.on('role:join', (data: { role: string }) => {
+      if (data?.role) {
+        socket.join(`role_${data.role}`);
+        console.log(`🛡️ Socket ${socket.id} joined role_${data.role}`);
+      }
+    });
+
+    socket.on('admin:join', () => {
+      socket.join('role_admin');
+      console.log(`👑 Socket ${socket.id} joined role_admin`);
+    });
+
     // 3. Emergency SOS Trigger via WebSocket
     socket.on('sos:trigger', async (data: { ride_id?: string; lat: number; lng: number; address?: string }) => {
       try {
@@ -205,6 +218,22 @@ export function initSocketServer(httpServer: HttpServer): Server {
       }
     });
 
+    // 4. SOS Resolve via WebSocket
+    socket.on('sos:resolve', async (data: { id: string; status?: string; admin_notes?: string }) => {
+      try {
+        const { id, status = 'resolved', admin_notes } = data || {};
+        if (id) {
+          await db.query(
+            `UPDATE sos_alerts SET status = $1, admin_notes = $2, resolved_at = CASE WHEN $1 = 'resolved' OR $1 = 'false_alarm' THEN CURRENT_TIMESTAMP ELSE NULL END WHERE id = $3`,
+            [status, admin_notes || null, id]
+          );
+          emitSosResolved({ id, status, admin_notes: admin_notes || null });
+        }
+      } catch (err: any) {
+        console.error('❌ Error handling sos:resolve socket event:', err.message);
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`🔌 [Socket Disconnected] ${socket.id} (User: ${userId})`);
     });
@@ -250,6 +279,7 @@ export function emitSosAlert(payload: any) {
     console.log(`🚨 [SOCKET SOS EMIT] Broadcasting emergency alert ${payload.id} to Admin Command Center`);
     io.to('role_admin').emit('admin:sos_alert', payload);
     io.emit('admin:sos_alert', payload);
+    io.emit('sos:alert', payload);
   }
 }
 
@@ -258,6 +288,7 @@ export function emitSosResolved(payload: any) {
     console.log(`✅ [SOCKET SOS RESOLVED] Broadcasting resolution for alert ${payload.id}`);
     io.to('role_admin').emit('admin:sos_resolved', payload);
     io.emit('admin:sos_resolved', payload);
+    io.emit('sos:resolved', payload);
   }
 }
 

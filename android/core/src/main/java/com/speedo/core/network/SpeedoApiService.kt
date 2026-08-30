@@ -171,6 +171,18 @@ interface SpeedoApiService {
         @Body body: ResolveSosRequest
     ): Response<ApiResponse<Any>>
 
+    @POST("sos/{id}/resolve")
+    suspend fun resolveSos(
+        @Path("id") id: String,
+        @Body body: ResolveSosRequest
+    ): Response<ApiResponse<Any>>
+
+    @PUT("admin/sos-alerts/{id}/resolve")
+    suspend fun resolveSosAlertPut(
+        @Path("id") id: String,
+        @Body body: ResolveSosRequest
+    ): Response<ApiResponse<Any>>
+
     // --- TARGETED CITY BROADCASTS ---
     @POST("admin/broadcast")
     suspend fun sendBroadcast(

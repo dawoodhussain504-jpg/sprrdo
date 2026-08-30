@@ -199,28 +199,65 @@ class AdminRepository(context: Context) {
     }
 
     suspend fun resolveSosAlert(id: String, status: String, notes: String?): NetworkResult<Boolean> {
+        val req = com.speedo.core.model.ResolveSosRequest(status, notes)
         return try {
-            val res = api.resolveSosAlert(id, com.speedo.core.model.ResolveSosRequest(status, notes))
+            val res = api.resolveSosAlert(id, req)
             if (res.isSuccessful && res.body()?.success == true) {
                 NetworkResult.Success(true)
             } else {
-                NetworkResult.Error(res.body()?.message ?: "Failed to resolve SOS alert")
+                // Fallback 1: Direct /api/sos/{id}/resolve
+                val fallbackRes = api.resolveSos(id, req)
+                if (fallbackRes.isSuccessful && fallbackRes.body()?.success == true) {
+                    NetworkResult.Success(true)
+                } else {
+                    // Fallback 2: PUT /api/admin/sos-alerts/{id}/resolve
+                    val putRes = api.resolveSosAlertPut(id, req)
+                    if (putRes.isSuccessful && putRes.body()?.success == true) {
+                        NetworkResult.Success(true)
+                    } else {
+                        NetworkResult.Error(res.body()?.message ?: fallbackRes.body()?.message ?: "Failed to resolve SOS alert")
+                    }
+                }
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error")
+            try {
+                val fallbackRes = api.resolveSos(id, req)
+                if (fallbackRes.isSuccessful && fallbackRes.body()?.success == true) {
+                    NetworkResult.Success(true)
+                } else {
+                    NetworkResult.Error(e.localizedMessage ?: "Network error resolving SOS alert")
+                }
+            } catch (ex: Exception) {
+                NetworkResult.Error(e.localizedMessage ?: "Network error")
+            }
         }
     }
 
     suspend fun triggerSosAlert(req: com.speedo.core.model.TriggerSosRequest): NetworkResult<Boolean> {
         return try {
-            val res = api.triggerSosEmergency(req)
+            // First call universal /api/sos/trigger (available to Rider, Captain, and Admin)
+            val res = api.triggerSos(req)
             if (res.isSuccessful && res.body()?.success == true) {
                 NetworkResult.Success(true)
             } else {
-                NetworkResult.Error(res.body()?.message ?: "Failed to trigger SOS alert")
+                val fallbackRes = api.triggerSosEmergency(req)
+                if (fallbackRes.isSuccessful && fallbackRes.body()?.success == true) {
+                    NetworkResult.Success(true)
+                } else {
+                    NetworkResult.Error(res.body()?.message ?: "Failed to trigger SOS alert")
+                }
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error")
+            try {
+                val fallbackRes = api.triggerSosEmergency(req)
+                if (fallbackRes.isSuccessful && fallbackRes.body()?.success == true) {
+                    NetworkResult.Success(true)
+                } else {
+                    NetworkResult.Error(e.localizedMessage ?: "Network error")
+                }
+            } catch (ex: Exception) {
+                NetworkResult.Error(e.localizedMessage ?: "Network error")
+            }
         }
     }
 
