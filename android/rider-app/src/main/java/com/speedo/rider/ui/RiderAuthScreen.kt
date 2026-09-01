@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.speedo.core.components.SpeedoPrimaryButton
 import com.speedo.core.components.SpeedoTextField
 import com.speedo.core.theme.*
+import com.speedo.core.components.SpeedoServerConfigDialog
 import com.speedo.rider.viewmodel.RiderViewModel
 
 @Composable
@@ -36,6 +37,7 @@ fun RiderAuthScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isSignUp by remember { mutableStateOf(false) }
+    var showServerDialog by remember { mutableStateOf(false) }
 
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -43,20 +45,36 @@ fun RiderAuthScreen(
     var phone by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
+    if (showServerDialog) {
+        SpeedoServerConfigDialog(
+            onDismissRequest = { showServerDialog = false }
+        )
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = SpeedoWhite
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Speedo Brand Header
-            com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 72)
+        Box(modifier = Modifier.fillMaxSize()) {
+            IconButton(
+                onClick = { showServerDialog = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Default.Dns, contentDescription = "Server Settings", tint = SpeedoTextSecondary)
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Speedo Brand Header
+                com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 72)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -188,4 +206,5 @@ fun RiderAuthScreen(
             }
         }
     }
+}
 }
