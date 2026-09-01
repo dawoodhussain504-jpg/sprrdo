@@ -30,6 +30,8 @@ import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
 import com.speedo.core.maps.OsmMapView
 import com.speedo.core.maps.RouteHelper
+import com.speedo.core.model.PopularDestination
+import com.speedo.core.model.PopularDestinationsData
 import com.speedo.core.model.VehicleCategory
 import com.speedo.core.theme.*
 import com.speedo.rider.ui.components.*
@@ -56,6 +58,11 @@ fun RiderHomeScreen(
     }
 
     var showSearchDialog by remember { mutableStateOf(false) }
+    var searchInitialFocusPickup by remember { mutableStateOf(false) }
+
+    val popularDestinations = remember(uiState.pickupLat, uiState.pickupLng) {
+        PopularDestinationsData.getDestinationsWithDistance(uiState.pickupLat, uiState.pickupLng)
+    }
     var showSafetySheet by remember { mutableStateOf(false) }
     var paymentMethod by remember { mutableStateOf("cash") } // "cash", "upi", "wallet"
     var isCouponApplied by remember { mutableStateOf(true) }
@@ -223,29 +230,99 @@ fun RiderHomeScreen(
             }
         }
 
-        // 3. Floating Search Bar & Quick Location Shortcuts (Top)
+        // 3. Floating Interactive Pickup & Drop Location Card (Top)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(top = 80.dp)
+                .padding(top = 76.dp)
                 .align(Alignment.TopCenter),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(20.dp),
             color = SpeedoWhite,
             shadowElevation = 8.dp,
             border = BorderStroke(1.dp, SpeedoCardBorder)
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
-                // Search Trigger Bar
+                // 🟢 Pickup Row (Fully Editable / Tap to Change)
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showSearchDialog = true },
+                        .clickable {
+                            searchInitialFocusPickup = true
+                            showSearchDialog = true
+                        },
                     shape = RoundedCornerShape(12.dp),
                     color = SpeedoSurfaceVariant
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(RapidoGreen)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "PICKUP LOCATION",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = RapidoGreen,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Text(
+                                text = uiState.pickupAddress.ifEmpty { "Current Location (Tap to search/change)" },
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = RapidoBlack
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                viewModel.fetchCurrentLocation()
+                                recenterTrigger = System.currentTimeMillis()
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MyLocation,
+                                contentDescription = "Use GPS",
+                                tint = RapidoGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Pickup",
+                            tint = SpeedoTextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 🔴 Drop Row (Tap to Search or Clear)
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            searchInitialFocusPickup = false
+                            showSearchDialog = true
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = SpeedoSurfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -254,32 +331,44 @@ fun RiderHomeScreen(
                                 .clip(CircleShape)
                                 .background(RapidoRed)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = if (uiState.dropAddress.isNotEmpty()) uiState.dropAddress else "Where are you going?",
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (uiState.dropAddress.isNotEmpty()) RapidoBlack else SpeedoTextSecondary
-                            ),
-                            modifier = Modifier.weight(1f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (uiState.dropAddress.isNotEmpty()) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear",
-                                tint = SpeedoTextSecondary,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clickable { viewModel.clearDropLocation() }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "DROP DESTINATION",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = RapidoRed,
+                                    fontSize = 9.sp
+                                )
                             )
+                            Text(
+                                text = if (uiState.dropAddress.isNotEmpty()) uiState.dropAddress else "Where are you going?",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (uiState.dropAddress.isNotEmpty()) RapidoBlack else SpeedoTextSecondary
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        if (uiState.dropAddress.isNotEmpty()) {
+                            IconButton(
+                                onClick = { viewModel.clearDropLocation() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear Drop",
+                                    tint = SpeedoTextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         } else {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
+                                contentDescription = "Search Destination",
                                 tint = RapidoYellowDark,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
@@ -332,7 +421,7 @@ fun RiderHomeScreen(
             }
         }
 
-        // 4. Floating Rapido My Location / Recenter Target Button (Compact & Positioned Below Search Box to avoid any overlap)
+        // 4. Floating Rapido My Location / Recenter Target Button
         Surface(
             shape = CircleShape,
             color = SpeedoWhite,
@@ -340,7 +429,7 @@ fun RiderHomeScreen(
             border = BorderStroke(1.dp, SpeedoCardBorder),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 220.dp, end = 16.dp)
+                .padding(top = 280.dp, end = 16.dp)
                 .clickable {
                     viewModel.fetchCurrentLocation()
                     recenterTrigger = System.currentTimeMillis()
@@ -356,6 +445,95 @@ fun RiderHomeScreen(
                     tint = SpeedoOrange,
                     modifier = Modifier.size(20.dp)
                 )
+            }
+        }
+
+        // 4.5. Popular Destinations Carousel with Place Images (Visible on Home when drop is not yet selected)
+        if (uiState.dropAddress.isBlank()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = SpeedoWhite,
+                shadowElevation = 8.dp,
+                border = BorderStroke(1.dp, SpeedoCardBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = SpeedoOrange.copy(alpha = 0.12f),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocalFireDepartment,
+                                        contentDescription = null,
+                                        tint = SpeedoOrange,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Popular Destinations",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = RapidoBlack
+                                    )
+                                )
+                                Text(
+                                    text = "Top places in Bangalore • Tap image to go",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = SpeedoTextSecondary
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = RapidoYellowLight,
+                            border = BorderStroke(0.8.dp, RapidoYellowDark.copy(alpha = 0.5f)),
+                            modifier = Modifier.clickable {
+                                searchInitialFocusPickup = false
+                                showSearchDialog = true
+                            }
+                        ) {
+                            Text(
+                                text = "See All",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = RapidoBlack
+                                ),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(popularDestinations, key = { it.id }) { dest ->
+                            PopularDestinationThumbnailCard(
+                                destination = dest,
+                                onClick = {
+                                    viewModel.updateDropLocation(dest.fullAddress, dest.lat, dest.lng)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -711,11 +889,17 @@ fun RiderHomeScreen(
             RapidoLocationSearchDialog(
                 currentPickup = uiState.pickupAddress,
                 currentDrop = uiState.dropAddress,
+                initialFocusOnPickup = searchInitialFocusPickup,
+                userLat = uiState.pickupLat,
+                userLng = uiState.pickupLng,
                 onPickupSelected = { addr, lat, lng ->
                     viewModel.updatePickupLocation(addr, lat, lng)
                 },
                 onDropSelected = { addr, lat, lng ->
                     viewModel.updateDropLocation(addr, lat, lng)
+                },
+                onUseCurrentLocation = {
+                    viewModel.fetchCurrentLocation()
                 },
                 onDismiss = { showSearchDialog = false }
             )
