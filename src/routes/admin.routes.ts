@@ -1,3 +1,9 @@
+import {
+  getPopularDestinationsAdmin,
+  createPopularDestination,
+  updatePopularDestination,
+  deletePopularDestination,
+} from '../controllers/destination.controller';
 import { Router } from 'express';
 import { requireRole } from '../middleware/auth';
 import {
@@ -67,4 +73,10 @@ router.post('/users/:role/:id/toggle-status', toggleUserStatus);
 router.get('/notifications', getAdminNotifications);
 
 export default router;
+
+// 5. Popular Destinations Real-Time Management
+router.get('/destinations', getPopularDestinationsAdmin);
+router.post('/destinations', createPopularDestination);
+router.put('/destinations/:id', updatePopularDestination);
+router.delete('/destinations/:id', deletePopularDestination);
 

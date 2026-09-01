@@ -571,8 +571,9 @@ fun RapidoLocationSearchDialog(
     var suggestions by remember { mutableStateOf<List<AddressSuggestion>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
-    val popularDestinations = remember(userLat, userLng) {
-        PopularDestinationsData.getDestinationsWithDistance(userLat, userLng)
+    val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
+    val popularDestinations = remember(liveDestinations, userLat, userLng) {
+        PopularDestinationsData.calculateDistances(liveDestinations, userLat, userLng)
     }
 
     val activeQuery = if (activeField == LocationFieldType.PICKUP) pickupInput else dropInput

@@ -32,6 +32,7 @@ data class AdminUiState(
     val sosAlerts: List<SosAlert> = emptyList(),
     val activeSosCount: Int = 0,
     val broadcasts: List<BroadcastAnnouncement> = emptyList(),
+    val popularDestinations: List<PopularDestination> = emptyList(),
     val isSubmittingAction: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -43,6 +44,7 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     private val adminRepo = AdminRepository(application)
     private val notifRepo = NotificationRepository(application)
     private val socketManager = com.speedo.core.socket.SpeedoSocketManager.getInstance(application)
+    private val destinationRepo = com.speedo.core.repository.PopularDestinationRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(AdminUiState())
     val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
@@ -58,6 +60,13 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeSocketEvents() {
         socketManager.connect()
         socketManager.joinAdminSupportRoom()
+
+        viewModelScope.launch {
+            destinationRepo.destinationsFlow.collect { dests ->
+                _uiState.value = _uiState.value.copy(popularDestinations = dests)
+            }
+        }
+
 
         viewModelScope.launch {
             socketManager.liveSosAlertFlow.collect { alert ->
@@ -517,4 +526,139 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
     }
+
+    fun fetchPopularDestinations() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            when (val res = destinationRepo.getAdminDestinations()) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(popularDestinations = res.data, isLoading = false)
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(errorMessage = res.message, isLoading = false)
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
+        }
+    }
+
+    fun createPopularDestination(
+        title: String,
+        subtitle: String,
+        category: String,
+        badge: String,
+        imageUrl: String,
+        lat: Double,
+        lng: Double,
+        address: String,
+        sortOrder: Int = 0
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingAction = true)
+            val body = mapOf(
+                "title" to title,
+                "subtitle" to subtitle,
+                "category" to category,
+                "badge" to badge,
+                "image_url" to imageUrl,
+                "lat" to lat,
+                "lng" to lng,
+                "address" to address,
+                "sort_order" to sortOrder
+            )
+            when (val res = destinationRepo.createDestination(body)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        successMessage = "Destination '${title}' created & broadcasted live!"
+                    )
+                    fetchPopularDestinations()
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
+                }
+            }
+        }
+    }
+
+    fun updatePopularDestination(
+        id: String,
+        title: String,
+        subtitle: String,
+        category: String,
+        badge: String,
+        imageUrl: String,
+        lat: Double,
+        lng: Double,
+        address: String,
+        isActive: Boolean = true,
+        sortOrder: Int = 0
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingAction = true)
+            val body = mapOf(
+                "title" to title,
+                "subtitle" to subtitle,
+                "category" to category,
+                "badge" to badge,
+                "image_url" to imageUrl,
+                "lat" to lat,
+                "lng" to lng,
+                "address" to address,
+                "is_active" to isActive,
+                "sort_order" to sortOrder
+            )
+            when (val res = destinationRepo.updateDestination(id, body)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        successMessage = "Destination '${title}' updated & broadcasted live!"
+                    )
+                    fetchPopularDestinations()
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
+                }
+            }
+        }
+    }
+
+    fun deletePopularDestination(id: String, title: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingAction = true)
+            when (val res = destinationRepo.deleteDestination(id)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        successMessage = "Destination '${title}' deleted & removed live from all apps!"
+                    )
+                    fetchPopularDestinations()
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
+                }
+            }
+        }
+    }
+
 }

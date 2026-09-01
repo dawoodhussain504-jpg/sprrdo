@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,8 +61,10 @@ fun RiderHomeScreen(
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchInitialFocusPickup by remember { mutableStateOf(false) }
 
-    val popularDestinations = remember(uiState.pickupLat, uiState.pickupLng) {
-        PopularDestinationsData.getDestinationsWithDistance(uiState.pickupLat, uiState.pickupLng)
+    val context = LocalContext.current
+    val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
+    val popularDestinations = remember(liveDestinations, uiState.pickupLat, uiState.pickupLng) {
+        PopularDestinationsData.calculateDistances(liveDestinations, uiState.pickupLat, uiState.pickupLng)
     }
     var showSafetySheet by remember { mutableStateOf(false) }
     var paymentMethod by remember { mutableStateOf("cash") } // "cash", "upi", "wallet"

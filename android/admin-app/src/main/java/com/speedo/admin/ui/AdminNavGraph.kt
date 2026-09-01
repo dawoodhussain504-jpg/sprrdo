@@ -24,6 +24,7 @@ sealed class AdminScreen(val route: String, val title: String, val icon: ImageVe
     object SurgeEngine : AdminScreen("surge_engine", "Surge & Geofencing", Icons.Default.Bolt)
     object SosCenter : AdminScreen("sos_center", "Emergency SOS Center", Icons.Default.Shield)
     object Broadcasts : AdminScreen("broadcasts", "City Broadcasts", Icons.Default.Campaign)
+    object Destinations : AdminScreen("destinations", "Popular Destinations", Icons.Default.Place)
     object LiveMap : AdminScreen("live_map", "Live Fleet Map", Icons.Default.Map)
     object Rides : AdminScreen("rides", "Ride Monitoring", Icons.Default.DirectionsCar)
     object Users : AdminScreen("users", "User Moderation", Icons.Default.People)
@@ -48,6 +49,7 @@ fun AdminMainScaffold(
         AdminScreen.SurgeEngine,
         AdminScreen.SosCenter,
         AdminScreen.Broadcasts,
+        AdminScreen.Destinations,
         AdminScreen.LiveMap,
         AdminScreen.Rides,
         AdminScreen.Users
@@ -185,6 +187,7 @@ fun AdminMainScaffold(
                     onNavigateToSurge = { navController.navigate(AdminScreen.SurgeEngine.route) },
                     onNavigateToSos = { navController.navigate(AdminScreen.SosCenter.route) },
                     onNavigateToBroadcasts = { navController.navigate(AdminScreen.Broadcasts.route) },
+                onNavigateToDestinations = { navController.navigate(AdminScreen.Destinations.route) },
                     onNavigateToMap = { navController.navigate(AdminScreen.LiveMap.route) },
                     onNavigateToRides = { navController.navigate(AdminScreen.Rides.route) },
                     onNavigateToUsers = { navController.navigate(AdminScreen.Users.route) }
@@ -212,7 +215,13 @@ fun AdminMainScaffold(
                 )
             }
 
-            composable(AdminScreen.Broadcasts.route) {
+                    composable(AdminScreen.Destinations.route) {
+            ManagePopularDestinationsScreen(
+                viewModel = viewModel,
+                onMenuClick = { scope.launch { drawerState.open() } }
+            )
+        }
+        composable(AdminScreen.Broadcasts.route) {
                 CityBroadcastScreen(
                     viewModel = viewModel,
                     onMenuClick = { scope.launch { drawerState.open() } }

@@ -32,6 +32,7 @@ fun AdminDashboardScreen(
     onNavigateToSurge: () -> Unit,
     onNavigateToSos: () -> Unit,
     onNavigateToBroadcasts: () -> Unit,
+    onNavigateToDestinations: () -> Unit = {},
     onNavigateToMap: () -> Unit,
     onNavigateToRides: () -> Unit,
     onNavigateToUsers: () -> Unit
@@ -245,6 +246,15 @@ fun AdminDashboardScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+
+            AdminShortcutRow(
+                icon = Icons.Default.Place,
+                title = "Popular Destinations Management",
+                subtitle = "Add, edit, or delete live thumbnail landmarks for riders & captains",
+                onClick = onNavigateToDestinations
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
             AdminShortcutRow(
                 icon = Icons.Default.Campaign,
                 title = "Targeted City-Wide Broadcasts",

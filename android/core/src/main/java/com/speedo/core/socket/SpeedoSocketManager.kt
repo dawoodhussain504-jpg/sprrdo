@@ -83,6 +83,9 @@ class SpeedoSocketManager private constructor(private val context: Context) {
     private val _liveBroadcastFlow = MutableSharedFlow<com.speedo.core.model.BroadcastAnnouncement>(extraBufferCapacity = 32)
     val liveBroadcastFlow: SharedFlow<com.speedo.core.model.BroadcastAnnouncement> = _liveBroadcastFlow.asSharedFlow()
 
+    private val _liveDestinationsUpdatedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
+    val liveDestinationsUpdatedFlow: SharedFlow<Unit> = _liveDestinationsUpdatedFlow.asSharedFlow()
+
     companion object {
         private const val TAG = "SpeedoSocket"
 
@@ -355,6 +358,15 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                 }
 
                 // 9. Targeted City-Wide Broadcasts (Real-time Mass Notification)
+                on("destinations:updated") {
+                    Log.i(TAG, "📍 WebSocket: Popular destinations updated on server, emitting refresh")
+                    scope.launch { _liveDestinationsUpdatedFlow.emit(Unit) }
+                }
+                on("popular_destinations_updated") {
+                    Log.i(TAG, "📍 WebSocket: Popular destinations updated on server, emitting refresh")
+                    scope.launch { _liveDestinationsUpdatedFlow.emit(Unit) }
+                }
+
                 on("broadcast:announcement") { args ->
                     try {
                         val raw = args.getOrNull(0) ?: return@on

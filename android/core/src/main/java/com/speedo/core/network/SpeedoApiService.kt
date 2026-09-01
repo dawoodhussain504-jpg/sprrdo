@@ -273,4 +273,28 @@ interface SpeedoApiService {
         @Path("ticketId") ticketId: String,
         @Body body: Map<String, String>
     ): Response<ApiResponse<Any>>
+
+    // --- POPULAR DESTINATIONS (REAL-TIME MANAGEMENT) ---
+    @GET("destinations")
+    suspend fun getPopularDestinations(): Response<ApiResponse<List<PopularDestination>>>
+
+    @GET("admin/destinations")
+    suspend fun getAdminPopularDestinations(): Response<ApiResponse<List<PopularDestination>>>
+
+    @POST("admin/destinations")
+    suspend fun createPopularDestination(
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<ApiResponse<PopularDestination>>
+
+    @PUT("admin/destinations/{id}")
+    suspend fun updatePopularDestination(
+        @Path("id") id: String,
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Response<ApiResponse<PopularDestination>>
+
+    @DELETE("admin/destinations/{id}")
+    suspend fun deletePopularDestination(
+        @Path("id") id: String
+    ): Response<ApiResponse<Any>>
+
 }

@@ -49,8 +49,9 @@ fun CaptainDashboardScreen(
     var captainBearing by remember { mutableStateOf(captain?.bearing?.toFloat() ?: 0f) }
     var recenterTrigger by remember { mutableStateOf(1L) }
 
-    val popularDestinations = remember(captainLat, captainLng) {
-        PopularDestinationsData.getDestinationsWithDistance(captainLat, captainLng)
+    val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
+    val popularDestinations = remember(liveDestinations, captainLat, captainLng) {
+        PopularDestinationsData.calculateDistances(liveDestinations, captainLat, captainLng)
     }
 
     LaunchedEffect(Unit) {

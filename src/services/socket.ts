@@ -323,3 +323,12 @@ export function emitBroadcast(payload: any) {
     io.emit('broadcast:announcement', payload);
   }
 }
+
+export function emitPopularDestinationsUpdate(payload: any) {
+  if (io) {
+    console.log(`📍 [SOCKET POPULAR DESTINATIONS UPDATE] Emitting destinations change:`, payload);
+    io.emit('destinations:updated', payload);
+    io.emit('popular_destinations_updated', payload);
+  }
+}
+
