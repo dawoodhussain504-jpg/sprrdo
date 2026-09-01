@@ -710,3 +710,134 @@ fun DynamicUpiQrPaymentSheet(
         }
     }
 }
+
+/**
+ * Visual Thumbnail Card for High Demand Zones / Hotspots for Captains
+ */
+@Composable
+fun CaptainHotspotThumbnailCard(
+    destination: com.speedo.core.model.PopularDestination,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = SpeedoWhite,
+        border = BorderStroke(1.dp, SpeedoCardBorder),
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .width(185.dp)
+            .clickable { onClick() }
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .background(SpeedoSurfaceVariant)
+            ) {
+                coil.compose.AsyncImage(
+                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                        .data(destination.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = destination.title,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Scrim gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
+                                startY = 35f
+                            )
+                        )
+                )
+
+                // Surge / High Demand Badge
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0xFFF57F17),
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Whatshot,
+                            contentDescription = null,
+                            tint = SpeedoWhite,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "HIGH DEMAND",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = SpeedoWhite,
+                                fontSize = 9.sp
+                            )
+                        )
+                    }
+                }
+
+                if (destination.distanceKm != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = SpeedoWhite.copy(alpha = 0.95f),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NearMe,
+                                contentDescription = null,
+                                tint = SpeedoOrange,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = String.format("%.1f km", destination.distanceKm),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = RapidoCaptainBlack,
+                                    fontSize = 10.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.padding(10.dp)) {
+                Text(
+                    text = destination.title,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = RapidoCaptainBlack
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = destination.subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = SpeedoTextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+

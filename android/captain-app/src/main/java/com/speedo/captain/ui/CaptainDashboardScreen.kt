@@ -28,6 +28,10 @@ import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
 import com.speedo.core.maps.OsmMapView
 import com.speedo.core.theme.*
+import com.speedo.core.model.PopularDestinationsData
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.speedo.captain.ui.components.CaptainHotspotThumbnailCard
 
 @Composable
 fun CaptainDashboardScreen(
@@ -44,6 +48,10 @@ fun CaptainDashboardScreen(
     var captainLng by remember { mutableStateOf(captain?.lng ?: 77.5946) }
     var captainBearing by remember { mutableStateOf(captain?.bearing?.toFloat() ?: 0f) }
     var recenterTrigger by remember { mutableStateOf(1L) }
+
+    val popularDestinations = remember(captainLat, captainLng) {
+        PopularDestinationsData.getDestinationsWithDistance(captainLat, captainLng)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.fetchProfile()
@@ -234,7 +242,7 @@ fun CaptainDashboardScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 18.dp)
             ) {
-                // Demand Heatmap Strip
+                // Demand Heatmap Strip & High-Demand Passenger Hubs
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -242,17 +250,64 @@ fun CaptainDashboardScreen(
                     border = BorderStroke(1.dp, RapidoCaptainYellowDark)
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Whatshot, contentDescription = null, tint = Color(0xFFF57F17), modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Icon(Icons.Default.Whatshot, contentDescription = null, tint = Color(0xFFF57F17), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "High Ride Demand in Indiranagar • Extra ₹15 per trip",
+                            text = "Surge Active in High-Demand Zones • Extra ₹15 - ₹40 per trip",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFB78103)
                             )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // High Demand Passenger Hubs Carousel with Place Images
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "High Ride Demand Hotspots",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RapidoCaptainBlack
+                            )
+                        )
+                    }
+                    Text(
+                        text = "Tap to navigate",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = SpeedoTextSecondary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(items = popularDestinations, key = { it.id }) { dest ->
+                        CaptainHotspotThumbnailCard(
+                            destination = dest,
+                            onClick = {
+                                captainLat = dest.lat
+                                captainLng = dest.lng
+                                recenterTrigger = System.currentTimeMillis()
+                                android.widget.Toast.makeText(context, "Navigating to High Demand Hub: ${dest.title}", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         )
                     }
                 }

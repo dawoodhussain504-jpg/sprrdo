@@ -51,6 +51,21 @@ fun CaptainActiveRideScreen(
     var showChatSheet by remember { mutableStateOf(false) }
     var showSosDialog by remember { mutableStateOf(false) }
     var recenterTrigger by remember { mutableStateOf(1L) }
+    var captainLat by remember { mutableStateOf(currentRide?.pickupLat ?: 12.9716) }
+    var captainLng by remember { mutableStateOf(currentRide?.pickupLng ?: 77.5946) }
+    var captainBearing by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(Unit) {
+        val locHelper = com.speedo.core.maps.LocationHelper(context)
+        locHelper.getCurrentLiveLocation(
+            onSuccess = { loc ->
+                captainLat = loc.lat
+                captainLng = loc.lng
+                captainBearing = loc.bearing
+                recenterTrigger = System.currentTimeMillis()
+            }
+        )
+    }
 
     LaunchedEffect(currentRide?.id) {
         if (currentRide != null) {
@@ -83,15 +98,38 @@ fun CaptainActiveRideScreen(
 
     val ride = currentRide
 
-    val mapMarkers = remember(ride.pickupLat, ride.dropLat, ride.status) {
-        listOf(
+    val mapMarkers = remember(ride.pickupLat, ride.dropLat, ride.status, captainLat, captainLng, captainBearing, uiState.captain) {
+        val list = mutableListOf<MapMarkerData>()
+
+        // 1. Captain's Live Moving Top-View Vehicle
+        list.add(
             MapMarkerData(
-                id = "pickup",
-                lat = ride.pickupLat,
-                lng = ride.pickupLng,
-                title = "Rider Pickup: ${ride.pickupAddress}",
-                markerType = MarkerType.PICKUP
-            ),
+                id = "captain_live_vehicle",
+                lat = captainLat,
+                lng = captainLng,
+                title = "You (${uiState.captain?.vehicleType?.uppercase() ?: "BIKE"})",
+                snippet = uiState.captain?.vehicleNumber ?: "Speedo Captain",
+                markerType = MarkerType.CAPTAIN,
+                bearing = captainBearing,
+                vehicleType = uiState.captain?.vehicleType ?: "bike"
+            )
+        )
+
+        // 2. Rider Pickup Marker (Shown until trip is ongoing)
+        if (ride.status != "ongoing") {
+            list.add(
+                MapMarkerData(
+                    id = "pickup",
+                    lat = ride.pickupLat,
+                    lng = ride.pickupLng,
+                    title = "Rider Pickup: ${ride.pickupAddress}",
+                    markerType = MarkerType.PICKUP
+                )
+            )
+        }
+
+        // 3. Destination Marker
+        list.add(
             MapMarkerData(
                 id = "drop",
                 lat = ride.dropLat,
@@ -100,6 +138,20 @@ fun CaptainActiveRideScreen(
                 markerType = MarkerType.DROP
             )
         )
+
+        list
+    }
+
+    // Driver-to-pickup amber polyline
+    val driverPolyline = remember(captainLat, captainLng, ride.pickupLat, ride.pickupLng, ride.status) {
+        if (ride.status in listOf("accepted", "arrived")) {
+            RouteHelper.generateSplineGeoPoints(
+                GeoPoint(captainLat, captainLng),
+                GeoPoint(ride.pickupLat, ride.pickupLng)
+            )
+        } else {
+            emptyList()
+        }
     }
 
     val polylinePoints = remember(uiState.roadPolyline, ride.pickupLat, ride.pickupLng, ride.dropLat, ride.dropLng) {
@@ -117,12 +169,13 @@ fun CaptainActiveRideScreen(
         // 1. Navigation Vector Map with Road-Snapped Curves
         OsmMapView(
             modifier = Modifier.fillMaxSize(),
-            centerLat = if (ride.status == "ongoing") ride.dropLat else ride.pickupLat,
-            centerLng = if (ride.status == "ongoing") ride.dropLng else ride.pickupLng,
-            zoomLevel = 15.5,
+            centerLat = if (ride.status == "ongoing") ride.dropLat else if (ride.status in listOf("accepted", "arrived")) captainLat else ride.pickupLat,
+            centerLng = if (ride.status == "ongoing") ride.dropLng else if (ride.status in listOf("accepted", "arrived")) captainLng else ride.pickupLng,
+            zoomLevel = 16.0,
             recenterTrigger = recenterTrigger,
             markers = mapMarkers,
             polylinePoints = polylinePoints,
+            driverPolylinePoints = driverPolyline,
             autoFitBounds = true
         )
 
