@@ -37,6 +37,8 @@ if (!fs.existsSync(uploadDir)) {
 }
 app.use('/uploads', express.static(uploadDir));
 
+const GITHUB_CDN_BASE = 'https://raw.githubusercontent.com/dawoodhussain504-jpg/sprrdo/main/downloads';
+
 // Serve APK downloads directly for Over-the-Air App Updates
 const downloadsDir = path.resolve(__dirname, '../downloads');
 if (!fs.existsSync(downloadsDir)) {
@@ -44,13 +46,41 @@ if (!fs.existsSync(downloadsDir)) {
 }
 app.use('/downloads', express.static(downloadsDir));
 
+// Fallback for direct APK requests if not stored locally in container
+app.get('/downloads/speedo-rider.apk', (_req, res) => {
+  const file = path.join(downloadsDir, 'speedo-rider.apk');
+  if (fs.existsSync(file)) {
+    res.download(file, 'speedo-rider.apk');
+  } else {
+    res.redirect(`${GITHUB_CDN_BASE}/speedo-rider.apk`);
+  }
+});
+
+app.get('/downloads/speedo-captain.apk', (_req, res) => {
+  const file = path.join(downloadsDir, 'speedo-captain.apk');
+  if (fs.existsSync(file)) {
+    res.download(file, 'speedo-captain.apk');
+  } else {
+    res.redirect(`${GITHUB_CDN_BASE}/speedo-captain.apk`);
+  }
+});
+
+app.get('/downloads/speedo-admin.apk', (_req, res) => {
+  const file = path.join(downloadsDir, 'speedo-admin.apk');
+  if (fs.existsSync(file)) {
+    res.download(file, 'speedo-admin.apk');
+  } else {
+    res.redirect(`${GITHUB_CDN_BASE}/speedo-admin.apk`);
+  }
+});
+
 // Direct download shortcuts
 app.get('/download/rider', (_req, res) => {
   const file = path.join(downloadsDir, 'speedo-rider.apk');
   if (fs.existsSync(file)) {
     res.download(file, 'speedo-rider.apk');
   } else {
-    res.redirect('/downloads/speedo-rider.apk');
+    res.redirect(`${GITHUB_CDN_BASE}/speedo-rider.apk`);
   }
 });
 
@@ -59,7 +89,7 @@ app.get('/download/captain', (_req, res) => {
   if (fs.existsSync(file)) {
     res.download(file, 'speedo-captain.apk');
   } else {
-    res.redirect('/downloads/speedo-captain.apk');
+    res.redirect(`${GITHUB_CDN_BASE}/speedo-captain.apk`);
   }
 });
 
@@ -68,7 +98,7 @@ app.get('/download/admin', (_req, res) => {
   if (fs.existsSync(file)) {
     res.download(file, 'speedo-admin.apk');
   } else {
-    res.redirect('/downloads/speedo-admin.apk');
+    res.redirect(`${GITHUB_CDN_BASE}/speedo-admin.apk`);
   }
 });
 
