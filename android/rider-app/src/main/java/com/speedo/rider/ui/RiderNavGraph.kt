@@ -32,10 +32,13 @@ fun RiderMainScaffold(
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences("speedo_rider_prefs", android.content.Context.MODE_PRIVATE) }
 
-    // 0. Over-the-Air Version Check & Update Overlays
+    // 0. Over-the-Air Version Check & Update Overlays (Never show if already updated)
     val appUpdate = uiState.appUpdateState
-    if (appUpdate.isForceUpdate) {
-        com.speedo.core.components.ForceUpdateOverlay(promptState = appUpdate)
+    if (appUpdate.isUpdateAvailable && appUpdate.isForceUpdate && !appUpdate.isDismissed) {
+        com.speedo.core.components.ForceUpdateOverlay(
+            promptState = appUpdate,
+            onDismiss = { viewModel.dismissFlexibleUpdate() }
+        )
         return
     }
 

@@ -91,7 +91,8 @@ fun openUpdateUrl(context: Context, url: String?) {
  */
 @Composable
 fun ForceUpdateOverlay(
-    promptState: AppUpdatePromptState
+    promptState: AppUpdatePromptState,
+    onDismiss: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val config = promptState.config
@@ -269,6 +270,7 @@ fun ForceUpdateOverlay(
                     leadingIcon = Icons.Default.OpenInBrowser,
                     onClick = {
                         openBrowserForUpdate(context, config?.updateUrl)
+                        onDismiss()
                     }
                 )
 
@@ -279,6 +281,7 @@ fun ForceUpdateOverlay(
                     onClick = {
                         val fileName = "speedo-${config?.appId ?: "app"}-v${config?.latestVersionName ?: "latest"}.apk"
                         downloadApkViaDownloadManager(context, config?.updateUrl, fileName)
+                        onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
@@ -289,10 +292,19 @@ fun ForceUpdateOverlay(
                     Text("DIRECT DOWNLOAD IN APP", fontWeight = FontWeight.Bold, color = SpeedoOrange)
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Already updated or downloaded? Dismiss", color = SpeedoTextSecondary, style = MaterialTheme.typography.bodySmall)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "You cannot use older versions due to essential real-time database updates.",
+                    text = "Ensure you are using the latest version for real-time tracking.",
                     style = MaterialTheme.typography.labelSmall.copy(color = SpeedoTextTertiary),
                     textAlign = TextAlign.Center
                 )
@@ -376,6 +388,7 @@ fun FlexibleUpdateDialog(
                 Button(
                     onClick = {
                         openBrowserForUpdate(context, config?.updateUrl)
+                        onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),
@@ -390,6 +403,7 @@ fun FlexibleUpdateDialog(
                     onClick = {
                         val fileName = "speedo-${config?.appId ?: "app"}-v${config?.latestVersionName ?: "latest"}.apk"
                         downloadApkViaDownloadManager(context, config?.updateUrl, fileName)
+                        onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),

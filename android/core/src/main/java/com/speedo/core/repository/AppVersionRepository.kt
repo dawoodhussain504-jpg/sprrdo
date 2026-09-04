@@ -34,8 +34,10 @@ class AppVersionRepository(private val context: Context) {
             val res = apiService.getAppVersion(app = appId, currentVersion = currentCode)
             if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
                 val config = res.body()!!.data!!
-                val isForce = config.forceUpdate || (currentCode < config.minSupportedVersionCode)
-                val isAvailable = (currentCode < config.latestVersionCode) || isForce
+                // If user is already on latest version (or newer), do not show update dialog!
+                val hasUpdate = currentCode < config.latestVersionCode
+                val isForce = hasUpdate && (config.forceUpdate || (currentCode < config.minSupportedVersionCode))
+                val isAvailable = hasUpdate
 
                 if (isAvailable) {
                     NotificationHelper.showAppUpdateNotification(

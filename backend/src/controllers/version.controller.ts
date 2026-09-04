@@ -27,10 +27,11 @@ function formatRow(row: any, currentCode?: number): AppVersionConfigResponse {
   let isForceUpdate = false;
 
   if (currentCode !== undefined && !isNaN(currentCode)) {
+    // If the user is already on the latest version or higher, NO update is available or forced!
     isUpdateAvailable = currentCode < latestCode;
-    isForceUpdate = forceUpdateFlag || currentCode < minCode;
+    isForceUpdate = isUpdateAvailable && (forceUpdateFlag || currentCode < minCode);
   } else {
-    isForceUpdate = forceUpdateFlag;
+    isForceUpdate = false;
   }
 
   return {
