@@ -66,9 +66,25 @@ export async function getAppVersionConfig(req: Request, res: Response) {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: `Version configuration not found for app: ${appId}`,
+      const defaultName = `Speedo ${appId.charAt(0).toUpperCase() + appId.slice(1)}`;
+      await db.query(
+        `INSERT INTO app_version_configs
+         (app_id, app_name, latest_version_code, latest_version_name, min_supported_version_code, force_update, title, message, release_notes, update_url, is_active, updated_at)
+         VALUES ($1, $2, 1, '1.0.0', 1, 0, $3, $4, $5, $6, 1, CURRENT_TIMESTAMP)`,
+        [
+          appId,
+          defaultName,
+          `New ${defaultName} Update Available 🚀`,
+          'A new version of Speedo is available with new features and improvements.',
+          '• Performance enhancements\n• Bug fixes and new destinations',
+          `https://play.google.com/store/apps/details?id=com.speedo.${appId}`
+        ]
+      );
+      const newResult = await db.query('SELECT * FROM app_version_configs WHERE app_id = $1 LIMIT 1', [appId]);
+      const config = formatRow(newResult.rows[0], currentCode);
+      return res.status(200).json({
+        success: true,
+        data: config,
       });
     }
 
