@@ -457,6 +457,7 @@ fun FlexibleUpdateDialog(
                 else -> { // Idle
                     Button(
                         onClick = {
+                            onDismiss()
                             InAppUpdateManager.startDownloadAndInstall(context, targetUrl)
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -469,17 +470,19 @@ fun FlexibleUpdateDialog(
             }
         },
         dismissButton = {
-            if (downloadStatus !is DownloadStatus.Downloading) {
-                OutlinedButton(
-                    onClick = {
-                        InAppUpdateManager.reset()
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Later", color = SpeedoTextSecondary)
-                }
+            OutlinedButton(
+                onClick = {
+                    try {
+                        val prefs = context.getSharedPreferences("speedo_update_prefs", Context.MODE_PRIVATE)
+                        prefs.edit().putInt("dismissed_update_version_code", promptState.latestVersionCode).apply()
+                    } catch (_: Exception) {}
+                    InAppUpdateManager.reset()
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Later", color = SpeedoTextSecondary, fontWeight = FontWeight.SemiBold)
             }
         },
         shape = RoundedCornerShape(20.dp),

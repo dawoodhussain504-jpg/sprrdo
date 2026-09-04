@@ -187,6 +187,14 @@ async function startServer() {
       console.log('⚠️ Patch info:', patchErr.message);
     }
 
+    // Automated App Version Synchronization & Broadcast
+    try {
+      const { syncAppVersions } = await import('./services/app-version-sync.service');
+      await syncAppVersions(true);
+    } catch (syncErr: any) {
+      console.log('⚠️ App version sync info:', syncErr.message);
+    }
+
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`====================================================`);
       console.log(` SPEEDO REAL-TIME BACKEND & SOCKETS RUNNING ON ${PORT}`);

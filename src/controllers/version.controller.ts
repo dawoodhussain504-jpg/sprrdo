@@ -57,6 +57,11 @@ function formatRow(row: any, currentCode?: number): AppVersionConfigResponse {
  */
 export async function getAppVersionConfig(req: Request, res: Response) {
   try {
+    try {
+      const { syncAppVersions } = await import('../services/app-version-sync.service');
+      await syncAppVersions(false);
+    } catch (_) {}
+
     const db = getDb();
     const appId = String(req.query.app || 'rider').toLowerCase();
     const currentCodeStr = req.query.currentVersion as string | undefined;

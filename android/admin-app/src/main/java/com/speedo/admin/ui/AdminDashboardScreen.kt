@@ -36,8 +36,7 @@ fun AdminDashboardScreen(
     onNavigateToMap: () -> Unit,
     onNavigateToRides: () -> Unit,
     onNavigateToUsers: () -> Unit,
-    onNavigateToDeletions: () -> Unit = {},
-    onNavigateToVersions: () -> Unit = {}
+    onNavigateToDeletions: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val stats = uiState.dashboardStats
@@ -299,14 +298,6 @@ fun AdminDashboardScreen(
                 title = "User Moderation & Access Control",
                 subtitle = "Inspect riders and captains, manage accounts and permissions",
                 onClick = onNavigateToUsers
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-            AdminShortcutRow(
-                icon = Icons.Default.RocketLaunch,
-                title = "App Versions & Over-the-Air Updates",
-                subtitle = "Configure latest build codes, force-update toggles, and store URLs",
-                onClick = onNavigateToVersions
             )
         }
     }

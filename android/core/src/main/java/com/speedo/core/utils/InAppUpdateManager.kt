@@ -112,7 +112,7 @@ object InAppUpdateManager {
         downloadJob?.cancel()
 
         _status.value = DownloadStatus.Downloading(0f, 0L, 0L)
-        Toast.makeText(context, "Downloading update in app...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Downloading update in background... You can continue using Speedo.", Toast.LENGTH_LONG).show()
 
         downloadJob = scope.launch(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
@@ -175,6 +175,7 @@ object InAppUpdateManager {
                 while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                     if (!isActive) {
                         destFile.delete()
+                        NotificationHelper.cancelDownloadProgressNotification(context)
                         return@launch
                     }
 
@@ -182,18 +183,21 @@ object InAppUpdateManager {
                     downloadedBytes += bytesRead
 
                     val now = System.currentTimeMillis()
-                    if (now - lastProgressUpdate > 100 || downloadedBytes >= totalBytes) {
+                    if (now - lastProgressUpdate > 300 || downloadedBytes >= totalBytes) {
                         lastProgressUpdate = now
                         val rawProgress = (downloadedBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                        val progressPercent = (rawProgress * 100).toInt()
                         _status.value = DownloadStatus.Downloading(
                             progress = rawProgress,
                             downloadedBytes = downloadedBytes,
                             totalBytes = totalBytes
                         )
+                        NotificationHelper.showDownloadProgressNotification(context, progressPercent, downloadedBytes, totalBytes)
                     }
                 }
 
                 outputStream.flush()
+                NotificationHelper.cancelDownloadProgressNotification(context)
 
                 // LOOP-BREAKER GUARD: Inspect downloaded APK before installing
                 val pInfo = try { context.packageManager.getPackageInfo(context.packageName, 0) } catch (_: Exception) { null }
@@ -228,8 +232,12 @@ object InAppUpdateManager {
                     prefs.edit().putInt("dismissed_update_version_code", downloadedCode).apply()
                 } catch (_: Exception) {}
 
+                // Show completion notification in Android tray with 1-tap install action
+                NotificationHelper.showUpdateDownloadedNotification(context, destFile)
+
                 // Trigger package installation on Main thread
                 withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Update downloaded! Launching installer...", Toast.LENGTH_SHORT).show()
                     if (canRequestPackageInstalls(context)) {
                         installApk(context, destFile)
                     } else {
@@ -239,8 +247,9 @@ object InAppUpdateManager {
                 }
 
             } catch (e: CancellationException) {
-                // Job cancelled
+                NotificationHelper.cancelDownloadProgressNotification(context)
             } catch (e: Exception) {
+                NotificationHelper.cancelDownloadProgressNotification(context)
                 _status.value = DownloadStatus.Failed(e.message ?: "Failed to download update")
                 withContext(Dispatchers.Main) {
                     Toast.makeText(context, "In-app download failed: ${e.message}. You can update via browser.", Toast.LENGTH_LONG).show()

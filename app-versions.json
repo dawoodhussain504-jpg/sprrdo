@@ -1,0 +1,23 @@
+{
+  "rider": {
+    "versionCode": 3,
+    "versionName": "1.0.3",
+    "title": "Speedo Rider Update Available 🚀",
+    "message": "A new version of Speedo Rider is ready with the latest improvements. Update now or choose later.",
+    "forceUpdate": false
+  },
+  "captain": {
+    "versionCode": 3,
+    "versionName": "1.0.3",
+    "title": "Speedo Captain Update Available 🚀",
+    "message": "A new version of Speedo Captain is ready with the latest improvements. Update now or choose later.",
+    "forceUpdate": false
+  },
+  "admin": {
+    "versionCode": 3,
+    "versionName": "1.0.3",
+    "title": "Speedo Admin Update Available 🚀",
+    "message": "A new version of Speedo Admin is ready with the latest improvements. Update now or choose later.",
+    "forceUpdate": false
+  }
+}

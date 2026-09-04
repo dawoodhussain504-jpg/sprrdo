@@ -169,4 +169,84 @@ object NotificationHelper {
             // Safe fallback if permission is missing on Android 13+
         }
     }
+
+    fun showDownloadProgressNotification(
+        context: Context,
+        progressPercent: Int,
+        downloadedBytes: Long,
+        totalBytes: Long
+    ) {
+        createNotificationChannels(context)
+
+        val sizeText = "${InAppUpdateManager.formatFileSize(downloadedBytes)} / ${InAppUpdateManager.formatFileSize(totalBytes)}"
+        val builder = NotificationCompat.Builder(context, Constants.CHANNEL_APP_UPDATES)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setContentTitle("Speedo Update: Downloading ($progressPercent%)")
+            .setContentText(sizeText)
+            .setProgress(100, progressPercent, false)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+
+        try {
+            NotificationManagerCompat.from(context).notify(
+                Constants.NOTIFICATION_ID_APP_UPDATE_PROGRESS,
+                builder.build()
+            )
+        } catch (_: Exception) {}
+    }
+
+    fun cancelDownloadProgressNotification(context: Context) {
+        try {
+            NotificationManagerCompat.from(context).cancel(Constants.NOTIFICATION_ID_APP_UPDATE_PROGRESS)
+        } catch (_: Exception) {}
+    }
+
+    fun showUpdateDownloadedNotification(
+        context: Context,
+        apkFile: java.io.File
+    ) {
+        createNotificationChannels(context)
+        cancelDownloadProgressNotification(context)
+
+        try {
+            val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                Constants.NOTIFICATION_ID_APP_UPDATE,
+                installIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = NotificationCompat.Builder(context, Constants.CHANNEL_APP_UPDATES)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Speedo Update Ready to Install 🚀")
+                .setContentText("Download completed. Tap to finish updating Speedo.")
+                .setStyle(NotificationCompat.BigTextStyle().bigText("Download completed. Tap here to install and finish updating the app."))
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .addAction(
+                    android.R.drawable.stat_sys_download_done,
+                    "Install Now",
+                    pendingIntent
+                )
+
+            NotificationManagerCompat.from(context).notify(
+                Constants.NOTIFICATION_ID_APP_UPDATE,
+                builder.build()
+            )
+        } catch (_: Exception) {}
+    }
 }
