@@ -67,6 +67,7 @@ export async function getAppVersionConfig(req: Request, res: Response) {
 
     if (result.rows.length === 0) {
       const defaultName = `Speedo ${appId.charAt(0).toUpperCase() + appId.slice(1)}`;
+      const defaultUrl = `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
       await db.query(
         `INSERT INTO app_version_configs
          (app_id, app_name, latest_version_code, latest_version_name, min_supported_version_code, force_update, title, message, release_notes, update_url, is_active, updated_at)
@@ -77,7 +78,7 @@ export async function getAppVersionConfig(req: Request, res: Response) {
           `New ${defaultName} Update Available 🚀`,
           'A new version of Speedo is available with new features and improvements.',
           '• Performance enhancements\n• Bug fixes and new destinations',
-          `https://play.google.com/store/apps/details?id=com.speedo.${appId}`
+          defaultUrl
         ]
       );
       const newResult = await db.query('SELECT * FROM app_version_configs WHERE app_id = $1 LIMIT 1', [appId]);
@@ -88,7 +89,15 @@ export async function getAppVersionConfig(req: Request, res: Response) {
       });
     }
 
-    const config = formatRow(result.rows[0], currentCode);
+    // Auto-migrate play store placeholder to direct APK download link if set
+    let row = result.rows[0];
+    if (row.update_url && row.update_url.includes('play.google.com')) {
+      const directUrl = `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
+      await db.query('UPDATE app_version_configs SET update_url = $1 WHERE app_id = $2', [directUrl, appId]);
+      row.update_url = directUrl;
+    }
+
+    const config = formatRow(row, currentCode);
 
     return res.status(200).json({
       success: true,
@@ -169,7 +178,7 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
           title || 'Update Available',
           message || 'Please update your app to continue.',
           releaseNotes || null,
-          updateUrl || 'https://play.google.com/store/apps/details?id=com.speedo',
+          updateUrl || `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`,
           isActive !== false ? 1 : 0,
         ]
       );

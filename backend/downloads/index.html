@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speedo App Downloads | Latest Official Builds</title>
+  <style>
+    :root {
+      --primary: #FF5722;
+      --primary-dark: #E64A19;
+      --bg: #0F172A;
+      --card-bg: #1E293B;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border: #334155;
+      --success: #10B981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    .header { text-align: center; max-width: 600px; margin-bottom: 40px; }
+    .logo-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--primary);
+      color: white;
+      font-size: 32px;
+      font-weight: 900;
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 25px rgba(255, 87, 34, 0.4);
+    }
+    h1 { font-size: 32px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px; }
+    p.subtitle { color: var(--text-muted); font-size: 16px; line-height: 1.5; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      width: 100%;
+      max-width: 1050px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+      border-color: var(--primary);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .card-icon {
+      font-size: 32px;
+      background: rgba(255, 87, 34, 0.15);
+      border-radius: 14px;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-title { font-size: 20px; font-weight: 700; color: white; }
+    .version-tag {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-top: 4px;
+    }
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      flex-grow: 1;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 14px 20px;
+      border-radius: 12px;
+      transition: background 0.2s ease;
+      box-shadow: 0 4px 14px rgba(255, 87, 34, 0.3);
+    }
+    .btn:hover { background: var(--primary-dark); }
+    .notice {
+      margin-top: 50px;
+      max-width: 600px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo-badge">⚡</div>
+    <h1>Speedo App Download Center</h1>
+    <p class="subtitle">Official latest builds with real-time Over-the-Air updates, live GPS tracking, and popular destination suggestions.</p>
+  </div>
+
+  <div class="grid">
+    <!-- Rider App Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🛵</div>
+        <div>
+          <div class="card-title">Speedo Rider App</div>
+          <span class="version-tag">Build v1.0.0 (Latest)</span>
+        </div>
+      </div>
+      <div class="card-desc">
+        Book Moto, Auto, and Cab rides with sub-second driver location tracking, popular destination thumbnails, and 24-hour profile deletion.
+      </div>
+      <a href="/downloads/speedo-rider.apk" class="btn" download>
+        <span>⬇️ Download Rider APK (~21 MB)</span>
+      </a>
+    </div>
+
+    <!-- Captain App Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">👨‍✈️</div>
+        <div>
+          <div class="card-title">Speedo Captain App</div>
+          <span class="version-tag">Build v1.0.0 (Latest)</span>
+        </div>
+      </div>
+      <div class="card-desc">
+        Accept nearby ride requests, navigate live turn-by-turn routes with high demand hotspots, vehicle registration verification, and earnings tracking.
+      </div>
+      <a href="/downloads/speedo-captain.apk" class="btn" download>
+        <span>⬇️ Download Captain APK (~21 MB)</span>
+      </a>
+    </div>
+
+    <!-- Admin App Card -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">🛡️</div>
+        <div>
+          <div class="card-title">Speedo Admin App</div>
+          <span class="version-tag">Build v1.0.0 (Latest)</span>
+        </div>
+      </div>
+      <div class="card-desc">
+        Real-time command center: live fleet map, instant OCR document verification, surge zones, SOS monitoring, and over-the-air app version controls.
+      </div>
+      <a href="/downloads/speedo-admin.apk" class="btn" download>
+        <span>⬇️ Download Admin APK (~21 MB)</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="notice">
+    <strong>💡 Installation Guide:</strong> When installing directly on Android, tap <em>"Download Anyway"</em> if prompted by Chrome, then tap <em>"Install"</em>. If prompted for permissions, allow <em>"Install unknown apps"</em> for your browser.
+  </div>
+
+</body>
+</html>

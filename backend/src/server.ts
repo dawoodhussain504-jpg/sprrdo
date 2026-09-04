@@ -3,6 +3,7 @@ import { getAppVersionConfig } from './controllers/version.controller';
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
@@ -31,7 +32,45 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded KYC documents, selfies, and payment QR codes statically
 const uploadDir = path.resolve(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 app.use('/uploads', express.static(uploadDir));
+
+// Serve APK downloads directly for Over-the-Air App Updates
+const downloadsDir = path.resolve(__dirname, '../downloads');
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+}
+app.use('/downloads', express.static(downloadsDir));
+
+// Direct download shortcuts
+app.get('/download/rider', (_req, res) => {
+  const file = path.join(downloadsDir, 'speedo-rider.apk');
+  if (fs.existsSync(file)) {
+    res.download(file, 'speedo-rider.apk');
+  } else {
+    res.redirect('/downloads/speedo-rider.apk');
+  }
+});
+
+app.get('/download/captain', (_req, res) => {
+  const file = path.join(downloadsDir, 'speedo-captain.apk');
+  if (fs.existsSync(file)) {
+    res.download(file, 'speedo-captain.apk');
+  } else {
+    res.redirect('/downloads/speedo-captain.apk');
+  }
+});
+
+app.get('/download/admin', (_req, res) => {
+  const file = path.join(downloadsDir, 'speedo-admin.apk');
+  if (fs.existsSync(file)) {
+    res.download(file, 'speedo-admin.apk');
+  } else {
+    res.redirect('/downloads/speedo-admin.apk');
+  }
+});
 
 // Request logging middleware
 app.use((req, _res, next) => {
