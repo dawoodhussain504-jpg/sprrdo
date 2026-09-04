@@ -22,6 +22,7 @@ sealed class CaptainScreen(val route: String, val title: String, val icon: Image
     object ActiveRide : CaptainScreen("active_ride", "Active Trip", Icons.Default.Navigation)
     object Earnings : CaptainScreen("earnings", "Earnings", Icons.Default.AccountBalanceWallet)
     object Notifications : CaptainScreen("notifications", "Alerts", Icons.Default.Notifications)
+    object Profile : CaptainScreen("profile", "Profile", Icons.Default.Person)
 }
 
 @Composable
@@ -68,7 +69,8 @@ fun CaptainMainScaffold(
         CaptainScreen.Dashboard,
         CaptainScreen.KycStatus,
         CaptainScreen.Earnings,
-        CaptainScreen.Notifications
+        CaptainScreen.Notifications,
+        CaptainScreen.Profile
     )
 
     Scaffold(
@@ -175,6 +177,10 @@ fun CaptainMainScaffold(
 
             composable(CaptainScreen.Notifications.route) {
                 CaptainNotificationsScreen(viewModel = viewModel)
+            }
+
+            composable(CaptainScreen.Profile.route) {
+                CaptainProfileScreen(viewModel = viewModel)
             }
         }
     }

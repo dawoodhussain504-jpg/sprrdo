@@ -53,7 +53,9 @@ data class RiderUiState(
     val roadDurationMins: Int? = null,
     val roadSummary: String? = null,
     val errorMessage: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val deletionRequest: AccountDeletionRequest? = null,
+    val isDeletionSubmitting: Boolean = false
 )
 
 class RiderViewModel(application: Application) : AndroidViewModel(application) {
@@ -608,4 +610,64 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
     }
+
+    fun checkDeletionStatus() {
+        viewModelScope.launch {
+            when (val res = riderRepo.getAccountDeletionStatus()) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(deletionRequest = res.data)
+                }
+                else -> {}
+            }
+        }
+    }
+
+    fun requestAccountDeletion(reason: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDeletionSubmitting = true)
+            when (val res = riderRepo.requestAccountDeletion(reason)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isDeletionSubmitting = false,
+                        deletionRequest = res.data,
+                        successMessage = "Account deletion requested (24-hour review). Speedo Admin will verify."
+                    )
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isDeletionSubmitting = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isDeletionSubmitting = false)
+                }
+            }
+        }
+    }
+
+    fun cancelAccountDeletion() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDeletionSubmitting = true)
+            when (val res = riderRepo.cancelAccountDeletion()) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isDeletionSubmitting = false,
+                        deletionRequest = null,
+                        successMessage = "Account deletion request has been cancelled."
+                    )
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isDeletionSubmitting = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isDeletionSubmitting = false)
+                }
+            }
+        }
+    }
+
 }

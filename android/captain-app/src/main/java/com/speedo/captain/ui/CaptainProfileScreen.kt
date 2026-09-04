@@ -1,8 +1,7 @@
-package com.speedo.rider.ui
+package com.speedo.captain.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,32 +15,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.components.SpeedoPrimaryButton
 import com.speedo.core.components.SpeedoTopBar
 import com.speedo.core.theme.*
-import com.speedo.rider.viewmodel.RiderViewModel
 
 @Composable
-fun RiderProfileScreen(
-    viewModel: RiderViewModel,
-    onLogout: () -> Unit
+fun CaptainProfileScreen(
+    viewModel: CaptainViewModel,
+    onLogout: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val captain = uiState.captain
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleteReason by remember { mutableStateOf("") }
     var showCancelDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        viewModel.fetchProfile()
         viewModel.checkDeletionStatus()
     }
 
     Scaffold(
         topBar = {
-            SpeedoTopBar(title = "Profile")
+            SpeedoTopBar(title = "Captain Profile")
         }
     ) { padding ->
         Column(
@@ -80,7 +81,7 @@ fun RiderProfileScreen(
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Deletion review period takes 24 hours. Your request is currently under review by Speedo Admin. Once approved, your account and data will be permanently deleted from the database.",
+                            text = "Deletion review period takes 24 hours. Your request is currently under review by Speedo Admin. Once approved, your driver profile and KYC records will be permanently deleted from the database.",
                             style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF5D4037))
                         )
                         Spacer(modifier = Modifier.height(10.dp))
@@ -96,39 +97,87 @@ fun RiderProfileScreen(
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // 2. Avatar
+            // 2. Avatar & Badge
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(84.dp)
                     .clip(CircleShape)
-                    .background(SpeedoOrange),
+                    .background(Color(0xFF2E7D32)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = uiState.currentUserName?.take(1)?.uppercase() ?: "R",
+                    text = captain?.name?.take(1)?.uppercase() ?: "C",
                     style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = SpeedoWhite
                     )
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = uiState.currentUserName ?: "Speedo Rider",
+                text = captain?.name ?: "Speedo Captain",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = uiState.currentUserEmail ?: "rider@speedo.com",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "${captain?.vehicleNumber ?: "KA-01-EQ-9876"} • ${(captain?.vehicleType ?: "BIKE").uppercase()}",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = SpeedoOrange
+                )
+            )
+            Text(
+                text = captain?.email ?: "captain@speedo.com",
+                style = MaterialTheme.typography.bodySmall,
                 color = SpeedoTextSecondary
             )
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // 3. Account Details Card
+            // 3. Driver Highlights Card
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = SpeedoWhite,
+                border = BorderStroke(1.dp, SpeedoCardBorder)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Rating", style = MaterialTheme.typography.labelSmall, color = SpeedoTextSecondary)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFB300), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("4.9", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    }
+                    VerticalDivider(modifier = Modifier.height(36.dp), color = SpeedoCardBorder)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Total Trips", style = MaterialTheme.typography.labelSmall, color = SpeedoTextSecondary)
+                        Text("${captain?.totalRides ?: 142}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                    VerticalDivider(modifier = Modifier.height(36.dp), color = SpeedoCardBorder)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("KYC Status", style = MaterialTheme.typography.labelSmall, color = SpeedoTextSecondary)
+                        Text(
+                            text = (captain?.kycStatus ?: "APPROVED").uppercase(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = if (captain?.kycStatus == "approved") SpeedoSuccess else Color(0xFFFF9800)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 4. Driver Profile Info Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -137,33 +186,32 @@ fun RiderProfileScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "ACCOUNT DETAILS",
+                        text = "CAPTAIN DETAILS",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = SpeedoOrange)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Role", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
-                        Text("Speedo Rider", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Phone", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
+                        Text(captain?.phone ?: "+91 98765 43210", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     HorizontalDivider(color = SpeedoCardBorder.copy(alpha = 0.5f))
                     Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Vehicle Registration", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
+                        Text(captain?.vehicleNumber ?: "KA-01-EQ-9876", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    HorizontalDivider(color = SpeedoCardBorder.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Account Status", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = if (uiState.deletionRequest?.status == "pending") Color(0xFFFFF3E0) else SpeedoSuccess.copy(alpha = 0.12f)
                         ) {
                             Text(
-                                if (uiState.deletionRequest?.status == "pending") "Deletion Pending (24h)" else "Active",
+                                if (uiState.deletionRequest?.status == "pending") "Deletion Pending (24h)" else "Verified Partner",
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = if (uiState.deletionRequest?.status == "pending") Color(0xFFE65100) else SpeedoSuccess,
@@ -172,23 +220,12 @@ fun RiderProfileScreen(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    HorizontalDivider(color = SpeedoCardBorder.copy(alpha = 0.5f))
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("App Version", style = MaterialTheme.typography.bodyMedium, color = SpeedoTextSecondary)
-                        Text("v2.0.0 (Production)", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
-                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // 4. Log Out Button
+            // 5. Log Out Button
             SpeedoPrimaryButton(
                 text = "Log Out",
                 leadingIcon = Icons.Default.ExitToApp,
@@ -204,7 +241,7 @@ fun RiderProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 5. Delete Profile & Account Button
+            // 6. Delete Captain Profile & Account Button
             OutlinedButton(
                 onClick = { showDeleteDialog = true },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -215,7 +252,7 @@ fun RiderProfileScreen(
                 Icon(Icons.Default.DeleteForever, contentDescription = null, tint = SpeedoError, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Delete Profile & Account",
+                    text = "Delete Captain Profile & Account",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = SpeedoError
@@ -229,18 +266,18 @@ fun RiderProfileScreen(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = SpeedoError, modifier = Modifier.size(36.dp)) },
-            title = { Text("Request Account Deletion?", fontWeight = FontWeight.Bold) },
+            title = { Text("Request Driver Account Deletion?", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Text(
-                        "• Deletion review takes 24 hours.\n• Once approved by Speedo Admin, your profile and personal details will be permanently removed from the realtime database.\n• You will lose access to ride history, wallet balances, and saved addresses.\n\nPlease tell us why you are leaving (optional):",
+                        "• Deletion review takes 24 hours.\n• Once approved by Speedo Admin, your driver account, vehicle registration, KYC records, and earnings profile will be permanently deleted from the database.\n• You will not be able to accept rides or recover past earnings statements.\n\nPlease state your reason for leaving (optional):",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = deleteReason,
                         onValueChange = { deleteReason = it },
-                        placeholder = { Text("Reason for account deletion...") },
+                        placeholder = { Text("Reason for deleting driver account...") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         maxLines = 3
@@ -271,7 +308,7 @@ fun RiderProfileScreen(
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
             title = { Text("Cancel Deletion Request?") },
-            text = { Text("Your account will remain active and will not be deleted by the Admin.") },
+            text = { Text("Your captain account will remain active and verified. Admin will not delete your account.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -280,7 +317,7 @@ fun RiderProfileScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange)
                 ) {
-                    Text("Yes, Keep My Account")
+                    Text("Yes, Keep My Driver Account")
                 }
             },
             dismissButton = {

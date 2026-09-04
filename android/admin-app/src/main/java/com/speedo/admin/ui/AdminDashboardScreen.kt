@@ -35,7 +35,8 @@ fun AdminDashboardScreen(
     onNavigateToDestinations: () -> Unit = {},
     onNavigateToMap: () -> Unit,
     onNavigateToRides: () -> Unit,
-    onNavigateToUsers: () -> Unit
+    onNavigateToUsers: () -> Unit,
+    onNavigateToDeletions: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val stats = uiState.dashboardStats
@@ -282,6 +283,16 @@ fun AdminDashboardScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+
+            AdminShortcutRow(
+                icon = Icons.Default.DeleteForever,
+                title = "Account Deletion Requests",
+                subtitle = "Review 24-hour deletion requests & approve permanent database purge",
+                badge = if (uiState.pendingDeletionCount > 0) "${uiState.pendingDeletionCount} PENDING" else null,
+                onClick = onNavigateToDeletions
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
             AdminShortcutRow(
                 icon = Icons.Default.People,
                 title = "User Moderation & Access Control",
@@ -330,6 +341,7 @@ fun AdminShortcutRow(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    badge: String? = null,
     onClick: () -> Unit
 ) {
     Surface(
@@ -348,7 +360,25 @@ fun AdminShortcutRow(
             Icon(icon, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(26.dp))
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                    if (badge != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = SpeedoError
+                        ) {
+                            Text(
+                                text = badge,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = SpeedoWhite
+                                ),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = SpeedoTextTertiary)

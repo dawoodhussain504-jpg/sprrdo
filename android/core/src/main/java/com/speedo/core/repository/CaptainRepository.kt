@@ -204,4 +204,44 @@ class CaptainRepository(context: Context) {
             NetworkResult.Error(e.localizedMessage ?: "Network error")
         }
     }
+
+    suspend fun requestAccountDeletion(reason: String): NetworkResult<com.speedo.core.model.AccountDeletionRequest> {
+        return try {
+            val res = api.requestCaptainAccountDeletion(com.speedo.core.model.CreateDeletionRequestBody(reason))
+            if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
+                NetworkResult.Success(res.body()!!.data!!)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to submit deletion request")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun getAccountDeletionStatus(): NetworkResult<com.speedo.core.model.AccountDeletionRequest?> {
+        return try {
+            val res = api.getCaptainDeletionStatus()
+            if (res.isSuccessful && res.body()?.success == true) {
+                NetworkResult.Success(res.body()?.data)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to get deletion status")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun cancelAccountDeletion(): NetworkResult<Boolean> {
+        return try {
+            val res = api.cancelCaptainAccountDeletion()
+            if (res.isSuccessful && res.body()?.success == true) {
+                NetworkResult.Success(true)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to cancel deletion request")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
 }

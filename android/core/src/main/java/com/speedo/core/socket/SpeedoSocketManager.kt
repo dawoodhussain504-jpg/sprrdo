@@ -86,6 +86,13 @@ class SpeedoSocketManager private constructor(private val context: Context) {
     private val _liveDestinationsUpdatedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
     val liveDestinationsUpdatedFlow: SharedFlow<Unit> = _liveDestinationsUpdatedFlow.asSharedFlow()
 
+    private val _accountDeletedFlow = MutableSharedFlow<String>(extraBufferCapacity = 16)
+    val accountDeletedFlow: SharedFlow<String> = _accountDeletedFlow.asSharedFlow()
+
+    private val _deletionRequestsUpdatedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
+    val deletionRequestsUpdatedFlow: SharedFlow<Unit> = _deletionRequestsUpdatedFlow.asSharedFlow()
+
+
     companion object {
         private const val TAG = "SpeedoSocket"
 
@@ -358,6 +365,33 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                 }
 
                 // 9. Targeted City-Wide Broadcasts (Real-time Mass Notification)
+                
+                on("account_deleted") { args ->
+                    try {
+                        val msg = (args.getOrNull(0) as? JSONObject)?.optString("message")
+                            ?: "Your account has been deleted by Speedo Admin as per your request."
+                        Log.w(TAG, "🚫 WebSocket: Account has been deleted by Admin!")
+                        scope.launch { _accountDeletedFlow.emit(msg) }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error handling account_deleted: ${e.message}")
+                    }
+                }
+
+                on("account_deletion:requested") {
+                    Log.i(TAG, "🚨 WebSocket: New account deletion requested")
+                    scope.launch { _deletionRequestsUpdatedFlow.emit(Unit) }
+                }
+
+                on("account_deletion:updated") {
+                    Log.i(TAG, "⚡ WebSocket: Account deletion requests updated")
+                    scope.launch { _deletionRequestsUpdatedFlow.emit(Unit) }
+                }
+
+                on("account_deletion:cancelled") {
+                    Log.i(TAG, "⚡ WebSocket: Account deletion request cancelled")
+                    scope.launch { _deletionRequestsUpdatedFlow.emit(Unit) }
+                }
+
                 on("destinations:updated") {
                     Log.i(TAG, "📍 WebSocket: Popular destinations updated on server, emitting refresh")
                     scope.launch { _liveDestinationsUpdatedFlow.emit(Unit) }

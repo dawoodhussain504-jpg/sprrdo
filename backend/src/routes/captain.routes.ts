@@ -1,3 +1,4 @@
+import { requestAccountDeletion, getAccountDeletionStatus, cancelAccountDeletion } from '../controllers/deletion.controller';
 import { Router } from 'express';
 import { requireRole } from '../middleware/auth';
 import { upload } from '../middleware/upload';
@@ -47,3 +48,9 @@ router.put('/notifications/:id/read', markCaptainNotificationRead);
 router.get('/notifications/unread-count', getCaptainUnreadCount);
 
 export default router;
+
+// Account Deletion Request Flow (24-Hour Review)
+router.post('/profile/delete-request', requestAccountDeletion);
+router.get('/profile/delete-request', getAccountDeletionStatus);
+router.delete('/profile/delete-request', cancelAccountDeletion);
+

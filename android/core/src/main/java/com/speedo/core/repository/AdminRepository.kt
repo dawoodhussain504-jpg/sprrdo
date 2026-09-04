@@ -287,4 +287,46 @@ class AdminRepository(context: Context) {
             NetworkResult.Error(e.localizedMessage ?: "Network error")
         }
     }
+
+    suspend fun getDeletionRequests(status: String? = null): NetworkResult<List<com.speedo.core.model.AccountDeletionRequest>> {
+        return try {
+            val res = api.getAdminDeletionRequests(status)
+            if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
+                NetworkResult.Success(res.body()!!.data!!)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to fetch deletion requests")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun approveAccountDeletion(id: String, adminNotes: String? = null): NetworkResult<Boolean> {
+        return try {
+            val body = com.speedo.core.model.ReviewDeletionRequestBody(adminNotes)
+            val res = api.approveAccountDeletion(id, body)
+            if (res.isSuccessful && res.body()?.success == true) {
+                NetworkResult.Success(true)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to approve deletion")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun rejectAccountDeletion(id: String, adminNotes: String? = null): NetworkResult<Boolean> {
+        return try {
+            val body = com.speedo.core.model.ReviewDeletionRequestBody(adminNotes)
+            val res = api.rejectAccountDeletion(id, body)
+            if (res.isSuccessful && res.body()?.success == true) {
+                NetworkResult.Success(true)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to reject deletion")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
 }

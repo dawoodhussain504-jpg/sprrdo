@@ -28,6 +28,7 @@ sealed class AdminScreen(val route: String, val title: String, val icon: ImageVe
     object LiveMap : AdminScreen("live_map", "Live Fleet Map", Icons.Default.Map)
     object Rides : AdminScreen("rides", "Ride Monitoring", Icons.Default.DirectionsCar)
     object Users : AdminScreen("users", "User Moderation", Icons.Default.People)
+    object DeletionRequests : AdminScreen("deletion_requests", "Account Deletions", Icons.Default.DeleteForever)
     object Auth : AdminScreen("auth", "Sign In", Icons.Default.Lock)
 }
 
@@ -52,7 +53,8 @@ fun AdminMainScaffold(
         AdminScreen.Destinations,
         AdminScreen.LiveMap,
         AdminScreen.Rides,
-        AdminScreen.Users
+        AdminScreen.Users,
+        AdminScreen.DeletionRequests
     )
 
     if (!uiState.isLoggedIn) {
@@ -190,7 +192,8 @@ fun AdminMainScaffold(
                 onNavigateToDestinations = { navController.navigate(AdminScreen.Destinations.route) },
                     onNavigateToMap = { navController.navigate(AdminScreen.LiveMap.route) },
                     onNavigateToRides = { navController.navigate(AdminScreen.Rides.route) },
-                    onNavigateToUsers = { navController.navigate(AdminScreen.Users.route) }
+                    onNavigateToUsers = { navController.navigate(AdminScreen.Users.route) },
+                    onNavigateToDeletions = { navController.navigate(AdminScreen.DeletionRequests.route) }
                 )
             }
 
@@ -244,6 +247,13 @@ fun AdminMainScaffold(
 
             composable(AdminScreen.Users.route) {
                 UserManagementScreen(
+                    viewModel = viewModel,
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable(AdminScreen.DeletionRequests.route) {
+                AccountDeletionRequestsScreen(
                     viewModel = viewModel,
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )

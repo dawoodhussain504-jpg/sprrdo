@@ -297,4 +297,45 @@ interface SpeedoApiService {
         @Path("id") id: String
     ): Response<ApiResponse<Any>>
 
+
+    // --- ACCOUNT DELETION REQUESTS (24-HOUR GRACE PERIOD) ---
+    @POST("rider/profile/delete-request")
+    suspend fun requestRiderAccountDeletion(
+        @Body body: com.speedo.core.model.CreateDeletionRequestBody
+    ): Response<ApiResponse<com.speedo.core.model.AccountDeletionRequest>>
+
+    @GET("rider/profile/delete-request")
+    suspend fun getRiderDeletionStatus(): Response<ApiResponse<com.speedo.core.model.AccountDeletionRequest>>
+
+    @DELETE("rider/profile/delete-request")
+    suspend fun cancelRiderAccountDeletion(): Response<ApiResponse<Any>>
+
+    @POST("captain/profile/delete-request")
+    suspend fun requestCaptainAccountDeletion(
+        @Body body: com.speedo.core.model.CreateDeletionRequestBody
+    ): Response<ApiResponse<com.speedo.core.model.AccountDeletionRequest>>
+
+    @GET("captain/profile/delete-request")
+    suspend fun getCaptainDeletionStatus(): Response<ApiResponse<com.speedo.core.model.AccountDeletionRequest>>
+
+    @DELETE("captain/profile/delete-request")
+    suspend fun cancelCaptainAccountDeletion(): Response<ApiResponse<Any>>
+
+    @GET("admin/deletion-requests")
+    suspend fun getAdminDeletionRequests(
+        @Query("status") status: String? = null
+    ): Response<ApiResponse<List<com.speedo.core.model.AccountDeletionRequest>>>
+
+    @POST("admin/deletion-requests/{id}/approve")
+    suspend fun approveAccountDeletion(
+        @Path("id") id: String,
+        @Body body: com.speedo.core.model.ReviewDeletionRequestBody
+    ): Response<ApiResponse<Any>>
+
+    @POST("admin/deletion-requests/{id}/reject")
+    suspend fun rejectAccountDeletion(
+        @Path("id") id: String,
+        @Body body: com.speedo.core.model.ReviewDeletionRequestBody
+    ): Response<ApiResponse<Any>>
+
 }

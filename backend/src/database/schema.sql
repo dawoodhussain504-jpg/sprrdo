@@ -227,3 +227,21 @@ CREATE TABLE IF NOT EXISTS popular_destinations (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS account_deletion_requests (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  user_role VARCHAR(32) NOT NULL, -- 'rider', 'captain'
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(32) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  reason TEXT,
+  status VARCHAR(32) DEFAULT 'pending', -- 'pending', 'approved', 'rejected', 'cancelled'
+  requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  scheduled_deletion_at TIMESTAMP,
+  reviewed_at TIMESTAMP,
+  reviewed_by VARCHAR(64),
+  admin_notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

@@ -33,6 +33,8 @@ data class AdminUiState(
     val activeSosCount: Int = 0,
     val broadcasts: List<BroadcastAnnouncement> = emptyList(),
     val popularDestinations: List<PopularDestination> = emptyList(),
+    val deletionRequests: List<AccountDeletionRequest> = emptyList(),
+    val pendingDeletionCount: Int = 0,
     val isSubmittingAction: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -63,6 +65,13 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             destinationRepo.destinationsFlow.collect { dests ->
+
+        viewModelScope.launch {
+            socketManager.deletionRequestsUpdatedFlow.collect {
+                fetchDeletionRequests()
+            }
+        }
+
                 _uiState.value = _uiState.value.copy(popularDestinations = dests)
             }
         }
@@ -647,6 +656,78 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
                         successMessage = "Destination '${title}' deleted & removed live from all apps!"
                     )
                     fetchPopularDestinations()
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
+                }
+            }
+        }
+    }
+
+
+    fun fetchDeletionRequests(status: String? = null) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            when (val res = adminRepo.getDeletionRequests(status)) {
+                is NetworkResult.Success -> {
+                    val list = res.data
+                    _uiState.value = _uiState.value.copy(
+                        deletionRequests = list,
+                        pendingDeletionCount = list.count { it.status == "pending" },
+                        isLoading = false
+                    )
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(errorMessage = res.message, isLoading = false)
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
+        }
+    }
+
+    fun approveDeletionRequest(id: String, adminNotes: String? = null) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingAction = true)
+            when (val res = adminRepo.approveAccountDeletion(id, adminNotes)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        successMessage = "Account approved for deletion. User details permanently purged from realtime database."
+                    )
+                    fetchDeletionRequests()
+                    fetchUsers()
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
+                }
+            }
+        }
+    }
+
+    fun rejectDeletionRequest(id: String, adminNotes: String? = null) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingAction = true)
+            when (val res = adminRepo.rejectAccountDeletion(id, adminNotes)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        successMessage = "Account deletion request rejected. User account remains active."
+                    )
+                    fetchDeletionRequests()
                 }
                 is NetworkResult.Error -> {
                     _uiState.value = _uiState.value.copy(

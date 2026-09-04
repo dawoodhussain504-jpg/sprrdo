@@ -134,4 +134,44 @@ class RiderRepository(context: Context) {
             NetworkResult.Error(e.localizedMessage ?: "Network error")
         }
     }
+
+    suspend fun requestAccountDeletion(reason: String): NetworkResult<com.speedo.core.model.AccountDeletionRequest> = withContext(Dispatchers.IO) {
+        try {
+            val res = api.requestRiderAccountDeletion(com.speedo.core.model.CreateDeletionRequestBody(reason))
+            if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
+                NetworkResult.Success(res.body()!!.data!!)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to submit deletion request")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun getAccountDeletionStatus(): NetworkResult<com.speedo.core.model.AccountDeletionRequest?> = withContext(Dispatchers.IO) {
+        try {
+            val res = api.getRiderDeletionStatus()
+            if (res.isSuccessful && res.body()?.success == true) {
+                NetworkResult.Success(res.body()?.data)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to get deletion status")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun cancelAccountDeletion(): NetworkResult<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            val res = api.cancelRiderAccountDeletion()
+            if (res.isSuccessful && res.body()?.success == true) {
+                NetworkResult.Success(true)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to cancel deletion request")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
 }

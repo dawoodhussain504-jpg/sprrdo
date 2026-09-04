@@ -332,3 +332,28 @@ export function emitPopularDestinationsUpdate(payload: any) {
   }
 }
 
+export function emitAccountDeletionRequested(payload: any) {
+  if (io) {
+    console.log(`🚨 [SOCKET DELETION REQUESTED] User ${payload.name} (${payload.user_role}) requested deletion:`, payload.id);
+    io.to('role_admin').emit('account_deletion:requested', payload);
+    io.emit('account_deletion:updated', payload);
+  }
+}
+
+export function emitAccountDeleted(userId: string, payload: any) {
+  if (io) {
+    console.log(`🚫 [SOCKET ACCOUNT DELETED] Account purged: ${userId}`);
+    io.to(`user_${userId}`).emit('account_deleted', payload);
+    io.to('role_admin').emit('account_deletion:updated', payload);
+    io.emit('account_deleted', { userId, ...payload });
+  }
+}
+
+export function emitAccountDeletionCancelled(payload: any) {
+  if (io) {
+    console.log(`↩️ [SOCKET DELETION CANCELLED] Request cancelled: ${payload.id}`);
+    io.to('role_admin').emit('account_deletion:cancelled', payload);
+    io.emit('account_deletion:updated', payload);
+  }
+}
+

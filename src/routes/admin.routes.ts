@@ -1,4 +1,9 @@
 import {
+  getAdminDeletionRequests,
+  approveAccountDeletion,
+  rejectAccountDeletion
+} from '../controllers/deletion.controller';
+import {
   getPopularDestinationsAdmin,
   createPopularDestination,
   updatePopularDestination,
@@ -79,4 +84,9 @@ router.get('/destinations', getPopularDestinationsAdmin);
 router.post('/destinations', createPopularDestination);
 router.put('/destinations/:id', updatePopularDestination);
 router.delete('/destinations/:id', deletePopularDestination);
+
+// 6. Account Deletion Requests & Approval Flow
+router.get('/deletion-requests', getAdminDeletionRequests);
+router.post('/deletion-requests/:id/approve', approveAccountDeletion);
+router.post('/deletion-requests/:id/reject', rejectAccountDeletion);
 
