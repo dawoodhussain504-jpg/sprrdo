@@ -24,6 +24,12 @@ class PopularDestinationRepository private constructor(private val context: Cont
     private val _destinationsFlow = MutableStateFlow<List<PopularDestination>>(PopularDestinationsData.ALL_DESTINATIONS)
     val destinationsFlow: StateFlow<List<PopularDestination>> = _destinationsFlow.asStateFlow()
 
+    private var lastUserLat: Double? = null
+    private var lastUserLng: Double? = null
+    private var lastCity: String? = null
+    private var lastDistrict: String? = null
+    private var lastState: String? = null
+
     init {
         // Initial fetch from backend
         refreshDestinations()
@@ -37,10 +43,28 @@ class PopularDestinationRepository private constructor(private val context: Cont
         }
     }
 
-    fun refreshDestinations() {
+    fun refreshDestinations(
+        userLat: Double? = null,
+        userLng: Double? = null,
+        city: String? = null,
+        district: String? = null,
+        state: String? = null
+    ) {
+        if (userLat != null) lastUserLat = userLat
+        if (userLng != null) lastUserLng = userLng
+        if (city != null) lastCity = city
+        if (district != null) lastDistrict = district
+        if (state != null) lastState = state
+
         scope.launch {
             try {
-                val res = api.getPopularDestinations()
+                val res = api.getPopularDestinations(
+                    lat = lastUserLat,
+                    lng = lastUserLng,
+                    city = lastCity,
+                    district = lastDistrict,
+                    state = lastState
+                )
                 if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
                     val list = res.body()!!.data!!
                     if (list.isNotEmpty()) {

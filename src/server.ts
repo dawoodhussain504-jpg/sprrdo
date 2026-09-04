@@ -121,6 +121,7 @@ app.get(['/', '/health', '/api/health'], (_req, res) => {
 
 // API Routes
 app.get('/api/destinations', getPopularDestinationsPublic);
+app.get('/api/destinations/popular', getPopularDestinationsPublic);
 app.get('/api/app-version', getAppVersionConfig);
 app.use('/api/auth', authRoutes);
 app.use('/api/rider', riderRoutes);

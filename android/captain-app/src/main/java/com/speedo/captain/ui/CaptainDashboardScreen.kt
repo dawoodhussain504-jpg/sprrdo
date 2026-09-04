@@ -50,9 +50,10 @@ fun CaptainDashboardScreen(
     var recenterTrigger by remember { mutableStateOf(1L) }
 
     val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
-    val popularDestinations = remember(liveDestinations, captainLat, captainLng) {
-        PopularDestinationsData.calculateDistances(liveDestinations, captainLat, captainLng)
+    val rankedDestinations = remember(liveDestinations, captainLat, captainLng) {
+        PopularDestinationsData.filterAndRankForLocation(liveDestinations, captainLat, captainLng)
     }
+    val popularDestinations = rankedDestinations.destinations
 
     LaunchedEffect(Unit) {
         viewModel.fetchProfile()
@@ -278,7 +279,7 @@ fun CaptainDashboardScreen(
                         Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "High Ride Demand Hotspots",
+                            text = if (rankedDestinations.matchedCity != null) "High Demand in ${rankedDestinations.matchedCity}" else "High Ride Demand Hotspots",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = RapidoCaptainBlack

@@ -183,6 +183,28 @@ export async function seedDatabase() {
     );
   }
 
+  
+  // 11. Seed Default Popular Destinations
+  const destCount = await db.query('SELECT COUNT(*) as count FROM popular_destinations');
+  if (parseInt(destCount.rows[0]?.count || '0', 10) === 0) {
+    const defaultDests = [
+      { id: 'dest_sheikhpura_junction', title: 'Sheikhpura Junction Railway Station', subtitle: 'Central Railway & Transit Hub', category: 'TRANSIT', badge: '🚆 Central Railway', image_url: 'https://images.unsplash.com/photo-1474487548417-781cb71495f3?w=600&auto=format&fit=crop&q=80', lat: 25.1378, lng: 85.8569, address: 'Sheikhpura Railway Station, Station Road, Sheikhpura, Bihar 811105', city: 'Sheikhpura', district: 'Sheikhpura', state: 'Bihar', sort_order: 1 },
+      { id: 'dest_giriyak_hills', title: 'Giriyak Hills & Buddhist Heritage', subtitle: 'Ancient Stupa & Scenic Overlook', category: 'HERITAGE', badge: '🏔️ Historic & Scenic', image_url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80', lat: 25.0440, lng: 85.5290, address: 'Giriyak Hill Stupa, Bihar State Highway, near Sheikhpura Border, Bihar', city: 'Sheikhpura', district: 'Sheikhpura', state: 'Bihar', sort_order: 2 },
+      { id: 'dest_tripolia_gate', title: 'Tripolia Gate & Purani Bazaar', subtitle: 'Main City Center & Market Complex', category: 'SHOPPING', badge: '🛍️ City Market', image_url: 'https://images.unsplash.com/photo-1567449303078-57ad995bd301?w=600&auto=format&fit=crop&q=80', lat: 25.1320, lng: 85.8480, address: 'Purani Bazaar, Tripolia Gate, Sheikhpura, Bihar 811105', city: 'Sheikhpura', district: 'Sheikhpura', state: 'Bihar', sort_order: 3 },
+      { id: 'dest_blr_airport', title: "Kempegowda Int'l Airport (BLR)", subtitle: 'Devanahalli, Terminal 1 & 2', category: 'AIRPORT', badge: '✈️ Airport Terminal', image_url: 'https://images.unsplash.com/photo-1542296332-2e4473faf563?w=600&auto=format&fit=crop&q=80', lat: 13.1986, lng: 77.7066, address: 'Kempegowda International Airport, Devanahalli, Bangalore, Karnataka', city: 'Bangalore', district: 'Bengaluru Urban', state: 'Karnataka', sort_order: 20 },
+      { id: 'dest_blr_mg_road', title: 'MG Road & Church Street', subtitle: 'Central Business District & Metro', category: 'METRO', badge: '🚇 Direct Metro', image_url: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=600&auto=format&fit=crop&q=80', lat: 12.9756, lng: 77.6066, address: 'MG Road Metro Station, Shivaji Nagar, Bangalore, Karnataka', city: 'Bangalore', district: 'Bengaluru Urban', state: 'Karnataka', sort_order: 21 },
+      { id: 'dest_blr_koramangala', title: 'Koramangala 5th Block', subtitle: 'Cafes, Breweries & Startup Hub', category: 'CAFE', badge: '☕ Food & Nightlife', image_url: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&auto=format&fit=crop&q=80', lat: 12.9352, lng: 77.6245, address: 'Koramangala 5th Block, Jyoti Nivas College Road, Bangalore', city: 'Bangalore', district: 'Bengaluru Urban', state: 'Karnataka', sort_order: 22 }
+    ];
+    for (const d of defaultDests) {
+      await db.query(
+        `INSERT INTO popular_destinations (id, title, subtitle, category, badge, image_url, lat, lng, address, city, district, state, is_active, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 1, $13)
+         ON CONFLICT (id) DO NOTHING`,
+        [d.id, d.title, d.subtitle, d.category, d.badge, d.image_url, d.lat, d.lng, d.address, d.city, d.district, d.state, d.sort_order]
+      );
+    }
+  }
+
   console.log('✅ Database seeded successfully with the following test credentials:');
   console.log('-----------------------------------------------------------');
   console.log('👤 ADMIN:    admin@speedo.com           / Admin@123');

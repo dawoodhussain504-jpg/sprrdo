@@ -152,6 +152,13 @@ data class AddressSuggestion(
     val distanceKm: Double? = null
 )
 
+data class GeoAddressDetails(
+    val formattedAddress: String,
+    val city: String? = null,
+    val district: String? = null,
+    val state: String? = null
+)
+
 object LocationSearchHelper {
     private const val TAG = "LocationSearchHelper"
 
@@ -351,42 +358,19 @@ object LocationSearchHelper {
     }
 
     /**
-     * Reverse geocodes coordinates to a human-readable street/area name using OSM Nominatim and Android Geocoder
+     * Reverse geocodes coordinates to a human-readable street/area name, city, district, and state
      */
-    suspend fun reverseGeocode(
+    suspend fun reverseGeocodeDetailed(
         context: Context,
         lat: Double,
         lng: Double
-    ): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        // 1. Try Ola Maps Reverse Geocoding with user's Ola Maps API Key
-        try {
-            val urlStr = "https://api.olamaps.io/places/v1/reverse-geocode?latlng=$lat,$lng&api_key=${com.speedo.core.utils.Constants.OLA_MAPS_API_KEY}"
-            val url = java.net.URL(urlStr)
-            val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                connectTimeout = 3000
-                readTimeout = 3000
-                setRequestProperty("Content-Type", "application/json")
-            }
+    ): GeoAddressDetails = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        var detectedAddress: String? = null
+        var detectedCity: String? = null
+        var detectedDistrict: String? = null
+        var detectedState: String? = null
 
-            if (connection.responseCode == 200) {
-                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-                val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
-                val results = root.getAsJsonArray("results")
-                if (results != null && results.size() > 0) {
-                    val firstResult = results[0].asJsonObject
-                    val formattedAddress = firstResult.get("formatted_address")?.asString
-                    val name = firstResult.get("name")?.asString
-                    val chosen = if (!name.isNullOrBlank()) name else formattedAddress
-                    if (!chosen.isNullOrBlank()) {
-                        return@withContext chosen.split(",").take(2).joinToString(", ")
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            android.util.Log.w(TAG, "Ola Maps reverse geocode fallback: ${e.message}")
-        }
-
-        // 2. Try Android Native Geocoder
+        // 1. Try Android Native Geocoder (Provides structured city/district/state)
         if (android.location.Geocoder.isPresent()) {
             try {
                 val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
@@ -394,68 +378,142 @@ object LocationSearchHelper {
                 val addresses = geocoder.getFromLocation(lat, lng, 1)
                 if (!addresses.isNullOrEmpty()) {
                     val addr = addresses[0]
+                    detectedCity = addr.locality ?: addr.subAdminArea
+                    detectedDistrict = addr.subAdminArea ?: addr.locality
+                    detectedState = addr.adminArea
+
                     val feature = addr.featureName
                     val thoroughfare = addr.thoroughfare
                     val subLocality = addr.subLocality ?: addr.locality
                     val line = addr.getAddressLine(0)
 
-                    val name = when {
+                    detectedAddress = when {
                         !thoroughfare.isNullOrBlank() && !subLocality.isNullOrBlank() -> "$thoroughfare, $subLocality"
                         !feature.isNullOrBlank() && !subLocality.isNullOrBlank() -> "$feature, $subLocality"
                         !line.isNullOrBlank() -> line.split(",").take(2).joinToString(", ")
-                        else -> subLocality ?: "Pinned Location"
+                        else -> subLocality ?: detectedCity ?: "Pinned Location"
                     }
-                    return@withContext name
                 }
             } catch (e: Exception) {
                 android.util.Log.w(TAG, "Geocoder reverse geocode error: ${e.message}")
             }
         }
 
-        // 2. Try OpenStreetMap Nominatim Reverse Geocoding
-        try {
-            val urlStr = "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1"
-            val url = java.net.URL(urlStr)
-            val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                connectTimeout = 3000
-                readTimeout = 3000
-                setRequestProperty("User-Agent", "SpeedoRiderApp/2.0")
-            }
-
-            if (connection.responseCode == 200) {
-                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-                val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
-                val displayName = root.get("display_name")?.asString
-                val address = root.getAsJsonObject("address")
-
-                val road = address?.get("road")?.asString
-                val neighbourhood = address?.get("neighbourhood")?.asString ?: address?.get("suburb")?.asString
-                val city = address?.get("city")?.asString ?: address?.get("county")?.asString ?: "Bangalore"
-
-                val formatted = when {
-                    !road.isNullOrBlank() && !neighbourhood.isNullOrBlank() -> "$road, $neighbourhood"
-                    !road.isNullOrBlank() -> "$road, $city"
-                    !neighbourhood.isNullOrBlank() -> "$neighbourhood, $city"
-                    !displayName.isNullOrBlank() -> displayName.split(",").take(2).joinToString(", ")
-                    else -> "Pinned Location"
+        // 2. Try Ola Maps Reverse Geocoding with user's Ola Maps API Key
+        if (detectedAddress.isNullOrBlank()) {
+            try {
+                val urlStr = "https://api.olamaps.io/places/v1/reverse-geocode?latlng=$lat,$lng&api_key=${com.speedo.core.utils.Constants.OLA_MAPS_API_KEY}"
+                val url = java.net.URL(urlStr)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 3000
+                    readTimeout = 3000
+                    setRequestProperty("Content-Type", "application/json")
                 }
-                return@withContext formatted
+
+                if (connection.responseCode == 200) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
+                    val results = root.getAsJsonArray("results")
+                    if (results != null && results.size() > 0) {
+                        val firstResult = results[0].asJsonObject
+                        val formattedAddress = firstResult.get("formatted_address")?.asString
+                        val name = firstResult.get("name")?.asString
+                        val chosen = if (!name.isNullOrBlank()) name else formattedAddress
+                        if (!chosen.isNullOrBlank()) {
+                            detectedAddress = chosen.split(",").take(2).joinToString(", ")
+                            val parts = chosen.split(",").map { it.trim() }
+                            if (parts.size >= 2 && detectedCity == null) {
+                                detectedCity = parts[parts.size - 2]
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "Ola Maps reverse geocode fallback: ${e.message}")
             }
-        } catch (e: Exception) {
-            android.util.Log.w(TAG, "Nominatim reverse geocode fallback: ${e.message}")
         }
 
-        // 3. Find closest known landmark
-        val closest = PRESET_LANDMARKS.minByOrNull {
-            DistanceUtils.calculateDistanceKm(lat, lng, it.lat, it.lng)
-        }
-        if (closest != null) {
-            val dist = DistanceUtils.calculateDistanceKm(lat, lng, closest.lat, closest.lng)
-            if (dist < 1.0) {
-                return@withContext "Near ${closest.title}"
+        // 3. Try OpenStreetMap Nominatim Reverse Geocoding
+        if (detectedAddress.isNullOrBlank() || detectedCity.isNullOrBlank()) {
+            try {
+                val urlStr = "https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lng&zoom=18&addressdetails=1"
+                val url = java.net.URL(urlStr)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 3000
+                    readTimeout = 3000
+                    setRequestProperty("User-Agent", "SpeedoRiderApp/2.0")
+                }
+
+                if (connection.responseCode == 200) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
+                    val displayName = root.get("display_name")?.asString
+                    val addressObj = root.getAsJsonObject("address")
+
+                    val road = addressObj?.get("road")?.asString
+                    val neighbourhood = addressObj?.get("neighbourhood")?.asString ?: addressObj?.get("suburb")?.asString
+                    val city = addressObj?.get("city")?.asString ?: addressObj?.get("town")?.asString ?: addressObj?.get("village")?.asString
+                    val district = addressObj?.get("county")?.asString ?: addressObj?.get("state_district")?.asString
+                    val state = addressObj?.get("state")?.asString
+
+                    if (detectedCity == null) detectedCity = city ?: district
+                    if (detectedDistrict == null) detectedDistrict = district ?: city
+                    if (detectedState == null) detectedState = state
+
+                    if (detectedAddress.isNullOrBlank()) {
+                        detectedAddress = when {
+                            !road.isNullOrBlank() && !neighbourhood.isNullOrBlank() -> "$road, $neighbourhood"
+                            !road.isNullOrBlank() && !city.isNullOrBlank() -> "$road, $city"
+                            !neighbourhood.isNullOrBlank() && !city.isNullOrBlank() -> "$neighbourhood, $city"
+                            !displayName.isNullOrBlank() -> displayName.split(",").take(2).joinToString(", ")
+                            else -> "Pinned Location"
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "Nominatim reverse geocode fallback: ${e.message}")
             }
         }
 
-        return@withContext String.format("Pinned Location (%.4f, %.4f)", lat, lng)
+        // 4. Inferred heuristics based on coordinates if city is still null (e.g. Sheikhpura, Patna, Bangalore)
+        if (detectedCity.isNullOrBlank()) {
+            if (lat in 25.0..25.3 && lng in 85.6..86.1) {
+                detectedCity = "Sheikhpura"
+                detectedDistrict = "Sheikhpura"
+                detectedState = "Bihar"
+            } else if (lat in 25.4..25.8 && lng in 84.9..85.4) {
+                detectedCity = "Patna"
+                detectedDistrict = "Patna"
+                detectedState = "Bihar"
+            } else if (lat in 12.7..13.3 && lng in 77.3..77.9) {
+                detectedCity = "Bangalore"
+                detectedDistrict = "Bengaluru Urban"
+                detectedState = "Karnataka"
+            }
+        }
+
+        val finalAddr = detectedAddress ?: run {
+            val closest = PRESET_LANDMARKS.minByOrNull { DistanceUtils.calculateDistanceKm(lat, lng, it.lat, it.lng) }
+            if (closest != null && DistanceUtils.calculateDistanceKm(lat, lng, closest.lat, closest.lng) < 1.0) {
+                "Near ${closest.title}"
+            } else {
+                String.format("Pinned Location (%.4f, %.4f)", lat, lng)
+            }
+        }
+
+        GeoAddressDetails(
+            formattedAddress = finalAddr,
+            city = detectedCity,
+            district = detectedDistrict,
+            state = detectedState
+        )
+    }
+
+    suspend fun reverseGeocode(
+        context: Context,
+        lat: Double,
+        lng: Double
+    ): String {
+        return reverseGeocodeDetailed(context, lat, lng).formattedAddress
     }
 }

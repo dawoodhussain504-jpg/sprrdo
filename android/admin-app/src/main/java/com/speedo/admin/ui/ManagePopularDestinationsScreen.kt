@@ -43,6 +43,7 @@ fun ManagePopularDestinationsScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
+    var selectedCity by remember { mutableStateOf("All") }
     var showCreateDialog by remember { mutableStateOf(false) }
     var destinationToEdit by remember { mutableStateOf<PopularDestination?>(null) }
     var destinationToDelete by remember { mutableStateOf<PopularDestination?>(null) }
@@ -53,14 +54,22 @@ fun ManagePopularDestinationsScreen(
 
     val categories = listOf("All", "Airport", "Metro", "Shopping", "Tech Park", "Dining", "Park", "Transit")
 
-    val filteredDestinations = remember(destinations, searchQuery, selectedCategory) {
+    val cities = listOf("All", "Sheikhpura", "Patna", "Bangalore")
+
+    val filteredDestinations = remember(destinations, searchQuery, selectedCategory, selectedCity) {
         destinations.filter { dest ->
+            val matchesCity = selectedCity == "All" ||
+                    dest.city?.equals(selectedCity, ignoreCase = true) == true ||
+                    dest.district?.equals(selectedCity, ignoreCase = true) == true
             val matchesCategory = selectedCategory == "All" || dest.category.equals(selectedCategory, ignoreCase = true)
             val matchesQuery = searchQuery.isBlank() ||
                     dest.title.contains(searchQuery, ignoreCase = true) ||
                     dest.subtitle.contains(searchQuery, ignoreCase = true) ||
-                    dest.fullAddress.contains(searchQuery, ignoreCase = true)
-            matchesCategory && matchesQuery
+                    dest.fullAddress.contains(searchQuery, ignoreCase = true) ||
+                    (dest.city?.contains(searchQuery, ignoreCase = true) == true) ||
+                    (dest.district?.contains(searchQuery, ignoreCase = true) == true) ||
+                    (dest.state?.contains(searchQuery, ignoreCase = true) == true)
+            matchesCity && matchesCategory && matchesQuery
         }
     }
 
@@ -144,6 +153,25 @@ fun ManagePopularDestinationsScreen(
                 )
             )
 
+            // City / Region Filter Pills
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(cities) { c ->
+                    val isSelected = selectedCity == c
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCity = c },
+                        label = { Text(if (c == "All") "🌍 All Cities" else "📍 $c", fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = if (c == "Sheikhpura") Color(0xFF10B981) else SpeedoOrange,
+                            selectedLabelColor = SpeedoWhite
+                        )
+                    )
+                }
+            }
+
             // Category Filter Pills
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
@@ -212,8 +240,8 @@ fun ManagePopularDestinationsScreen(
             destination = null,
             isSubmitting = uiState.isSubmittingAction,
             onDismiss = { showCreateDialog = false },
-            onSubmit = { title, sub, cat, badge, img, lat, lng, addr, active, order ->
-                viewModel.createPopularDestination(title, sub, cat, badge, img, lat, lng, addr, order)
+            onSubmit = { title, sub, cat, badge, img, lat, lng, addr, city, dist, state, active, order ->
+                viewModel.createPopularDestination(title, sub, cat, badge, img, lat, lng, addr, city, dist, state, order)
                 showCreateDialog = false
             }
         )
@@ -226,8 +254,8 @@ fun ManagePopularDestinationsScreen(
             destination = dest,
             isSubmitting = uiState.isSubmittingAction,
             onDismiss = { destinationToEdit = null },
-            onSubmit = { title, sub, cat, badge, img, lat, lng, addr, active, order ->
-                viewModel.updatePopularDestination(dest.id, title, sub, cat, badge, img, lat, lng, addr, active, order)
+            onSubmit = { title, sub, cat, badge, img, lat, lng, addr, city, dist, state, active, order ->
+                viewModel.updatePopularDestination(dest.id, title, sub, cat, badge, img, lat, lng, addr, city, dist, state, active, order)
                 destinationToEdit = null
             }
         )
@@ -331,12 +359,13 @@ fun AdminDestinationCard(
                         .align(Alignment.BottomStart)
                         .padding(10.dp)
                 ) {
+                    val locLabel = listOfNotNull(destination.city, destination.state).joinToString(", ").ifEmpty { "Lat: ${destination.lat}" }
                     Text(
-                        text = "Lat: ${destination.lat} • Lng: ${destination.lng}",
+                        text = "📍 $locLabel",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = SpeedoWhite,
                             fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         ),
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
@@ -459,17 +488,23 @@ fun DestinationFormDialog(
         lat: Double,
         lng: Double,
         address: String,
+        city: String?,
+        district: String?,
+        state: String?,
         isActive: Boolean,
         sortOrder: Int
     ) -> Unit
 ) {
     var titleInput by remember { mutableStateOf(destination?.title ?: "") }
     var subtitleInput by remember { mutableStateOf(destination?.subtitle ?: "") }
+    var cityInput by remember { mutableStateOf(destination?.city ?: "Sheikhpura") }
+    var districtInput by remember { mutableStateOf(destination?.district ?: "Sheikhpura") }
+    var stateInput by remember { mutableStateOf(destination?.state ?: "Bihar") }
     var categoryInput by remember { mutableStateOf(destination?.category ?: "Airport") }
     var badgeInput by remember { mutableStateOf(destination?.badge ?: "✈️ Airport Terminal") }
     var imageUrlInput by remember { mutableStateOf(destination?.imageUrl ?: "https://images.unsplash.com/photo-1542296332-2e4473faf563?w=600&auto=format&fit=crop&q=80") }
-    var latInput by remember { mutableStateOf(destination?.lat?.toString() ?: "12.9716") }
-    var lngInput by remember { mutableStateOf(destination?.lng?.toString() ?: "77.5946") }
+    var latInput by remember { mutableStateOf(destination?.lat?.toString() ?: "25.1378") }
+    var lngInput by remember { mutableStateOf(destination?.lng?.toString() ?: "85.8569") }
     var addressInput by remember { mutableStateOf(destination?.fullAddress ?: "") }
     var isActiveInput by remember { mutableStateOf(destination?.isActive ?: true) }
     var sortOrderInput by remember { mutableStateOf(destination?.sortOrder?.toString() ?: "0") }
@@ -548,6 +583,67 @@ fun DestinationFormDialog(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Quick City Presets
+                Text("Quick Location Presets:", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                val quickPresets = listOf(
+                    Triple("Sheikhpura", "Sheikhpura", "Bihar") to (25.1378 to 85.8569),
+                    Triple("Patna", "Patna", "Bihar") to (25.6178 to 85.1414),
+                    Triple("Bangalore", "Bengaluru Urban", "Karnataka") to (12.9716 to 77.5946),
+                    Triple("Delhi", "New Delhi", "Delhi") to (28.6139 to 77.2090)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    items(quickPresets) { (loc, coords) ->
+                        val (cityName, distName, stateName) = loc
+                        SuggestionChip(
+                            onClick = {
+                                cityInput = cityName
+                                districtInput = distName
+                                stateInput = stateName
+                                latInput = coords.first.toString()
+                                lngInput = coords.second.toString()
+                            },
+                            label = { Text("📍 $cityName", fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = cityInput,
+                        onValueChange = { cityInput = it },
+                        label = { Text("City / Town *") },
+                        placeholder = { Text("e.g. Sheikhpura") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    OutlinedTextField(
+                        value = districtInput,
+                        onValueChange = { districtInput = it },
+                        label = { Text("District *") },
+                        placeholder = { Text("e.g. Sheikhpura") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = stateInput,
+                    onValueChange = { stateInput = it },
+                    label = { Text("State *") },
+                    placeholder = { Text("e.g. Bihar") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
+                )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -690,6 +786,9 @@ fun DestinationFormDialog(
                                 lat,
                                 lng,
                                 addressInput.trim(),
+                                cityInput.trim().ifEmpty { null },
+                                districtInput.trim().ifEmpty { null },
+                                stateInput.trim().ifEmpty { null },
                                 isActiveInput,
                                 order
                             )

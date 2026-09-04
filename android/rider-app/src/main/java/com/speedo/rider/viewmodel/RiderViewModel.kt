@@ -54,6 +54,9 @@ data class RiderUiState(
     val roadSummary: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null,
+    val currentCity: String? = null,
+    val currentDistrict: String? = null,
+    val currentState: String? = null,
     val deletionRequest: AccountDeletionRequest? = null,
     val isDeletionSubmitting: Boolean = false,
     val appUpdateState: com.speedo.core.model.AppUpdatePromptState = com.speedo.core.model.AppUpdatePromptState()
@@ -66,6 +69,7 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
     private val chatRepo = ChatRepository(application)
     private val locationHelper = LocationHelper(application)
     private val appVersionRepo = com.speedo.core.repository.AppVersionRepository.getInstance(application)
+    private val destinationRepo = com.speedo.core.repository.PopularDestinationRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(RiderUiState())
     val uiState: StateFlow<RiderUiState> = _uiState.asStateFlow()
@@ -319,12 +323,23 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
         locationHelper.getCurrentLiveLocation(
             onSuccess = { loc ->
                 viewModelScope.launch {
-                    val realAddress = LocationSearchHelper.reverseGeocode(getApplication(), loc.lat, loc.lng)
+                    val geoDetails = LocationSearchHelper.reverseGeocodeDetailed(getApplication(), loc.lat, loc.lng)
                     _uiState.value = _uiState.value.copy(
                         currentLocation = loc,
                         pickupLat = loc.lat,
                         pickupLng = loc.lng,
-                        pickupAddress = realAddress
+                        pickupAddress = geoDetails.formattedAddress,
+                        currentCity = geoDetails.city,
+                        currentDistrict = geoDetails.district,
+                        currentState = geoDetails.state
+                    )
+                    // Trigger popular destination repo refresh for this location
+                    destinationRepo.refreshDestinations(
+                        userLat = loc.lat,
+                        userLng = loc.lng,
+                        city = geoDetails.city,
+                        district = geoDetails.district,
+                        state = geoDetails.state
                     )
                     if (_uiState.value.isLoggedIn && _uiState.value.dropAddress.isNotBlank()) {
                         calculateFares()
@@ -341,9 +356,47 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updatePickupLocation(address: String, lat: Double, lng: Double) {
-        _uiState.value = _uiState.value.copy(pickupAddress = address, pickupLat = lat, pickupLng = lng)
-        if (_uiState.value.isLoggedIn && _uiState.value.dropAddress.isNotBlank()) {
-            calculateFares()
+        viewModelScope.launch {
+            val geoDetails = if (lat != 0.0 && lng != 0.0) {
+                LocationSearchHelper.reverseGeocodeDetailed(getApplication(), lat, lng)
+            } else null
+
+            val resolvedCity = geoDetails?.city ?: when {
+                address.contains("sheikhpura", ignoreCase = true) -> "Sheikhpura"
+                address.contains("patna", ignoreCase = true) -> "Patna"
+                address.contains("bangalore", ignoreCase = true) || address.contains("bengaluru", ignoreCase = true) -> "Bangalore"
+                else -> _uiState.value.currentCity
+            }
+
+            val resolvedDistrict = geoDetails?.district ?: resolvedCity
+            val resolvedState = geoDetails?.state ?: when {
+                address.contains("bihar", ignoreCase = true) || (resolvedCity != null && (resolvedCity.equals("sheikhpura", true) || resolvedCity.equals("patna", true))) -> "Bihar"
+                address.contains("karnataka", ignoreCase = true) || (resolvedCity != null && resolvedCity.equals("bangalore", true)) -> "Karnataka"
+                else -> _uiState.value.currentState
+            }
+
+            _uiState.value = _uiState.value.copy(
+                pickupAddress = address,
+                pickupLat = lat,
+                pickupLng = lng,
+                currentCity = resolvedCity,
+                currentDistrict = resolvedDistrict,
+                currentState = resolvedState
+            )
+
+            if (lat != 0.0 && lng != 0.0) {
+                destinationRepo.refreshDestinations(
+                    userLat = lat,
+                    userLng = lng,
+                    city = resolvedCity,
+                    district = resolvedDistrict,
+                    state = resolvedState
+                )
+            }
+
+            if (_uiState.value.isLoggedIn && _uiState.value.dropAddress.isNotBlank()) {
+                calculateFares()
+            }
         }
     }
 

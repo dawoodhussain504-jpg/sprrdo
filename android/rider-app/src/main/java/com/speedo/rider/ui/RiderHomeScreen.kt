@@ -63,9 +63,26 @@ fun RiderHomeScreen(
 
     val context = LocalContext.current
     val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
-    val popularDestinations = remember(liveDestinations, uiState.pickupLat, uiState.pickupLng) {
-        PopularDestinationsData.calculateDistances(liveDestinations, uiState.pickupLat, uiState.pickupLng)
+    val rankedDestinations = remember(
+        liveDestinations,
+        uiState.pickupLat,
+        uiState.pickupLng,
+        uiState.currentCity,
+        uiState.currentDistrict,
+        uiState.currentState,
+        uiState.pickupAddress
+    ) {
+        PopularDestinationsData.filterAndRankForLocation(
+            destinations = liveDestinations,
+            userLat = uiState.pickupLat,
+            userLng = uiState.pickupLng,
+            userCity = uiState.currentCity,
+            userDistrict = uiState.currentDistrict,
+            userState = uiState.currentState,
+            userAddress = uiState.pickupAddress
+        )
     }
+    val popularDestinations = rankedDestinations.destinations
     var showSafetySheet by remember { mutableStateOf(false) }
     var paymentMethod by remember { mutableStateOf("cash") } // "cash", "upi", "wallet"
     var isCouponApplied by remember { mutableStateOf(true) }
@@ -487,14 +504,14 @@ fun RiderHomeScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "Popular Destinations",
+                                    text = rankedDestinations.headerTitle,
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.ExtraBold,
                                         color = RapidoBlack
                                     )
                                 )
                                 Text(
-                                    text = "Top places in Bangalore • Tap image to go",
+                                    text = rankedDestinations.subtitle,
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                                     color = SpeedoTextSecondary
                                 )

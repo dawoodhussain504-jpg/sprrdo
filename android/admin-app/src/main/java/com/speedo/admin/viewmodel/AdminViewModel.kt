@@ -564,11 +564,14 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         lat: Double,
         lng: Double,
         address: String,
+        city: String? = null,
+        district: String? = null,
+        state: String? = null,
         sortOrder: Int = 0
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmittingAction = true)
-            val body = mapOf(
+            val body = mutableMapOf<String, Any>(
                 "title" to title,
                 "subtitle" to subtitle,
                 "category" to category,
@@ -579,6 +582,10 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
                 "address" to address,
                 "sort_order" to sortOrder
             )
+            if (!city.isNullOrBlank()) body["city"] = city
+            if (!district.isNullOrBlank()) body["district"] = district
+            if (!state.isNullOrBlank()) body["state"] = state
+
             when (val res = destinationRepo.createDestination(body)) {
                 is NetworkResult.Success -> {
                     _uiState.value = _uiState.value.copy(
@@ -610,12 +617,15 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         lat: Double,
         lng: Double,
         address: String,
+        city: String? = null,
+        district: String? = null,
+        state: String? = null,
         isActive: Boolean = true,
         sortOrder: Int = 0
     ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSubmittingAction = true)
-            val body = mapOf(
+            val body = mutableMapOf<String, Any>(
                 "title" to title,
                 "subtitle" to subtitle,
                 "category" to category,
@@ -627,6 +637,10 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
                 "is_active" to isActive,
                 "sort_order" to sortOrder
             )
+            if (!city.isNullOrBlank()) body["city"] = city
+            if (!district.isNullOrBlank()) body["district"] = district
+            if (!state.isNullOrBlank()) body["state"] = state
+
             when (val res = destinationRepo.updateDestination(id, body)) {
                 is NetworkResult.Success -> {
                     _uiState.value = _uiState.value.copy(

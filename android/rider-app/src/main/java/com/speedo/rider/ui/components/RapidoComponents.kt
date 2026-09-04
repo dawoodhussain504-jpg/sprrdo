@@ -572,9 +572,15 @@ fun RapidoLocationSearchDialog(
     var isSearching by remember { mutableStateOf(false) }
 
     val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
-    val popularDestinations = remember(liveDestinations, userLat, userLng) {
-        PopularDestinationsData.calculateDistances(liveDestinations, userLat, userLng)
+    val rankedDestinations = remember(liveDestinations, userLat, userLng, currentPickup) {
+        PopularDestinationsData.filterAndRankForLocation(
+            destinations = liveDestinations,
+            userLat = userLat,
+            userLng = userLng,
+            userAddress = currentPickup
+        )
     }
+    val popularDestinations = rankedDestinations.destinations
 
     val activeQuery = if (activeField == LocationFieldType.PICKUP) pickupInput else dropInput
 
@@ -780,7 +786,7 @@ fun RapidoLocationSearchDialog(
             // When no query is typed: Show Popular Destinations in Thumbnails View
             if (activeQuery.trim().isEmpty()) {
                 Text(
-                    text = "POPULAR DESTINATIONS IN BANGALORE",
+                    text = rankedDestinations.headerTitle.uppercase(),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = SpeedoTextSecondary,

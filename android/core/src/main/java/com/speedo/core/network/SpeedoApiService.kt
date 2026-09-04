@@ -276,7 +276,13 @@ interface SpeedoApiService {
 
     // --- POPULAR DESTINATIONS (REAL-TIME MANAGEMENT) ---
     @GET("destinations")
-    suspend fun getPopularDestinations(): Response<ApiResponse<List<PopularDestination>>>
+    suspend fun getPopularDestinations(
+        @retrofit2.http.Query("lat") lat: Double? = null,
+        @retrofit2.http.Query("lng") lng: Double? = null,
+        @retrofit2.http.Query("city") city: String? = null,
+        @retrofit2.http.Query("district") district: String? = null,
+        @retrofit2.http.Query("state") state: String? = null
+    ): Response<ApiResponse<List<PopularDestination>>>
 
     @GET("admin/destinations")
     suspend fun getAdminPopularDestinations(): Response<ApiResponse<List<PopularDestination>>>
