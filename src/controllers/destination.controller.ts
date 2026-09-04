@@ -27,11 +27,23 @@ async function ensureDestinationSchema() {
       ALTER TABLE popular_destinations ADD COLUMN IF NOT EXISTS state VARCHAR(100);
     `);
 
-    // Backfill legacy Bangalore entries if city is NULL
+    // Backfill legacy entries if city is NULL
     await db.query(`
       UPDATE popular_destinations
       SET city = 'Bangalore', district = 'Bengaluru Urban', state = 'Karnataka'
       WHERE city IS NULL AND (address ILIKE '%Bangalore%' OR address ILIKE '%Bengaluru%' OR title ILIKE '%Bangalore%' OR title ILIKE '%Bengaluru%' OR title ILIKE '%Airport%')
+    `);
+
+    // Backfill existing Sheikhpura places
+    await db.query(`
+      UPDATE popular_destinations
+      SET city = 'Sheikhpura', district = 'Sheikhpura', state = 'Bihar'
+      WHERE city IS NULL AND (
+        address ILIKE '%Sheikhpura%' OR address ILIKE '%Shekhopur%' OR address ILIKE '%Girhinda%' OR
+        title ILIKE '%Sheikhpura%' OR title ILIKE '%Girhinda%' OR address ILIKE '%Ahiyapur%' OR
+        address ILIKE '%Bypass Road%' OR address ILIKE '%Khandpar%' OR address ILIKE '%Dallu Chowk%' OR
+        address ILIKE '%Bazidpur%' OR address ILIKE '%Station Road%'
+      )
     `);
 
     // Check if Sheikhpura destinations exist
@@ -207,8 +219,16 @@ export async function getPopularDestinationsPublic(req: Request, res: Response) 
 
     // Check matches
     const cityMatches = withDistance.filter(d =>
-      (cleanCity && d.city && d.city.toLowerCase().includes(cleanCity)) ||
-      (cleanDistrict && d.district && d.district.toLowerCase().includes(cleanDistrict)) ||
+      (cleanCity && (
+        (d.city && d.city.toLowerCase().includes(cleanCity)) ||
+        (d.full_address && d.full_address.toLowerCase().includes(cleanCity)) ||
+        (d.title && d.title.toLowerCase().includes(cleanCity))
+      )) ||
+      (cleanDistrict && (
+        (d.district && d.district.toLowerCase().includes(cleanDistrict)) ||
+        (d.full_address && d.full_address.toLowerCase().includes(cleanDistrict)) ||
+        (d.title && d.title.toLowerCase().includes(cleanDistrict))
+      )) ||
       (d.distance_km != null && d.distance_km <= 35)
     );
 
