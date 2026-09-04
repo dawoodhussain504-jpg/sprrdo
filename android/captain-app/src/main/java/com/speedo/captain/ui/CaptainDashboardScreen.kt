@@ -112,6 +112,54 @@ fun CaptainDashboardScreen(
                 .padding(16.dp)
                 .align(Alignment.TopCenter)
         ) {
+            // Clickable App Update Notification Banner (if update available)
+            val appUpdate = uiState.appUpdateState
+            if (appUpdate.isUpdateAvailable) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .clickable {
+                            com.speedo.core.components.openBrowserForUpdate(
+                                context,
+                                appUpdate.updateUrl
+                            )
+                        },
+                    shape = RoundedCornerShape(14.dp),
+                    color = SpeedoOrange.copy(alpha = 0.12f),
+                    border = BorderStroke(1.5.dp, SpeedoOrange),
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(SpeedoOrange),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = SpeedoWhite, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "⚡ Update Available (v${appUpdate.latestVersionName})",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = SpeedoOrange)
+                            )
+                            Text(
+                                text = "Tap here to download & install latest Speedo Captain APK",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SpeedoTextSecondary
+                            )
+                        }
+                        Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = SpeedoOrange)
+                    }
+                }
+            }
+
             // KYC Alert Banner (if pending)
             if (!isKycApproved) {
                 Surface(

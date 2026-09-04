@@ -227,6 +227,33 @@ fun RiderHomeScreen(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Clickable App Update Notification Badge (if update available)
+                val appUpdate = uiState.appUpdateState
+                if (appUpdate.isUpdateAvailable) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = SpeedoOrange,
+                        shadowElevation = 6.dp,
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .clickable {
+                                com.speedo.core.components.openBrowserForUpdate(
+                                    context,
+                                    appUpdate.updateUrl
+                                )
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = SpeedoWhite, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Update App", color = SpeedoWhite, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                        }
+                    }
+                }
+
                 // Safety Shield Button
                 Surface(
                     shape = CircleShape,

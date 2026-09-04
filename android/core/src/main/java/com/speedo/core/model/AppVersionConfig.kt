@@ -25,4 +25,14 @@ data class AppUpdatePromptState(
     val currentVersionCode: Int = 1,
     val currentVersionName: String = "1.0.0",
     val isDismissed: Boolean = false
-)
+) {
+    val updateUrl: String
+        get() = config?.updateUrl?.takeIf { it.isNotBlank() }
+            ?: "https://web-production-5d826.up.railway.app/downloads/speedo-${config?.appId ?: "rider"}.apk"
+
+    val latestVersionName: String
+        get() = config?.latestVersionName ?: "latest"
+
+    val latestVersionCode: Int
+        get() = config?.latestVersionCode ?: (currentVersionCode + 1)
+}

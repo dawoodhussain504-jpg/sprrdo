@@ -31,7 +31,26 @@ data class NotificationItem(
     @SerializedName("is_read") val isRead: Int = 0,
     @SerializedName("metadata_json") val metadataJson: String? = null,
     @SerializedName("created_at") val createdAt: String? = null
-)
+) {
+    fun isAppUpdateNotification(): Boolean {
+        return type.equals("app_update", ignoreCase = true) ||
+               title.contains("update", ignoreCase = true) ||
+               message.contains("update", ignoreCase = true)
+    }
+
+    fun extractUpdateUrl(fallbackAppId: String = "rider"): String {
+        return try {
+            if (!metadataJson.isNullOrBlank()) {
+                val json = org.json.JSONObject(metadataJson)
+                val url = json.optString("updateUrl", "")
+                if (url.isNotBlank()) return url
+            }
+            "https://web-production-5d826.up.railway.app/downloads/speedo-$fallbackAppId.apk"
+        } catch (e: Exception) {
+            "https://web-production-5d826.up.railway.app/downloads/speedo-$fallbackAppId.apk"
+        }
+    }
+}
 
 data class DashboardStats(
     @SerializedName("total_riders") val totalRiders: Int,

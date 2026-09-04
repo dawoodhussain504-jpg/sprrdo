@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.speedo.core.theme.SpeedoOrange
@@ -102,8 +104,17 @@ fun RiderMainScaffold(
                             icon = {
                                 BadgedBox(
                                     badge = {
-                                        if (screen == RiderScreen.Notifications && unreadCount > 0) {
-                                            Badge { Text(text = "$unreadCount") }
+                                        if (screen == RiderScreen.Notifications) {
+                                            if (appUpdate.isUpdateAvailable) {
+                                                Badge(
+                                                    containerColor = SpeedoOrange,
+                                                    contentColor = SpeedoWhite
+                                                ) {
+                                                    Text(text = "NEW", fontWeight = FontWeight.Bold, fontSize = 9.sp)
+                                                }
+                                            } else if (unreadCount > 0) {
+                                                Badge { Text(text = "$unreadCount") }
+                                            }
                                         }
                                     }
                                 ) {

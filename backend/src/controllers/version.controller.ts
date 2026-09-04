@@ -160,8 +160,26 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
       isActive,
     } = req.body;
 
-    // Check if row exists
+    // Check if row exists and enforce sequential code
     const check = await db.query('SELECT * FROM app_version_configs WHERE app_id = $1', [appId]);
+    const currentLiveCode = check.rows.length > 0 ? Number(check.rows[0].latest_version_code || 1) : 0;
+    const targetCode = latestVersionCode !== undefined && latestVersionCode !== null && String(latestVersionCode).trim() !== ''
+      ? Number(latestVersionCode)
+      : currentLiveCode + 1;
+
+    // Enforce sequential publishing: Next build must be strictly greater than current live build
+    if (check.rows.length > 0 && targetCode <= currentLiveCode) {
+      return res.status(400).json({
+        success: false,
+        message: `Version code must be sequential. Current live build is #${currentLiveCode}. Next build must be at least #${currentLiveCode + 1}.`,
+        currentVersionCode: currentLiveCode,
+        nextSequentialCode: currentLiveCode + 1,
+      });
+    }
+
+    const targetUrl = updateUrl && !updateUrl.includes('play.google.com')
+      ? updateUrl
+      : `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
 
     if (check.rows.length === 0) {
       // Insert new if not present
@@ -172,14 +190,14 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
         [
           appId,
           appName || `Speedo ${appId}`,
-          latestVersionCode || 1,
+          targetCode || 1,
           latestVersionName || '1.0.0',
           minSupportedVersionCode || 1,
           forceUpdate ? 1 : 0,
           title || 'Update Available',
           message || 'Please update your app to continue.',
           releaseNotes || null,
-          updateUrl || `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`,
+          targetUrl,
           isActive !== false ? 1 : 0,
         ]
       );
@@ -202,14 +220,14 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
         [
           appId,
           appName || null,
-          latestVersionCode !== undefined ? latestVersionCode : null,
+          targetCode,
           latestVersionName || null,
           minSupportedVersionCode !== undefined ? minSupportedVersionCode : null,
           forceUpdate !== undefined ? (forceUpdate ? 1 : 0) : null,
           title || null,
           message || null,
           releaseNotes !== undefined ? releaseNotes : null,
-          updateUrl || null,
+          targetUrl,
           isActive !== undefined ? (isActive ? 1 : 0) : null,
         ]
       );
