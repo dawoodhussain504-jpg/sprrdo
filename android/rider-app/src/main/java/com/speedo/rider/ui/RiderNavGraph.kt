@@ -36,7 +36,9 @@ fun RiderMainScaffold(
 
     // 0. Over-the-Air Version Check & Update Overlays (Never show if already updated)
     val appUpdate = uiState.appUpdateState
-    if (appUpdate.isUpdateAvailable && appUpdate.isForceUpdate && !appUpdate.isDismissed) {
+    val isUserAlreadyUpdated = appUpdate.currentVersionCode >= (appUpdate.config?.latestVersionCode ?: 0)
+
+    if (!isUserAlreadyUpdated && appUpdate.isUpdateAvailable && appUpdate.isForceUpdate && !appUpdate.isDismissed) {
         com.speedo.core.components.ForceUpdateOverlay(
             promptState = appUpdate,
             onDismiss = { viewModel.dismissFlexibleUpdate() }
@@ -44,7 +46,7 @@ fun RiderMainScaffold(
         return
     }
 
-    if (appUpdate.isUpdateAvailable && !appUpdate.isDismissed) {
+    if (!isUserAlreadyUpdated && appUpdate.isUpdateAvailable && !appUpdate.isDismissed) {
         com.speedo.core.components.FlexibleUpdateDialog(
             promptState = appUpdate,
             onDismiss = { viewModel.dismissFlexibleUpdate() }

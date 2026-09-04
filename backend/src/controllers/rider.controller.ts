@@ -331,7 +331,7 @@ export async function getRiderNotifications(req: AuthenticatedRequest, res: Resp
   try {
     const riderId = req.user?.id;
     const notifs = await db.query(
-      `SELECT * FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'rider' OR recipient_role = 'all') ORDER BY created_at DESC LIMIT 50`,
+      `SELECT * FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'rider' OR recipient_role = 'all') AND is_read = 0 ORDER BY created_at DESC LIMIT 50`,
       [riderId]
     );
     return res.json({ success: true, data: notifs.rows });
@@ -344,7 +344,7 @@ export async function markNotificationRead(req: AuthenticatedRequest, res: Respo
   try {
     const riderId = req.user?.id;
     const notifId = req.params.id;
-    await db.query(`UPDATE notifications SET is_read = 1 WHERE id = $1 AND recipient_id = $2`, [notifId, riderId]);
+    await db.query(`UPDATE notifications SET is_read = 1 WHERE id = $1 AND (recipient_id = $2 OR recipient_id = 'all')`, [notifId, riderId]);
     return res.json({ success: true, message: 'Notification marked as read' });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to update notification', error: error.message });

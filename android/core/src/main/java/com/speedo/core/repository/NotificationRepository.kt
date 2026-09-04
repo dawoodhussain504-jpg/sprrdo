@@ -61,6 +61,7 @@ class NotificationRepository(context: Context) {
     suspend fun markRiderRead(id: String): NetworkResult<Unit> = withContext(Dispatchers.IO) {
         try {
             notifDao.markAsRead(id)
+            notifDao.removeNotification(id)
             api.markRiderNotificationRead(id)
             NetworkResult.Success(Unit)
         } catch (e: Exception) {
@@ -71,6 +72,7 @@ class NotificationRepository(context: Context) {
     suspend fun markCaptainRead(id: String): NetworkResult<Unit> = withContext(Dispatchers.IO) {
         try {
             notifDao.markAsRead(id)
+            notifDao.removeNotification(id)
             api.markCaptainNotificationRead(id)
             NetworkResult.Success(Unit)
         } catch (e: Exception) {

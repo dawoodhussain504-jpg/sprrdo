@@ -28,18 +28,37 @@ class AppVersionRepository(private val context: Context) {
         }
     }
 
+    private fun isCurrentVersionAtLeast(currentName: String, latestName: String): Boolean {
+        val currentParts = currentName.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
+        val latestParts = latestName.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(currentParts.size, latestParts.size)
+        for (i in 0 until maxLen) {
+            val c = currentParts.getOrElse(i) { 0 }
+            val l = latestParts.getOrElse(i) { 0 }
+            if (c > l) return true
+            if (c < l) return false
+        }
+        return true
+    }
+
     suspend fun checkAppVersion(appId: String): AppUpdatePromptState {
         val (currentCode, currentName) = getInstalledVersionInfo()
         return try {
             val res = apiService.getAppVersion(app = appId, currentVersion = currentCode)
             if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
                 val config = res.body()!!.data!!
-                // If user is already on latest version (or newer), do not show update dialog!
-                val hasUpdate = currentCode < config.latestVersionCode
+                // If user is already on latest version (or newer), do NOT show update dialog under any circumstances!
+                val isAlreadyLatest = currentCode >= config.latestVersionCode || isCurrentVersionAtLeast(currentName, config.latestVersionName)
+                val hasUpdate = !isAlreadyLatest && config.isActive
+
+                val prefs = context.getSharedPreferences("speedo_update_prefs", Context.MODE_PRIVATE)
+                val dismissedVersion = prefs.getInt("dismissed_update_version_code", 0)
+                val isDismissed = isAlreadyLatest || (dismissedVersion >= config.latestVersionCode)
+
                 val isForce = hasUpdate && (config.forceUpdate || (currentCode < config.minSupportedVersionCode))
                 val isAvailable = hasUpdate
 
-                if (isAvailable) {
+                if (isAvailable && !isAlreadyLatest) {
                     NotificationHelper.showAppUpdateNotification(
                         context = context,
                         title = config.title,
@@ -50,12 +69,12 @@ class AppVersionRepository(private val context: Context) {
                 }
 
                 AppUpdatePromptState(
-                    isUpdateAvailable = isAvailable,
-                    isForceUpdate = isForce,
+                    isUpdateAvailable = if (isAlreadyLatest) false else isAvailable,
+                    isForceUpdate = if (isAlreadyLatest) false else isForce,
                     config = config,
                     currentVersionCode = currentCode,
                     currentVersionName = currentName,
-                    isDismissed = false
+                    isDismissed = isDismissed
                 )
             } else {
                 AppUpdatePromptState(

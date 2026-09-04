@@ -37,6 +37,11 @@ fun CaptainNotificationsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val appUpdate = uiState.appUpdateState
 
+    // Auto-disappear: Only show unread notifications
+    val unreadNotifications = remember(notifications) {
+        notifications.filter { it.isRead == 0 }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.syncNotifications()
     }
@@ -46,11 +51,11 @@ fun CaptainNotificationsScreen(
             SpeedoTopBar(title = "Captain Alerts")
         }
     ) { padding ->
-        if (notifications.isEmpty() && !appUpdate.isUpdateAvailable) {
+        if (unreadNotifications.isEmpty() && !appUpdate.isUpdateAvailable) {
             SpeedoEmptyView(
                 icon = Icons.Default.NotificationsNone,
                 title = "No Notifications",
-                message = "Alerts regarding KYC verification, rides, and updates will appear here.",
+                message = "You're all caught up! Alerts regarding rides, KYC, and updates will appear here.",
                 modifier = Modifier.padding(padding)
             )
         } else {
@@ -117,7 +122,7 @@ fun CaptainNotificationsScreen(
                         }
                     }
                 }
-                items(notifications) { notif ->
+                items(unreadNotifications, key = { it.id }) { notif ->
                     val isUnread = notif.isRead == 0
                     val isUpdate = notif.isAppUpdateNotification()
 

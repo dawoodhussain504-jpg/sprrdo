@@ -37,6 +37,11 @@ fun RiderNotificationsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val appUpdate = uiState.appUpdateState
 
+    // Auto-disappear: Only show unread notifications
+    val unreadNotifications = remember(notifications) {
+        notifications.filter { it.isRead == 0 }
+    }
+
     LaunchedEffect(Unit) {
         viewModel.syncNotifications()
     }
@@ -46,11 +51,11 @@ fun RiderNotificationsScreen(
             SpeedoTopBar(title = "Notifications")
         }
     ) { padding ->
-        if (notifications.isEmpty() && !appUpdate.isUpdateAvailable) {
+        if (unreadNotifications.isEmpty() && !appUpdate.isUpdateAvailable) {
             SpeedoEmptyView(
                 icon = Icons.Default.NotificationsNone,
                 title = "No Notifications",
-                message = "Updates on your ride requests and promos will appear here.",
+                message = "You're all caught up! New alerts and ride updates will appear here.",
                 modifier = Modifier.padding(padding)
             )
         } else {
@@ -117,7 +122,7 @@ fun RiderNotificationsScreen(
                         }
                     }
                 }
-                items(notifications) { notif ->
+                items(unreadNotifications, key = { it.id }) { notif ->
                     val isUnread = notif.isRead == 0
                     val isUpdate = notif.isAppUpdateNotification()
 

@@ -45,7 +45,7 @@ data class NotificationEntity(
 
 @Dao
 interface NotificationDao {
-    @Query("SELECT * FROM cached_notifications ORDER BY createdAt DESC")
+    @Query("SELECT * FROM cached_notifications WHERE isRead = 0 ORDER BY createdAt DESC")
     fun getAllNotifications(): Flow<List<NotificationEntity>>
 
     @Query("SELECT COUNT(*) FROM cached_notifications WHERE isRead = 0")
@@ -56,6 +56,12 @@ interface NotificationDao {
 
     @Query("UPDATE cached_notifications SET isRead = 1 WHERE id = :id")
     suspend fun markAsRead(id: String)
+
+    @Query("DELETE FROM cached_notifications WHERE isRead = 1 OR id = :id")
+    suspend fun removeNotification(id: String)
+
+    @Query("DELETE FROM cached_notifications WHERE isRead = 1")
+    suspend fun clearReadNotifications()
 
     @Query("DELETE FROM cached_notifications")
     suspend fun clearNotifications()

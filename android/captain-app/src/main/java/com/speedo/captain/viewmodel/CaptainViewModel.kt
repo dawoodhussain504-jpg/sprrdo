@@ -696,9 +696,14 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun dismissFlexibleUpdate() {
+        val latestCode = _uiState.value.appUpdateState.config?.latestVersionCode ?: 0
+        try {
+            val prefs = getApplication<android.app.Application>().getSharedPreferences("speedo_update_prefs", android.content.Context.MODE_PRIVATE)
+            prefs.edit().putInt("dismissed_update_version_code", latestCode).apply()
+        } catch (_: Exception) {}
         _uiState.value = _uiState.value.copy(
             appUpdateState = _uiState.value.appUpdateState.copy(isDismissed = true)
         )
     }
 
-}
+}
