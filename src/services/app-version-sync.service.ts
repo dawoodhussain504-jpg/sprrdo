@@ -226,6 +226,29 @@ export async function syncAppVersions(force = false): Promise<void> {
         });
 
         console.log(`🚀 [AppVersionSync] Directly notified existing ${appId} users of new update (Build #${targetCode}).`);
+      } else if (targetCode < dbCode) {
+        // Drift correction: Align DB with actual built version in app-versions.json
+        console.log(`🔧 [AppVersionSync] Correcting DB version drift for ${appId}: DB #${dbCode} -> Defined #${targetCode}`);
+        await db.query(
+          `UPDATE app_version_configs 
+           SET latest_version_code = $2,
+               latest_version_name = $3,
+               title = $4,
+               message = $5,
+               force_update = $6,
+               update_url = $7,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE app_id = $1`,
+          [
+            appId,
+            targetCode,
+            def.versionName,
+            def.title,
+            def.message,
+            def.forceUpdate ? 1 : 0,
+            targetUrl,
+          ]
+        );
       }
     } catch (err: any) {
       console.error(`[AppVersionSync] Error syncing ${appId}:`, err.message);
