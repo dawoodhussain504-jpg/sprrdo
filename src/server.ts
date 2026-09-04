@@ -156,6 +156,37 @@ async function startServer() {
       console.log('🌱 Seed info:', seedErr.message);
     }
 
+    // Ensure database app version configs align with built binaries (v3), breaking update loops
+    try {
+      const { getDb } = await import('./config/db');
+      const db = getDb();
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS schema_patches (
+          patch_name VARCHAR(64) PRIMARY KEY,
+          applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      const patchCheck = await db.query(
+        "SELECT * FROM schema_patches WHERE patch_name = 'patch_v3_loop_fix'"
+      );
+      if (patchCheck.rows.length === 0) {
+        await db.query(`
+          UPDATE app_version_configs 
+          SET latest_version_code = 3, latest_version_name = '1.0.3', min_supported_version_code = 1, force_update = 0 
+          WHERE app_id IN ('rider', 'captain', 'admin');
+
+          UPDATE notifications 
+          SET is_read = 1 
+          WHERE type = 'app_update';
+
+          INSERT INTO schema_patches (patch_name) VALUES ('patch_v3_loop_fix');
+        `);
+        console.log('✅ Applied patch_v3_loop_fix: App versions aligned to 3 (1.0.3) & old update notifications cleared.');
+      }
+    } catch (patchErr: any) {
+      console.log('⚠️ Patch info:', patchErr.message);
+    }
+
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`====================================================`);
       console.log(` SPEEDO REAL-TIME BACKEND & SOCKETS RUNNING ON ${PORT}`);

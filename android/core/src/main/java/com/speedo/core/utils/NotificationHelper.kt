@@ -15,6 +15,12 @@ import com.speedo.core.R
 
 object NotificationHelper {
 
+    fun cancelUpdateNotification(context: Context) {
+        try {
+            androidx.core.app.NotificationManagerCompat.from(context).cancel(Constants.NOTIFICATION_ID_APP_UPDATE)
+        } catch (_: Exception) {}
+    }
+
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

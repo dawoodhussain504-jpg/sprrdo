@@ -37,7 +37,16 @@ fun CaptainMainScaffold(
 
     // 0. Over-the-Air Version Check & Update Overlays (Never show if already updated)
     val appUpdate = uiState.appUpdateState
-    val isUserAlreadyUpdated = appUpdate.currentVersionCode >= (appUpdate.config?.latestVersionCode ?: 0)
+    val installedVersionCode = remember(context) {
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(pInfo).toInt()
+        } catch (_: Exception) {
+            appUpdate.currentVersionCode
+        }
+    }
+    val targetVersionCode = appUpdate.config?.latestVersionCode ?: 0
+    val isUserAlreadyUpdated = installedVersionCode >= targetVersionCode
 
     if (!isUserAlreadyUpdated && appUpdate.isUpdateAvailable && appUpdate.isForceUpdate && !appUpdate.isDismissed) {
         com.speedo.core.components.ForceUpdateOverlay(

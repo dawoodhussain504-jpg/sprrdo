@@ -26,9 +26,10 @@ function formatRow(row: any, currentCode?: number): AppVersionConfigResponse {
   let isUpdateAvailable = false;
   let isForceUpdate = false;
 
+  const isActiveFlag = row.is_active === 1 || row.is_active === true;
   if (currentCode !== undefined && !isNaN(currentCode)) {
-    // If the user is already on the latest version or higher, NO update is available or forced!
-    isUpdateAvailable = currentCode < latestCode;
+    // If update is inactive or user is already on latest version or higher, NO update is available or forced!
+    isUpdateAvailable = isActiveFlag && (currentCode < latestCode);
     isForceUpdate = isUpdateAvailable && (forceUpdateFlag || currentCode < minCode);
   } else {
     isForceUpdate = false;
@@ -160,29 +161,20 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
       isActive,
     } = req.body;
 
-    // Check if row exists and enforce sequential code
+    // Check if row exists
     const check = await db.query('SELECT * FROM app_version_configs WHERE app_id = $1', [appId]);
     const currentLiveCode = check.rows.length > 0 ? Number(check.rows[0].latest_version_code || 1) : 0;
     const targetCode = latestVersionCode !== undefined && latestVersionCode !== null && String(latestVersionCode).trim() !== ''
       ? Number(latestVersionCode)
-      : currentLiveCode + 1;
-
-    // Enforce sequential publishing: Next build must be strictly greater than current live build
-    if (check.rows.length > 0 && targetCode <= currentLiveCode) {
-      return res.status(400).json({
-        success: false,
-        message: `Version code must be sequential. Current live build is #${currentLiveCode}. Next build must be at least #${currentLiveCode + 1}.`,
-        currentVersionCode: currentLiveCode,
-        nextSequentialCode: currentLiveCode + 1,
-      });
-    }
+      : currentLiveCode;
 
     const targetUrl = updateUrl && !updateUrl.includes('play.google.com')
       ? updateUrl
       : `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
 
+    const isNewBuildPublished = targetCode > currentLiveCode;
+
     if (check.rows.length === 0) {
-      // Insert new if not present
       await db.query(
         `INSERT INTO app_version_configs
          (app_id, app_name, latest_version_code, latest_version_name, min_supported_version_code, force_update, title, message, release_notes, update_url, is_active, updated_at)
@@ -202,11 +194,10 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
         ]
       );
     } else {
-      // Update existing
       await db.query(
         `UPDATE app_version_configs
          SET app_name = COALESCE($2, app_name),
-             latest_version_code = COALESCE($3, latest_version_code),
+             latest_version_code = $3,
              latest_version_name = COALESCE($4, latest_version_name),
              min_supported_version_code = COALESCE($5, min_supported_version_code),
              force_update = COALESCE($6, force_update),
@@ -236,34 +227,44 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
     const updatedResult = await db.query('SELECT * FROM app_version_configs WHERE app_id = $1', [appId]);
     const updatedConfig = formatRow(updatedResult.rows[0]);
 
-    // Insert notification announcement for all users of this app
-    try {
-      const notifId = 'notif_update_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
-      const targetRole = appId === 'rider' ? 'rider' : (appId === 'captain' ? 'captain' : 'all');
-      await db.query(
-        `INSERT INTO notifications (id, recipient_id, recipient_role, title, message, type, is_read, metadata_json, created_at)
-         VALUES ($1, 'all', $2, $3, $4, 'app_update', 0, $5, CURRENT_TIMESTAMP)`,
-        [
-          notifId,
-          targetRole,
-          updatedConfig.title,
-          updatedConfig.message,
-          JSON.stringify({
-            appId,
-            latestVersionCode: updatedConfig.latestVersionCode,
-            latestVersionName: updatedConfig.latestVersionName,
-            updateUrl: updatedConfig.updateUrl,
-            forceUpdate: updatedConfig.forceUpdate,
-            releaseNotes: updatedConfig.releaseNotes,
-          }),
-        ]
-      );
-    } catch (notifErr) {
-      console.warn('⚠️ Could not insert update notification into database:', notifErr);
-    }
+    const targetRole = appId === 'rider' ? 'rider' : (appId === 'captain' ? 'captain' : 'all');
 
-    // Broadcast update to all connected clients in real time!
-    emitAppVersionUpdated(updatedConfig);
+    // ONLY broadcast and insert notification if an actual NEW build is published!
+    // Prevents sending duplicate updates when editing settings or saving.
+    if (isNewBuildPublished) {
+      try {
+        // Mark previous update notifications as read so they auto-disappear
+        await db.query(
+          `UPDATE notifications SET is_read = 1 WHERE (recipient_role = $1 OR recipient_role = 'all') AND type = 'app_update'`,
+          [targetRole]
+        );
+
+        const notifId = 'notif_update_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        await db.query(
+          `INSERT INTO notifications (id, recipient_id, recipient_role, title, message, type, is_read, metadata_json, created_at)
+           VALUES ($1, 'all', $2, $3, $4, 'app_update', 0, $5, CURRENT_TIMESTAMP)`,
+          [
+            notifId,
+            targetRole,
+            updatedConfig.title,
+            updatedConfig.message,
+            JSON.stringify({
+              appId,
+              latestVersionCode: updatedConfig.latestVersionCode,
+              latestVersionName: updatedConfig.latestVersionName,
+              updateUrl: updatedConfig.updateUrl,
+              forceUpdate: updatedConfig.forceUpdate,
+              releaseNotes: updatedConfig.releaseNotes,
+            }),
+          ]
+        );
+      } catch (notifErr) {
+        console.warn('⚠️ Could not insert update notification into database:', notifErr);
+      }
+
+      // Broadcast update to connected clients in real time
+      emitAppVersionUpdated(updatedConfig);
+    }
 
     return res.status(200).json({
       success: true,

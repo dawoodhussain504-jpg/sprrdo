@@ -430,6 +430,7 @@ fun FlexibleUpdateDialog(
                 is DownloadStatus.Completed -> {
                     Button(
                         onClick = {
+                            onDismiss()
                             InAppUpdateManager.installApk(context, status.apkFile)
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -442,7 +443,9 @@ fun FlexibleUpdateDialog(
                 is DownloadStatus.Failed -> {
                     Button(
                         onClick = {
-                            InAppUpdateManager.startDownloadAndInstall(context, targetUrl)
+                            InAppUpdateManager.startDownloadAndInstall(context, targetUrl) {
+                                onDismiss()
+                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),

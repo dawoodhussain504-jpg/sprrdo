@@ -58,7 +58,8 @@ class AppVersionRepository(private val context: Context) {
                 val isForce = hasUpdate && (config.forceUpdate || (currentCode < config.minSupportedVersionCode))
                 val isAvailable = hasUpdate
 
-                if (isAvailable && !isAlreadyLatest) {
+                val lastNotified = prefs.getInt("last_notified_version_code", 0)
+                if (isAvailable && !isAlreadyLatest && lastNotified < config.latestVersionCode) {
                     NotificationHelper.showAppUpdateNotification(
                         context = context,
                         title = config.title,
@@ -66,6 +67,11 @@ class AppVersionRepository(private val context: Context) {
                         updateUrl = config.updateUrl,
                         versionName = config.latestVersionName
                     )
+                    prefs.edit().putInt("last_notified_version_code", config.latestVersionCode).apply()
+                }
+
+                if (isAlreadyLatest) {
+                    NotificationHelper.cancelUpdateNotification(context)
                 }
 
                 AppUpdatePromptState(

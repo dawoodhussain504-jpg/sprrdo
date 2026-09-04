@@ -194,7 +194,39 @@ object InAppUpdateManager {
                 }
 
                 outputStream.flush()
+
+                // LOOP-BREAKER GUARD: Inspect downloaded APK before installing
+                val pInfo = try { context.packageManager.getPackageInfo(context.packageName, 0) } catch (_: Exception) { null }
+                val installedCode = pInfo?.let { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it).toInt() } ?: 0
+
+                val archiveInfo = context.packageManager.getPackageArchiveInfo(destFile.absolutePath, 0)
+                val downloadedCode = archiveInfo?.let {
+                    androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it).toInt()
+                } ?: 0
+
+                if (downloadedCode in 1..installedCode) {
+                    // LOOP BROKEN: Downloaded APK is not newer than currently installed app!
+                    val prefs = context.getSharedPreferences("speedo_update_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().putInt("dismissed_update_version_code", downloadedCode).apply()
+                    _status.value = DownloadStatus.Idle
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            context,
+                            "App is already up to date (Build #$installedCode). No update needed.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        onInstallTriggered?.invoke()
+                    }
+                    return@launch
+                }
+
                 _status.value = DownloadStatus.Completed(destFile)
+
+                // Record that installation was initiated to prevent re-prompt loop
+                try {
+                    val prefs = context.getSharedPreferences("speedo_update_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().putInt("dismissed_update_version_code", downloadedCode).apply()
+                } catch (_: Exception) {}
 
                 // Trigger package installation on Main thread
                 withContext(Dispatchers.Main) {

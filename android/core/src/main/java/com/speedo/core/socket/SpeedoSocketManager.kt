@@ -455,14 +455,21 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                                             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                                             val installedCode = PackageInfoCompat.getLongVersionCode(pInfo).toInt()
                                             if (installedCode < config.latestVersionCode) {
-                                                Log.i(TAG, "🔔 [UPDATE NOTIFICATION] Displaying update notification: installed=$installedCode < latest=${config.latestVersionCode}")
-                                                NotificationHelper.showAppUpdateNotification(
-                                                    context = context,
-                                                    title = config.title,
-                                                    message = config.message,
-                                                    updateUrl = config.updateUrl,
-                                                    versionName = config.latestVersionName
-                                                )
+                                                val prefs = context.getSharedPreferences("speedo_update_prefs", Context.MODE_PRIVATE)
+                                                val lastNotified = prefs.getInt("last_notified_version_code", 0)
+                                                if (lastNotified < config.latestVersionCode) {
+                                                    Log.i(TAG, "🔔 [UPDATE NOTIFICATION] Displaying update notification: installed=$installedCode < latest=${config.latestVersionCode}")
+                                                    NotificationHelper.showAppUpdateNotification(
+                                                        context = context,
+                                                        title = config.title,
+                                                        message = config.message,
+                                                        updateUrl = config.updateUrl,
+                                                        versionName = config.latestVersionName
+                                                    )
+                                                    prefs.edit().putInt("last_notified_version_code", config.latestVersionCode).apply()
+                                                }
+                                            } else {
+                                                NotificationHelper.cancelUpdateNotification(context)
                                             }
                                         } catch (err: Exception) {
                                             Log.e(TAG, "Error checking version for push notification", err)
