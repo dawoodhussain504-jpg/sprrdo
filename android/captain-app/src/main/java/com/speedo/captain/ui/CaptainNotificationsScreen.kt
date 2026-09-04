@@ -25,6 +25,8 @@ import com.speedo.core.components.SpeedoEmptyView
 import com.speedo.core.components.SpeedoTopBar
 import com.speedo.core.components.openBrowserForUpdate
 import com.speedo.core.theme.*
+import com.speedo.core.utils.InAppUpdateManager
+import com.speedo.core.utils.DownloadStatus
 
 @Composable
 fun CaptainNotificationsScreen(
@@ -65,7 +67,7 @@ fun CaptainNotificationsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    openBrowserForUpdate(context, appUpdate.updateUrl)
+                                    InAppUpdateManager.startDownloadAndInstall(context, appUpdate.updateUrl)
                                 },
                             shape = RoundedCornerShape(14.dp),
                             color = SpeedoOrange.copy(alpha = 0.09f),
@@ -102,7 +104,7 @@ fun CaptainNotificationsScreen(
                                     )
                                     Spacer(modifier = Modifier.height(10.dp))
                                     Button(
-                                        onClick = { openBrowserForUpdate(context, appUpdate.updateUrl) },
+                                        onClick = { InAppUpdateManager.startDownloadAndInstall(context, appUpdate.updateUrl) },
                                         colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
@@ -126,7 +128,7 @@ fun CaptainNotificationsScreen(
                                 if (isUnread) viewModel.markNotificationRead(notif.id)
                                 if (isUpdate) {
                                     val url = notif.extractUpdateUrl("captain")
-                                    openBrowserForUpdate(context, url)
+                                    InAppUpdateManager.startDownloadAndInstall(context, url)
                                 }
                             },
                         shape = RoundedCornerShape(14.dp),
@@ -200,7 +202,7 @@ fun CaptainNotificationsScreen(
                                         onClick = {
                                             if (isUnread) viewModel.markNotificationRead(notif.id)
                                             val url = notif.extractUpdateUrl("captain")
-                                            openBrowserForUpdate(context, url)
+                                            InAppUpdateManager.startDownloadAndInstall(context, url)
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),
                                         shape = RoundedCornerShape(8.dp),

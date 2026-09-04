@@ -35,6 +35,7 @@ import com.speedo.core.model.PopularDestination
 import com.speedo.core.model.PopularDestinationsData
 import com.speedo.core.model.VehicleCategory
 import com.speedo.core.theme.*
+import com.speedo.core.utils.InAppUpdateManager
 import com.speedo.rider.ui.components.*
 import com.speedo.rider.viewmodel.RiderViewModel
 import org.osmdroid.util.GeoPoint
@@ -237,7 +238,7 @@ fun RiderHomeScreen(
                         modifier = Modifier
                             .padding(end = 10.dp)
                             .clickable {
-                                com.speedo.core.components.openBrowserForUpdate(
+                                InAppUpdateManager.startDownloadAndInstall(
                                     context,
                                     appUpdate.updateUrl
                                 )

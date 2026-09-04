@@ -28,6 +28,7 @@ import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
 import com.speedo.core.maps.OsmMapView
 import com.speedo.core.theme.*
+import com.speedo.core.utils.InAppUpdateManager
 import com.speedo.core.model.PopularDestinationsData
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -120,7 +121,7 @@ fun CaptainDashboardScreen(
                         .fillMaxWidth()
                         .padding(bottom = 10.dp)
                         .clickable {
-                            com.speedo.core.components.openBrowserForUpdate(
+                            InAppUpdateManager.startDownloadAndInstall(
                                 context,
                                 appUpdate.updateUrl
                             )
