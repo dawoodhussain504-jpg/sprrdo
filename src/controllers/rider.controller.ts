@@ -331,7 +331,7 @@ export async function getRiderNotifications(req: AuthenticatedRequest, res: Resp
   try {
     const riderId = req.user?.id;
     const notifs = await db.query(
-      `SELECT * FROM notifications WHERE recipient_id = $1 AND recipient_role = 'rider' ORDER BY created_at DESC LIMIT 50`,
+      `SELECT * FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'rider' OR recipient_role = 'all') ORDER BY created_at DESC LIMIT 50`,
       [riderId]
     );
     return res.json({ success: true, data: notifs.rows });
@@ -354,7 +354,7 @@ export async function markNotificationRead(req: AuthenticatedRequest, res: Respo
 export async function getRiderUnreadCount(req: AuthenticatedRequest, res: Response) {
   try {
     const riderId = req.user?.id;
-    const countRes = await db.query(`SELECT COUNT(*) as count FROM notifications WHERE recipient_id = $1 AND recipient_role = 'rider' AND is_read = 0`, [riderId]);
+    const countRes = await db.query(`SELECT COUNT(*) as count FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'rider' OR recipient_role = 'all') AND is_read = 0`, [riderId]);
     return res.json({ success: true, count: Number(countRes.rows[0]?.count || 0) });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to get unread count', error: error.message });

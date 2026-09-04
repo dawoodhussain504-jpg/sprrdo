@@ -8,6 +8,7 @@ import com.speedo.core.network.NetworkResult
 import com.speedo.core.network.RetrofitClient
 import com.speedo.core.network.SpeedoApiService
 import com.speedo.core.socket.SpeedoSocketManager
+import com.speedo.core.utils.NotificationHelper
 import kotlinx.coroutines.flow.SharedFlow
 
 class AppVersionRepository(private val context: Context) {
@@ -35,6 +36,16 @@ class AppVersionRepository(private val context: Context) {
                 val config = res.body()!!.data!!
                 val isForce = config.forceUpdate || (currentCode < config.minSupportedVersionCode)
                 val isAvailable = (currentCode < config.latestVersionCode) || isForce
+
+                if (isAvailable) {
+                    NotificationHelper.showAppUpdateNotification(
+                        context = context,
+                        title = config.title,
+                        message = config.message,
+                        updateUrl = config.updateUrl,
+                        versionName = config.latestVersionName
+                    )
+                }
 
                 AppUpdatePromptState(
                     isUpdateAvailable = isAvailable,

@@ -382,7 +382,7 @@ fun ManageAppVersionsScreen(
             title = { Text("Publish Version Update?", fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    text = "This will update the backend database for ${currentConfig.appName} (Build ${versionCodeInput.trim()}) and broadcast a live WebSocket event to all currently connected user devices.",
+                    text = "This will update the backend database for ${currentConfig.appName} (Build ${versionCodeInput.trim()}), insert an announcement into the user notification center, and immediately broadcast a high-priority system push notification to all installed apps with browser download and install links.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },

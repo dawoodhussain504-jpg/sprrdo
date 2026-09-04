@@ -1,8 +1,10 @@
 package com.speedo.core.components
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -12,15 +14,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.RocketLaunch
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -33,31 +32,58 @@ import com.speedo.core.model.AppUpdatePromptState
 import com.speedo.core.theme.*
 
 /**
- * Safely launches the browser or Play Store link for app updates
+ * Safely launches the browser to download and install the latest APK
  */
-fun openUpdateUrl(context: Context, url: String?) {
+fun openBrowserForUpdate(context: Context, url: String?) {
     try {
         val targetUrl = if (!url.isNullOrBlank()) {
             url
         } else {
-            "market://details?id=${context.packageName}"
+            "https://web-production-5d826.up.railway.app/downloads/"
         }
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         context.startActivity(intent)
+        Toast.makeText(context, "Opening browser to download update...", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
-        try {
-            // Fallback to web browser if Play Store scheme fails
-            val webUrl = "https://play.google.com/store/apps/details?id=${context.packageName}"
-            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(webUrl)).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(webIntent)
-        } catch (err: Exception) {
-            Toast.makeText(context, "Could not open update link: ${e.message}", Toast.LENGTH_LONG).show()
-        }
+        Toast.makeText(context, "Could not open browser: ${e.message}", Toast.LENGTH_LONG).show()
     }
+}
+
+/**
+ * Downloads the APK directly in background using Android's native DownloadManager
+ */
+fun downloadApkViaDownloadManager(context: Context, url: String?, fileName: String = "speedo-update.apk") {
+    try {
+        val targetUrl = if (!url.isNullOrBlank()) {
+            url
+        } else {
+            "https://web-production-5d826.up.railway.app/downloads/"
+        }
+        val request = DownloadManager.Request(Uri.parse(targetUrl)).apply {
+            setTitle("Speedo App Update")
+            setDescription("Downloading latest build ($fileName)...")
+            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            setMimeType("application/vnd.android.package-archive")
+            setAllowedOverMetered(true)
+            setAllowedOverRoaming(true)
+        }
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        dm.enqueue(request)
+        Toast.makeText(context, "Downloading update in background! Pull down notification bar to check status.", Toast.LENGTH_LONG).show()
+    } catch (e: Exception) {
+        // Fallback to browser download if DownloadManager fails
+        openBrowserForUpdate(context, url)
+    }
+}
+
+/**
+ * Backwards compatibility delegate
+ */
+fun openUpdateUrl(context: Context, url: String?) {
+    openBrowserForUpdate(context, url)
 }
 
 /**
@@ -176,7 +202,7 @@ fun ForceUpdateOverlay(
 
                 // Release Notes Card (if available)
                 if (!config?.releaseNotes.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
@@ -203,16 +229,65 @@ fun ForceUpdateOverlay(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Big Primary Update Button
+                // Installation Instructions Card
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = SpeedoOrange.copy(alpha = 0.08f),
+                    border = BorderStroke(1.dp, SpeedoOrange.copy(alpha = 0.25f))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "HOW TO INSTALL UPDATE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = SpeedoOrange
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "1. Tap 'Download in Browser & Install' below.\n2. When prompted in your browser, tap Download.\n3. Open the downloaded APK file from your notifications to install.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = SpeedoTextSecondary,
+                                lineHeight = 18.sp
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Big Primary Update Button (Browser Download)
                 SpeedoPrimaryButton(
-                    text = "UPDATE SPEEDO NOW",
-                    leadingIcon = Icons.Default.SystemUpdate,
+                    text = "DOWNLOAD IN BROWSER & INSTALL",
+                    leadingIcon = Icons.Default.OpenInBrowser,
                     onClick = {
-                        openUpdateUrl(context, config?.updateUrl)
+                        openBrowserForUpdate(context, config?.updateUrl)
                     }
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Secondary In-App Direct Download Button
+                OutlinedButton(
+                    onClick = {
+                        val fileName = "speedo-${config?.appId ?: "app"}-v${config?.latestVersionName ?: "latest"}.apk"
+                        downloadApkViaDownloadManager(context, config?.updateUrl, fileName)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.5.dp, SpeedoOrange)
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("DIRECT DOWNLOAD IN APP", fontWeight = FontWeight.Bold, color = SpeedoOrange)
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -227,7 +302,7 @@ fun ForceUpdateOverlay(
 }
 
 /**
- * Flexible (Optional) Update Dialog with "Update Now" and "Later" actions
+ * Flexible (Optional) Update Dialog with "Download in Browser", "Direct Download", and "Later"
  */
 @Composable
 fun FlexibleUpdateDialog(
@@ -294,18 +369,44 @@ fun FlexibleUpdateDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    openUpdateUrl(context, config?.updateUrl)
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Update Now", fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = {
+                        openBrowserForUpdate(context, config?.updateUrl)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Download in Browser & Install", fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        val fileName = "speedo-${config?.appId ?: "app"}-v${config?.latestVersionName ?: "latest"}.apk"
+                        downloadApkViaDownloadManager(context, config?.updateUrl, fileName)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, SpeedoOrange)
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Direct Download in App", fontWeight = FontWeight.Bold, color = SpeedoOrange)
+                }
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Later")
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Remind Me Later", color = SpeedoTextSecondary)
             }
         },
         shape = RoundedCornerShape(20.dp),

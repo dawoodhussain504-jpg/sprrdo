@@ -8,6 +8,7 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.speedo.core.R
@@ -55,7 +56,19 @@ object NotificationHelper {
                 description = "Status updates regarding your KYC document submission"
             }
 
-            // 4. General Notifications Channel
+            // 4. App Updates Channel (High priority with sound & vibration)
+            val updateChannel = NotificationChannel(
+                Constants.CHANNEL_APP_UPDATES,
+                "Speedo App Updates",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Critical alerts for new app versions and Over-the-Air updates"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 400, 200, 400)
+                setSound(defaultSoundUri, audioAttributes)
+            }
+
+            // 5. General Notifications Channel
             val generalChannel = NotificationChannel(
                 Constants.CHANNEL_GENERAL,
                 "General Notifications",
@@ -63,7 +76,7 @@ object NotificationHelper {
             )
 
             notificationManager.createNotificationChannels(
-                listOf(rideChannel, locationChannel, kycChannel, generalChannel)
+                listOf(rideChannel, locationChannel, kycChannel, updateChannel, generalChannel)
             )
         }
     }
@@ -98,6 +111,56 @@ object NotificationHelper {
             NotificationManagerCompat.from(context).notify(notificationId, builder.build())
         } catch (e: Exception) {
             // Safe fallback if notification permission is missing or blocked on Android 13+
+        }
+    }
+
+    fun showAppUpdateNotification(
+        context: Context,
+        title: String,
+        message: String,
+        updateUrl: String,
+        versionName: String? = null
+    ) {
+        createNotificationChannels(context)
+
+        val targetUrl = if (updateUrl.isNotBlank()) updateUrl else "https://web-production-5d826.up.railway.app/downloads/"
+        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            Constants.NOTIFICATION_ID_APP_UPDATE,
+            browserIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val displayTitle = if (!versionName.isNullOrBlank()) {
+            "$title (v$versionName)"
+        } else {
+            title
+        }
+
+        val builder = NotificationCompat.Builder(context, Constants.CHANNEL_APP_UPDATES)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(displayTitle)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$message\n\nTap to download and install the latest update directly in your browser."))
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_SYSTEM)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .addAction(
+                android.R.drawable.stat_sys_download,
+                "Download & Install",
+                pendingIntent
+            )
+
+        try {
+            NotificationManagerCompat.from(context).notify(Constants.NOTIFICATION_ID_APP_UPDATE, builder.build())
+        } catch (e: Exception) {
+            // Safe fallback if permission is missing on Android 13+
         }
     }
 }

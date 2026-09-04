@@ -6,6 +6,8 @@ import com.google.gson.Gson
 import com.speedo.core.model.Ride
 import com.speedo.core.storage.TokenManager
 import com.speedo.core.utils.Constants
+import com.speedo.core.utils.NotificationHelper
+import androidx.core.content.pm.PackageInfoCompat
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.CoroutineScope
@@ -424,39 +426,57 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                     }
                 }
 
-                on("app_version:updated") { args ->
+                val handleVersionUpdate: (Array<Any>) -> Unit = { args ->
                     try {
-                        val raw = args.getOrNull(0) ?: return@on
-                        val jsonStr = when (raw) {
-                            is JSONObject -> raw.toString()
-                            is String -> raw
-                            else -> raw.toString()
-                        }
-                        val config = gson.fromJson(jsonStr, com.speedo.core.model.AppVersionConfig::class.java)
-                        if (config != null) {
-                            Log.i(TAG, "🚀 [APP VERSION SOCKET UPDATE] App: ${config.appId} -> v${config.latestVersionName} (code ${config.latestVersionCode})")
-                            scope.launch { _appVersionUpdatedFlow.emit(config) }
+                        val raw = args.getOrNull(0) ?: Unit
+                        if (raw != Unit) {
+                            val jsonStr = when (raw) {
+                                is JSONObject -> raw.toString()
+                                is String -> raw
+                                else -> raw.toString()
+                            }
+                            val config = gson.fromJson(jsonStr, com.speedo.core.model.AppVersionConfig::class.java)
+                            if (config != null) {
+                                Log.i(TAG, "🚀 [APP VERSION SOCKET UPDATE] App: ${config.appId} -> v${config.latestVersionName} (code ${config.latestVersionCode})")
+                                scope.launch {
+                                    _appVersionUpdatedFlow.emit(config)
+
+                                    // Trigger immediate push notification if this app needs updating
+                                    val currentPkg = context.packageName.lowercase()
+                                    val isTarget = when {
+                                        config.appId.equals("all", ignoreCase = true) -> true
+                                        config.appId.equals("rider", ignoreCase = true) && currentPkg.contains("rider") -> true
+                                        config.appId.equals("captain", ignoreCase = true) && currentPkg.contains("captain") -> true
+                                        config.appId.equals("admin", ignoreCase = true) && currentPkg.contains("admin") -> true
+                                        else -> false
+                                    }
+                                    if (isTarget) {
+                                        try {
+                                            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                                            val installedCode = PackageInfoCompat.getLongVersionCode(pInfo).toInt()
+                                            if (installedCode < config.latestVersionCode) {
+                                                Log.i(TAG, "🔔 [UPDATE NOTIFICATION] Displaying update notification: installed=$installedCode < latest=${config.latestVersionCode}")
+                                                NotificationHelper.showAppUpdateNotification(
+                                                    context = context,
+                                                    title = config.title,
+                                                    message = config.message,
+                                                    updateUrl = config.updateUrl,
+                                                    versionName = config.latestVersionName
+                                                )
+                                            }
+                                        } catch (err: Exception) {
+                                            Log.e(TAG, "Error checking version for push notification", err)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing app_version:updated socket event", e)
+                        Log.e(TAG, "Error parsing app_version socket event", e)
                     }
                 }
-                on("app_version_updated") { args ->
-                    try {
-                        val raw = args.getOrNull(0) ?: return@on
-                        val jsonStr = when (raw) {
-                            is JSONObject -> raw.toString()
-                            is String -> raw
-                            else -> raw.toString()
-                        }
-                        val config = gson.fromJson(jsonStr, com.speedo.core.model.AppVersionConfig::class.java)
-                        if (config != null) {
-                            scope.launch { _appVersionUpdatedFlow.emit(config) }
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error parsing app_version_updated socket event", e)
-                    }
-                }
+                on("app_version:updated") { args -> handleVersionUpdate(args) }
+                on("app_version_updated") { args -> handleVersionUpdate(args) }
             }
 
             socket?.connect()

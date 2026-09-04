@@ -217,6 +217,32 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
     const updatedResult = await db.query('SELECT * FROM app_version_configs WHERE app_id = $1', [appId]);
     const updatedConfig = formatRow(updatedResult.rows[0]);
 
+    // Insert notification announcement for all users of this app
+    try {
+      const notifId = 'notif_update_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      const targetRole = appId === 'rider' ? 'rider' : (appId === 'captain' ? 'captain' : 'all');
+      await db.query(
+        `INSERT INTO notifications (id, recipient_id, recipient_role, title, message, type, is_read, metadata_json, created_at)
+         VALUES ($1, 'all', $2, $3, $4, 'app_update', 0, $5, CURRENT_TIMESTAMP)`,
+        [
+          notifId,
+          targetRole,
+          updatedConfig.title,
+          updatedConfig.message,
+          JSON.stringify({
+            appId,
+            latestVersionCode: updatedConfig.latestVersionCode,
+            latestVersionName: updatedConfig.latestVersionName,
+            updateUrl: updatedConfig.updateUrl,
+            forceUpdate: updatedConfig.forceUpdate,
+            releaseNotes: updatedConfig.releaseNotes,
+          }),
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('⚠️ Could not insert update notification into database:', notifErr);
+    }
+
     // Broadcast update to all connected clients in real time!
     emitAppVersionUpdated(updatedConfig);
 

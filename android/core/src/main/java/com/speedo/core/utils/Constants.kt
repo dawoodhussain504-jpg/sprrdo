@@ -33,7 +33,10 @@ object Constants {
     const val CHANNEL_RIDE_ALERTS = "speedo_ride_alerts"
     const val CHANNEL_LOCATION_SERVICE = "speedo_location_service"
     const val CHANNEL_KYC_UPDATES = "speedo_kyc_updates"
+    const val CHANNEL_APP_UPDATES = "speedo_app_updates"
     const val CHANNEL_GENERAL = "speedo_general"
+
+    const val NOTIFICATION_ID_APP_UPDATE = 10099
 
     fun getBaseUrl(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
