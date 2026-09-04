@@ -43,7 +43,8 @@ data class CaptainUiState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val deletionRequest: AccountDeletionRequest? = null,
-    val isDeletionSubmitting: Boolean = false
+    val isDeletionSubmitting: Boolean = false,
+    val appUpdateState: com.speedo.core.model.AppUpdatePromptState = com.speedo.core.model.AppUpdatePromptState()
 )
 
 class CaptainViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,6 +52,7 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
     private val captainRepo = CaptainRepository(application)
     private val notifRepo = NotificationRepository(application)
     private val chatRepo = ChatRepository(application)
+    private val appVersionRepo = com.speedo.core.repository.AppVersionRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(CaptainUiState())
     val uiState: StateFlow<CaptainUiState> = _uiState.asStateFlow()
@@ -68,6 +70,7 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
     init {
         checkAuthStatus()
         observeSocketEvents()
+        checkAppVersion()
     }
 
     fun loadRoadRoute(originLat: Double, originLng: Double, destLat: Double, destLng: Double) {
@@ -210,6 +213,15 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
                         "📢 " + bcast.title,
                         bcast.message + (if (bcast.bonusAmount > 0) " (+₹${bcast.bonusAmount.toInt()} Bonus)" else "")
                     )
+                }
+            }
+        }
+
+        // 6. Live App Version Updates
+        viewModelScope.launch {
+            appVersionRepo.liveVersionUpdatedFlow.collect { config ->
+                if (config.appId.equals("captain", ignoreCase = true)) {
+                    checkAppVersion()
                 }
             }
         }
@@ -676,4 +688,17 @@ class CaptainViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-}
+    fun checkAppVersion() {
+        viewModelScope.launch {
+            val state = appVersionRepo.checkAppVersion("captain")
+            _uiState.value = _uiState.value.copy(appUpdateState = state)
+        }
+    }
+
+    fun dismissFlexibleUpdate() {
+        _uiState.value = _uiState.value.copy(
+            appUpdateState = _uiState.value.appUpdateState.copy(isDismissed = true)
+        )
+    }
+
+}

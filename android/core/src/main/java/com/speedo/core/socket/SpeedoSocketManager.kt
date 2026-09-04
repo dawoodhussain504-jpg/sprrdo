@@ -92,6 +92,9 @@ class SpeedoSocketManager private constructor(private val context: Context) {
     private val _deletionRequestsUpdatedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 16)
     val deletionRequestsUpdatedFlow: SharedFlow<Unit> = _deletionRequestsUpdatedFlow.asSharedFlow()
 
+    private val _appVersionUpdatedFlow = MutableSharedFlow<com.speedo.core.model.AppVersionConfig>(extraBufferCapacity = 16)
+    val appVersionUpdatedFlow: SharedFlow<com.speedo.core.model.AppVersionConfig> = _appVersionUpdatedFlow.asSharedFlow()
+
 
     companion object {
         private const val TAG = "SpeedoSocket"
@@ -418,6 +421,40 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error parsing broadcast socket event", e)
+                    }
+                }
+
+                on("app_version:updated") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val config = gson.fromJson(jsonStr, com.speedo.core.model.AppVersionConfig::class.java)
+                        if (config != null) {
+                            Log.i(TAG, "🚀 [APP VERSION SOCKET UPDATE] App: ${config.appId} -> v${config.latestVersionName} (code ${config.latestVersionCode})")
+                            scope.launch { _appVersionUpdatedFlow.emit(config) }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing app_version:updated socket event", e)
+                    }
+                }
+                on("app_version_updated") { args ->
+                    try {
+                        val raw = args.getOrNull(0) ?: return@on
+                        val jsonStr = when (raw) {
+                            is JSONObject -> raw.toString()
+                            is String -> raw
+                            else -> raw.toString()
+                        }
+                        val config = gson.fromJson(jsonStr, com.speedo.core.model.AppVersionConfig::class.java)
+                        if (config != null) {
+                            scope.launch { _appVersionUpdatedFlow.emit(config) }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing app_version_updated socket event", e)
                     }
                 }
             }

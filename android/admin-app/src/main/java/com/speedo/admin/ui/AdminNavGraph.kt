@@ -29,6 +29,7 @@ sealed class AdminScreen(val route: String, val title: String, val icon: ImageVe
     object Rides : AdminScreen("rides", "Ride Monitoring", Icons.Default.DirectionsCar)
     object Users : AdminScreen("users", "User Moderation", Icons.Default.People)
     object DeletionRequests : AdminScreen("deletion_requests", "Account Deletions", Icons.Default.DeleteForever)
+    object AppVersions : AdminScreen("app_versions", "App Version & OTA", Icons.Default.RocketLaunch)
     object Auth : AdminScreen("auth", "Sign In", Icons.Default.Lock)
 }
 
@@ -54,7 +55,8 @@ fun AdminMainScaffold(
         AdminScreen.LiveMap,
         AdminScreen.Rides,
         AdminScreen.Users,
-        AdminScreen.DeletionRequests
+        AdminScreen.DeletionRequests,
+        AdminScreen.AppVersions
     )
 
     if (!uiState.isLoggedIn) {
@@ -193,7 +195,8 @@ fun AdminMainScaffold(
                     onNavigateToMap = { navController.navigate(AdminScreen.LiveMap.route) },
                     onNavigateToRides = { navController.navigate(AdminScreen.Rides.route) },
                     onNavigateToUsers = { navController.navigate(AdminScreen.Users.route) },
-                    onNavigateToDeletions = { navController.navigate(AdminScreen.DeletionRequests.route) }
+                    onNavigateToDeletions = { navController.navigate(AdminScreen.DeletionRequests.route) },
+                    onNavigateToVersions = { navController.navigate(AdminScreen.AppVersions.route) }
                 )
             }
 
@@ -254,6 +257,13 @@ fun AdminMainScaffold(
 
             composable(AdminScreen.DeletionRequests.route) {
                 AccountDeletionRequestsScreen(
+                    viewModel = viewModel,
+                    onMenuClick = { scope.launch { drawerState.open() } }
+                )
+            }
+
+            composable(AdminScreen.AppVersions.route) {
+                ManageAppVersionsScreen(
                     viewModel = viewModel,
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )

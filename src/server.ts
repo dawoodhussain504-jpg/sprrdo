@@ -1,4 +1,5 @@
 import { getPopularDestinationsPublic } from './controllers/destination.controller';
+import { getAppVersionConfig } from './controllers/version.controller';
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
@@ -51,6 +52,7 @@ app.get(['/', '/health', '/api/health'], (_req, res) => {
 
 // API Routes
 app.get('/api/destinations', getPopularDestinationsPublic);
+app.get('/api/app-version', getAppVersionConfig);
 app.use('/api/auth', authRoutes);
 app.use('/api/rider', riderRoutes);
 app.use('/api/captain', captainRoutes);

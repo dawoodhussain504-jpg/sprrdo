@@ -245,3 +245,17 @@ CREATE TABLE IF NOT EXISTS account_deletion_requests (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS app_version_configs (
+  app_id VARCHAR(32) PRIMARY KEY, -- 'rider', 'captain', 'admin'
+  app_name VARCHAR(64) NOT NULL,
+  latest_version_code INTEGER NOT NULL DEFAULT 1,
+  latest_version_name VARCHAR(32) NOT NULL DEFAULT '1.0.0',
+  min_supported_version_code INTEGER NOT NULL DEFAULT 1,
+  force_update INTEGER NOT NULL DEFAULT 0, -- 1 = force update, 0 = flexible
+  title VARCHAR(255) NOT NULL DEFAULT 'Update Available',
+  message TEXT NOT NULL DEFAULT 'A new version of Speedo is available with new features and improvements. Please update your app.',
+  release_notes TEXT,
+  update_url TEXT NOT NULL DEFAULT 'https://play.google.com/store/apps/details?id=com.speedo',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

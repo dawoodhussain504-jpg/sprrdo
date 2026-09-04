@@ -338,4 +338,19 @@ interface SpeedoApiService {
         @Body body: com.speedo.core.model.ReviewDeletionRequestBody
     ): Response<ApiResponse<Any>>
 
-}
+    // --- OVER-THE-AIR APP VERSION & UPDATE ENDPOINTS ---
+    @GET("app-version")
+    suspend fun getAppVersion(
+        @Query("app") app: String,
+        @Query("currentVersion") currentVersion: Int? = null
+    ): Response<ApiResponse<com.speedo.core.model.AppVersionConfig>>
+
+    @GET("admin/app-versions")
+    suspend fun getAdminAppVersions(): Response<ApiResponse<List<com.speedo.core.model.AppVersionConfig>>>
+
+    @PUT("admin/app-versions/{app}")
+    suspend fun updateAppVersion(
+        @Path("app") app: String,
+        @Body body: com.speedo.core.model.AppVersionConfig
+    ): Response<ApiResponse<com.speedo.core.model.AppVersionConfig>>
+}

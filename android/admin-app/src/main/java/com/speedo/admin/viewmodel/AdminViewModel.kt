@@ -35,6 +35,7 @@ data class AdminUiState(
     val popularDestinations: List<PopularDestination> = emptyList(),
     val deletionRequests: List<AccountDeletionRequest> = emptyList(),
     val pendingDeletionCount: Int = 0,
+    val appVersions: List<AppVersionConfig> = emptyList(),
     val isSubmittingAction: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -47,6 +48,7 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
     private val notifRepo = NotificationRepository(application)
     private val socketManager = com.speedo.core.socket.SpeedoSocketManager.getInstance(application)
     private val destinationRepo = com.speedo.core.repository.PopularDestinationRepository.getInstance(application)
+    private val appVersionRepo = com.speedo.core.repository.AppVersionRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(AdminUiState())
     val uiState: StateFlow<AdminUiState> = _uiState.asStateFlow()
@@ -742,4 +744,58 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-}
+    fun fetchAppVersions() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            when (val res = appVersionRepo.getAdminAppVersions()) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        appVersions = res.data
+                    )
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
+        }
+    }
+
+    fun updateAppVersionConfig(
+        appId: String,
+        config: AppVersionConfig,
+        onComplete: (Boolean) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSubmittingAction = true)
+            when (val res = appVersionRepo.updateAppVersion(appId, config)) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        successMessage = "Version configuration for ${config.appName} published to all users!"
+                    )
+                    fetchAppVersions()
+                    onComplete(true)
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmittingAction = false,
+                        errorMessage = res.message
+                    )
+                    onComplete(false)
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isSubmittingAction = false)
+                    onComplete(false)
+                }
+            }
+        }
+    }
+
+}

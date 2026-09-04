@@ -1,4 +1,8 @@
 import {
+  getAllAppVersionsAdmin,
+  updateAppVersionConfig
+} from '../controllers/version.controller';
+import {
   getAdminDeletionRequests,
   approveAccountDeletion,
   rejectAccountDeletion
@@ -77,8 +81,6 @@ router.post('/users/:role/:id/toggle-status', toggleUserStatus);
 // Notifications & Badges
 router.get('/notifications', getAdminNotifications);
 
-export default router;
-
 // 5. Popular Destinations Real-Time Management
 router.get('/destinations', getPopularDestinationsAdmin);
 router.post('/destinations', createPopularDestination);
@@ -89,4 +91,10 @@ router.delete('/destinations/:id', deletePopularDestination);
 router.get('/deletion-requests', getAdminDeletionRequests);
 router.post('/deletion-requests/:id/approve', approveAccountDeletion);
 router.post('/deletion-requests/:id/reject', rejectAccountDeletion);
+
+// 7. Over-the-Air App Version Management
+router.get('/app-versions', getAllAppVersionsAdmin);
+router.put('/app-versions/:app', updateAppVersionConfig);
+
+export default router;
 

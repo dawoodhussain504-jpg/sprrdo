@@ -357,3 +357,11 @@ export function emitAccountDeletionCancelled(payload: any) {
   }
 }
 
+export function emitAppVersionUpdated(payload: any) {
+  if (io) {
+    console.log(`🚀 [SOCKET APP VERSION UPDATE] Emitting version update for app ${payload.app_id || payload.appId}:`, payload);
+    io.emit('app_version:updated', payload);
+    io.emit('app_version_updated', payload);
+  }
+}
+

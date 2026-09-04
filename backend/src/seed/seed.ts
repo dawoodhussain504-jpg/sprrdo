@@ -164,6 +164,25 @@ export async function seedDatabase() {
     ['bcast_sample_001', 'Weekend Rush Discount! 🌧️', 'Heavy rain & rush hours! Get flat 30% OFF on all Speedo Moto and Speedo Toto rides today.', 'all', 'Bangalore', 'RAIN30', 30.0, 50.0, 1420]
   );
 
+  // 10. Seed Default App Version Configurations
+  const versionRows = await db.query('SELECT COUNT(*) as count FROM app_version_configs');
+  const count = parseInt(versionRows.rows[0]?.count || '0', 10);
+  if (count === 0) {
+    await db.query(
+      `INSERT INTO app_version_configs 
+       (app_id, app_name, latest_version_code, latest_version_name, min_supported_version_code, force_update, title, message, release_notes, update_url, is_active)
+       VALUES 
+       ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1),
+       ($11, $12, $13, $14, $15, $16, $17, $18, $19, $20, 1),
+       ($21, $22, $23, $24, $25, $26, $27, $28, $29, $30, 1)`,
+      [
+        'rider', 'Speedo Rider App', 1, '1.0.0', 1, 0, 'New Speedo Rider Update Available 🚀', 'Upgrade to enjoy live landmark suggestions, editable pickup search, and seamless 24h account deletion.', '• Editable pickup search\n• Popular destination thumbnails\n• Profile deletion request flow', 'https://play.google.com/store/apps/details?id=com.speedo.rider',
+        'captain', 'Speedo Captain App', 1, '1.0.0', 1, 0, 'New Speedo Captain Update Available 🚀', 'Upgrade to enjoy live demand hotspots, moving vector markers on map, and captain profile deletion.', '• Live demand hotspots\n• Moving vehicle vector map markers\n• Captain profile deletion support', 'https://play.google.com/store/apps/details?id=com.speedo.captain',
+        'admin', 'Speedo Admin Control', 1, '1.0.0', 1, 0, 'New Speedo Admin Update Available 🚀', 'Upgrade for complete fleet monitoring, app version OTA controls, and account deletion review.', '• App version OTA controls\n• Account deletion approvals\n• Popular destination management', 'https://play.google.com/store/apps/details?id=com.speedo.admin'
+      ]
+    );
+  }
+
   console.log('✅ Database seeded successfully with the following test credentials:');
   console.log('-----------------------------------------------------------');
   console.log('👤 ADMIN:    admin@speedo.com           / Admin@123');

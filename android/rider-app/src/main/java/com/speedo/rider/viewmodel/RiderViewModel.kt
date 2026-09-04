@@ -55,7 +55,8 @@ data class RiderUiState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
     val deletionRequest: AccountDeletionRequest? = null,
-    val isDeletionSubmitting: Boolean = false
+    val isDeletionSubmitting: Boolean = false,
+    val appUpdateState: com.speedo.core.model.AppUpdatePromptState = com.speedo.core.model.AppUpdatePromptState()
 )
 
 class RiderViewModel(application: Application) : AndroidViewModel(application) {
@@ -64,6 +65,7 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
     private val notifRepo = NotificationRepository(application)
     private val chatRepo = ChatRepository(application)
     private val locationHelper = LocationHelper(application)
+    private val appVersionRepo = com.speedo.core.repository.AppVersionRepository.getInstance(application)
 
     private val _uiState = MutableStateFlow(RiderUiState())
     val uiState: StateFlow<RiderUiState> = _uiState.asStateFlow()
@@ -82,6 +84,7 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
         checkAuthStatus()
         fetchCurrentLocation()
         observeSocketEvents()
+        checkAppVersion()
     }
 
     fun checkAuthStatus() {
@@ -249,6 +252,15 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
                         "📢 " + bcast.title,
                         bcast.message + (if (!bcast.couponCode.isNullOrBlank()) " • Code: ${bcast.couponCode}" else "")
                     )
+                }
+            }
+        }
+
+        // 6. Real-time App Version Updates
+        viewModelScope.launch {
+            appVersionRepo.liveVersionUpdatedFlow.collect { config ->
+                if (config.appId.equals("rider", ignoreCase = true)) {
+                    checkAppVersion()
                 }
             }
         }
@@ -670,4 +682,17 @@ class RiderViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-}
+    fun checkAppVersion() {
+        viewModelScope.launch {
+            val state = appVersionRepo.checkAppVersion("rider")
+            _uiState.value = _uiState.value.copy(appUpdateState = state)
+        }
+    }
+
+    fun dismissFlexibleUpdate() {
+        _uiState.value = _uiState.value.copy(
+            appUpdateState = _uiState.value.appUpdateState.copy(isDismissed = true)
+        )
+    }
+
+}
