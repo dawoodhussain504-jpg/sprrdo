@@ -374,14 +374,43 @@ export async function getCaptainRideHistory(req: AuthenticatedRequest, res: Resp
   }
 }
 
+function isOldUpdateNotif(n: any, currentVersion: number | null): boolean {
+  if (currentVersion === null || isNaN(currentVersion)) return false;
+  const isUpdate = n.type === 'app_update' || n.title?.toLowerCase().includes('update') || n.message?.toLowerCase().includes('update');
+  if (!isUpdate) return false;
+
+  if (n.metadata_json) {
+    try {
+      const meta = typeof n.metadata_json === 'string' ? JSON.parse(n.metadata_json) : n.metadata_json;
+      const targetCode = meta.latestVersionCode || meta.versionCode;
+      if (targetCode && Number(targetCode) <= currentVersion) {
+        return true;
+      }
+    } catch (e) {}
+  }
+  const match = ((n.title || '') + ' ' + (n.message || '')).match(/(?:build|code|#)\s*(\d+)/i);
+  if (match) {
+    const code = parseInt(match[1], 10);
+    if (!isNaN(code) && code <= currentVersion) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function getCaptainNotifications(req: AuthenticatedRequest, res: Response) {
   try {
     const captainId = req.user?.id;
+    const currentVersion = req.query.currentVersion ? parseInt(req.query.currentVersion as string, 10) : null;
     const notifs = await db.query(
       `SELECT * FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'captain' OR recipient_role = 'all') AND is_read = 0 ORDER BY created_at DESC LIMIT 50`,
       [captainId]
     );
-    return res.json({ success: true, data: notifs.rows });
+    let data = notifs.rows;
+    if (currentVersion !== null && !isNaN(currentVersion)) {
+      data = data.filter(n => !isOldUpdateNotif(n, currentVersion));
+    }
+    return res.json({ success: true, data });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to fetch notifications', error: error.message });
   }
@@ -401,8 +430,13 @@ export async function markCaptainNotificationRead(req: AuthenticatedRequest, res
 export async function getCaptainUnreadCount(req: AuthenticatedRequest, res: Response) {
   try {
     const captainId = req.user?.id;
-    const countRes = await db.query(`SELECT COUNT(*) as count FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'captain' OR recipient_role = 'all') AND is_read = 0`, [captainId]);
-    return res.json({ success: true, count: Number(countRes.rows[0]?.count || 0) });
+    const currentVersion = req.query.currentVersion ? parseInt(req.query.currentVersion as string, 10) : null;
+    const countRes = await db.query(`SELECT * FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'captain' OR recipient_role = 'all') AND is_read = 0`, [captainId]);
+    let rows = countRes.rows;
+    if (currentVersion !== null && !isNaN(currentVersion)) {
+      rows = rows.filter(n => !isOldUpdateNotif(n, currentVersion));
+    }
+    return res.json({ success: true, count: rows.length });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to get unread count', error: error.message });
   }

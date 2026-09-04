@@ -52,13 +52,13 @@ interface SpeedoApiService {
     suspend fun getRiderRideHistory(): Response<ApiResponse<List<Ride>>>
 
     @GET("rider/notifications")
-    suspend fun getRiderNotifications(): Response<ApiResponse<List<NotificationItem>>>
+    suspend fun getRiderNotifications(@Query("currentVersion") currentVersion: Int? = null): Response<ApiResponse<List<NotificationItem>>>
 
     @PUT("rider/notifications/{id}/read")
     suspend fun markRiderNotificationRead(@Path("id") id: String): Response<ApiResponse<Any>>
 
     @GET("rider/notifications/unread-count")
-    suspend fun getRiderUnreadCount(): Response<UnreadCountResponse>
+    suspend fun getRiderUnreadCount(@Query("currentVersion") currentVersion: Int? = null): Response<UnreadCountResponse>
 
     // --- CAPTAIN ENDPOINTS ---
     @GET("captain/profile")
@@ -99,13 +99,13 @@ interface SpeedoApiService {
     suspend fun getCaptainRideHistory(): Response<ApiResponse<List<Ride>>>
 
     @GET("captain/notifications")
-    suspend fun getCaptainNotifications(): Response<ApiResponse<List<NotificationItem>>>
+    suspend fun getCaptainNotifications(@Query("currentVersion") currentVersion: Int? = null): Response<ApiResponse<List<NotificationItem>>>
 
     @PUT("captain/notifications/{id}/read")
     suspend fun markCaptainNotificationRead(@Path("id") id: String): Response<ApiResponse<Any>>
 
     @GET("captain/notifications/unread-count")
-    suspend fun getCaptainUnreadCount(): Response<UnreadCountResponse>
+    suspend fun getCaptainUnreadCount(@Query("currentVersion") currentVersion: Int? = null): Response<UnreadCountResponse>
 
     // --- ADMIN ENDPOINTS ---
     @GET("admin/dashboard")

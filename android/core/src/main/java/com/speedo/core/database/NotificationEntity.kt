@@ -48,8 +48,14 @@ interface NotificationDao {
     @Query("SELECT * FROM cached_notifications WHERE isRead = 0 ORDER BY createdAt DESC")
     fun getAllNotifications(): Flow<List<NotificationEntity>>
 
+    @Query("SELECT * FROM cached_notifications")
+    suspend fun getAllCachedList(): List<NotificationEntity>
+
     @Query("SELECT COUNT(*) FROM cached_notifications WHERE isRead = 0")
     fun getUnreadCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM cached_notifications WHERE isRead = 0")
+    suspend fun getUnreadCount(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotifications(items: List<NotificationEntity>)

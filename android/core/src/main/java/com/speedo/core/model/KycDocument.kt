@@ -38,6 +38,74 @@ data class NotificationItem(
                message.contains("update", ignoreCase = true)
     }
 
+    fun extractVersionCode(): Int? {
+        return try {
+            if (!metadataJson.isNullOrBlank()) {
+                val json = org.json.JSONObject(metadataJson)
+                val code = json.optInt("latestVersionCode", -1)
+                if (code > 0) return code
+                val vCode = json.optInt("versionCode", -1)
+                if (vCode > 0) return vCode
+            }
+            val buildMatch = Regex("(?:build|code|#)\\s*(\\d+)", RegexOption.IGNORE_CASE).find("$title $message")
+            buildMatch?.groupValues?.get(1)?.toIntOrNull()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun extractVersionName(): String? {
+        return try {
+            if (!metadataJson.isNullOrBlank()) {
+                val json = org.json.JSONObject(metadataJson)
+                val name = json.optString("latestVersionName", "")
+                if (name.isNotBlank()) return name
+                val vName = json.optString("versionName", "")
+                if (vName.isNotBlank()) return vName
+            }
+            val vMatch = Regex("v(\\d+(?:\\.\\d+)+)", RegexOption.IGNORE_CASE).find("$title $message")
+            vMatch?.groupValues?.get(1)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun isVersionAtLeast(currentName: String, targetName: String): Boolean {
+        val currentParts = currentName.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
+        val targetParts = targetName.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(currentParts.size, targetParts.size)
+        for (i in 0 until maxLen) {
+            val c = currentParts.getOrElse(i) { 0 }
+            val t = targetParts.getOrElse(i) { 0 }
+            if (c > t) return true
+            if (c < t) return false
+        }
+        return true
+    }
+
+    fun isOldUpdateFor(currentVersionCode: Int, isUpdateAvailable: Boolean, currentVersionName: String? = null): Boolean {
+        if (!isAppUpdateNotification()) return false
+
+        // If the user's app has no pending update available, the user already updated to latest!
+        // Therefore all past update notifications are old and must disappear.
+        if (!isUpdateAvailable) return true
+
+        // If an update is available, check if this specific notification was for an older version
+        val targetCode = extractVersionCode()
+        if (targetCode != null && targetCode <= currentVersionCode) {
+            return true
+        }
+
+        val targetName = extractVersionName()
+        if (!targetName.isNullOrBlank() && !currentVersionName.isNullOrBlank()) {
+            if (isVersionAtLeast(currentVersionName, targetName)) {
+                return true
+            }
+        }
+
+        return false
+    }
+
     fun extractUpdateUrl(fallbackAppId: String = "rider"): String {
         return try {
             if (!metadataJson.isNullOrBlank()) {
