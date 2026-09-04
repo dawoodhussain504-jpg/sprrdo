@@ -33,9 +33,16 @@ data class NotificationItem(
     @SerializedName("created_at") val createdAt: String? = null
 ) {
     fun isAppUpdateNotification(): Boolean {
-        return type.equals("app_update", ignoreCase = true) ||
-               title.contains("update", ignoreCase = true) ||
-               message.contains("update", ignoreCase = true)
+        if (type.equals("app_update", ignoreCase = true) || type.contains("update", ignoreCase = true)) return true
+        if (title.contains("update", ignoreCase = true) || title.contains("new version", ignoreCase = true)) return true
+        if (message.contains("update", ignoreCase = true) || message.contains("new version", ignoreCase = true)) return true
+        if (!metadataJson.isNullOrBlank()) {
+            val lower = metadataJson.lowercase()
+            if (lower.contains("latestversioncode") || lower.contains("updateurl") || lower.contains("releasenotes") || lower.contains("versioncode")) {
+                return true
+            }
+        }
+        return false
     }
 
     fun extractVersionCode(): Int? {
@@ -70,7 +77,7 @@ data class NotificationItem(
         }
     }
 
-    private fun isVersionAtLeast(currentName: String, targetName: String): Boolean {
+    fun isVersionAtLeast(currentName: String, targetName: String): Boolean {
         val currentParts = currentName.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
         val targetParts = targetName.trim().removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
         val maxLen = maxOf(currentParts.size, targetParts.size)

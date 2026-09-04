@@ -408,7 +408,16 @@ export async function getCaptainNotifications(req: AuthenticatedRequest, res: Re
     );
     let data = notifs.rows;
     if (currentVersion !== null && !isNaN(currentVersion)) {
-      data = data.filter(n => !isOldUpdateNotif(n, currentVersion));
+      const verRes = await db.query(`SELECT latest_version_code FROM app_version_configs WHERE app_id = 'captain'`);
+      const latestCode = verRes.rows[0]?.latest_version_code ? Number(verRes.rows[0].latest_version_code) : 1;
+      const isUserUpdated = currentVersion >= latestCode;
+
+      data = data.filter(n => {
+        const isUpdate = n.type === 'app_update' || n.title?.toLowerCase().includes('update') || n.message?.toLowerCase().includes('update');
+        if (!isUpdate) return true;
+        if (isUserUpdated) return false;
+        return !isOldUpdateNotif(n, currentVersion);
+      });
     }
     return res.json({ success: true, data });
   } catch (error: any) {
@@ -434,7 +443,16 @@ export async function getCaptainUnreadCount(req: AuthenticatedRequest, res: Resp
     const countRes = await db.query(`SELECT * FROM notifications WHERE (recipient_id = $1 OR recipient_id = 'all') AND (recipient_role = 'captain' OR recipient_role = 'all') AND is_read = 0`, [captainId]);
     let rows = countRes.rows;
     if (currentVersion !== null && !isNaN(currentVersion)) {
-      rows = rows.filter(n => !isOldUpdateNotif(n, currentVersion));
+      const verRes = await db.query(`SELECT latest_version_code FROM app_version_configs WHERE app_id = 'captain'`);
+      const latestCode = verRes.rows[0]?.latest_version_code ? Number(verRes.rows[0].latest_version_code) : 1;
+      const isUserUpdated = currentVersion >= latestCode;
+
+      rows = rows.filter(n => {
+        const isUpdate = n.type === 'app_update' || n.title?.toLowerCase().includes('update') || n.message?.toLowerCase().includes('update');
+        if (!isUpdate) return true;
+        if (isUserUpdated) return false;
+        return !isOldUpdateNotif(n, currentVersion);
+      });
     }
     return res.json({ success: true, count: rows.length });
   } catch (error: any) {

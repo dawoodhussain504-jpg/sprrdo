@@ -10,6 +10,7 @@ import com.speedo.core.network.RetrofitClient
 import com.speedo.core.network.SpeedoApiService
 import com.speedo.core.utils.BadgeHelper
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -18,6 +19,18 @@ class NotificationRepository(context: Context) {
     private val api: SpeedoApiService = RetrofitClient.getService(context)
     private val notifDao: NotificationDao = SpeedoDatabase.getDatabase(context).notificationDao()
     private val appVersionRepo: AppVersionRepository = AppVersionRepository.getInstance(context)
+    private val coroutineScope = kotlinx.coroutines.CoroutineScope(Dispatchers.IO)
+
+    init {
+        coroutineScope.launch {
+            try {
+                val (currentCode, currentName) = appVersionRepo.getInstalledVersionInfo()
+                pruneOldUpdateNotifications(currentCode, currentName)
+                val unread = notifDao.getUnreadCount()
+                BadgeHelper.updateUnreadCount(unread)
+            } catch (_: Exception) {}
+        }
+    }
 
     val cachedNotificationsFlow: Flow<List<NotificationItem>> = notifDao.getAllNotifications().map { list ->
         val (currentCode, currentName) = appVersionRepo.getInstalledVersionInfo()

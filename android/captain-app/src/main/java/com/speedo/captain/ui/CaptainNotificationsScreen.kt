@@ -37,14 +37,45 @@ fun CaptainNotificationsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val appUpdate = uiState.appUpdateState
 
-    // Auto-disappear: Filter out read notifications AND old update notifications
-    val activeNotifications = remember(notifications, appUpdate) {
+    // Directly inspect installed package version for instant, 0ms-latency accuracy
+    val (installedCode, installedName) = remember(context) {
+        try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val code = androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(pInfo).toInt()
+            val name = pInfo.versionName ?: "1.0.0"
+            Pair(code, name)
+        } catch (_: Exception) {
+            Pair(appUpdate.currentVersionCode, appUpdate.currentVersionName)
+        }
+    }
+
+    val effectiveVersionCode = maxOf(installedCode, appUpdate.currentVersionCode)
+    val effectiveVersionName = if (installedName.isNotBlank()) installedName else appUpdate.currentVersionName
+
+    // User is on latest version if:
+    // 1) appUpdate.config indicates installed code >= latestVersionCode, OR
+    // 2) isUpdateAvailable is false
+    val updateConfig = appUpdate.config
+    val isUserOnLatestVersion = !appUpdate.isUpdateAvailable ||
+        (updateConfig != null && effectiveVersionCode >= updateConfig.latestVersionCode)
+
+    // Auto-disappear: Filter out read notifications AND all update notifications if already updated
+    val activeNotifications = remember(notifications, appUpdate, isUserOnLatestVersion, effectiveVersionCode, effectiveVersionName) {
         notifications.filter { notif ->
-            notif.isRead == 0 && !notif.isOldUpdateFor(
-                currentVersionCode = appUpdate.currentVersionCode,
-                isUpdateAvailable = appUpdate.isUpdateAvailable,
-                currentVersionName = appUpdate.currentVersionName
-            )
+            if (notif.isRead != 0) return@filter false
+
+            if (notif.isAppUpdateNotification()) {
+                // If user updated to the latest version, ALL update notifications MUST disappear!
+                if (isUserOnLatestVersion) return@filter false
+
+                // If user has not updated yet, hide old update notifications targeting <= current version
+                return@filter !notif.isOldUpdateFor(
+                    currentVersionCode = effectiveVersionCode,
+                    isUpdateAvailable = appUpdate.isUpdateAvailable,
+                    currentVersionName = effectiveVersionName
+                )
+            }
+            true
         }
     }
 
@@ -58,7 +89,7 @@ fun CaptainNotificationsScreen(
             SpeedoTopBar(title = "Captain Alerts")
         }
     ) { padding ->
-        if (activeNotifications.isEmpty() && !appUpdate.isUpdateAvailable) {
+        if (activeNotifications.isEmpty() && isUserOnLatestVersion) {
             SpeedoEmptyView(
                 icon = Icons.Default.NotificationsNone,
                 title = "No Notifications",
@@ -73,7 +104,7 @@ fun CaptainNotificationsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (appUpdate.isUpdateAvailable) {
+                if (appUpdate.isUpdateAvailable && !isUserOnLatestVersion) {
                     item {
                         Surface(
                             modifier = Modifier
