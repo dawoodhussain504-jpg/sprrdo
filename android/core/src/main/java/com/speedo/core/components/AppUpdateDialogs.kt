@@ -1,26 +1,21 @@
 package com.speedo.core.components
 
-import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Environment
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,34 +47,6 @@ fun openBrowserForUpdate(context: Context, url: String?) {
 }
 
 /**
- * Downloads the APK directly in background using Android's native DownloadManager
- */
-fun downloadApkViaDownloadManager(context: Context, url: String?, fileName: String = "speedo-update.apk") {
-    try {
-        val targetUrl = if (!url.isNullOrBlank()) {
-            url
-        } else {
-            "https://web-production-5d826.up.railway.app/downloads/"
-        }
-        val request = DownloadManager.Request(Uri.parse(targetUrl)).apply {
-            setTitle("Speedo App Update")
-            setDescription("Downloading latest build ($fileName)...")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-            setMimeType("application/vnd.android.package-archive")
-            setAllowedOverMetered(true)
-            setAllowedOverRoaming(true)
-        }
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        dm.enqueue(request)
-        Toast.makeText(context, "Downloading update in background! Pull down notification bar to check status.", Toast.LENGTH_LONG).show()
-    } catch (e: Exception) {
-        // Fallback to browser download if DownloadManager fails
-        openBrowserForUpdate(context, url)
-    }
-}
-
-/**
  * Backwards compatibility delegate
  */
 fun openUpdateUrl(context: Context, url: String?) {
@@ -87,7 +54,8 @@ fun openUpdateUrl(context: Context, url: String?) {
 }
 
 /**
- * Non-dismissible full-screen overlay for Mandatory (Force) App Updates
+ * Clean & direct Update Now overlay for Mandatory (Force) App Updates
+ * Displays only title, message, and a prominent "UPDATE NOW" button.
  */
 @Composable
 fun ForceUpdateOverlay(
@@ -98,7 +66,7 @@ fun ForceUpdateOverlay(
     val config = promptState.config
 
     Dialog(
-        onDismissRequest = { /* Non-dismissible: block back press & touch outside */ },
+        onDismissRequest = { /* Non-dismissible */ },
         properties = DialogProperties(
             dismissOnBackPress = false,
             dismissOnClickOutside = false,
@@ -114,12 +82,11 @@ fun ForceUpdateOverlay(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(24.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .padding(horizontal = 28.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Rocket / Alert Icon Badge
+                // Rocket Icon Badge
                 Box(
                     modifier = Modifier
                         .size(88.dp)
@@ -135,35 +102,11 @@ fun ForceUpdateOverlay(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-                // Mandatory Badge Pill
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = SpeedoError.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, SpeedoError.copy(alpha = 0.3f))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = SpeedoError, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "MANDATORY UPDATE REQUIRED",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = SpeedoError
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Title
+                // Clean Title
                 Text(
-                    text = config?.title ?: "Time to Update Speedo!",
+                    text = config?.title?.ifBlank { null } ?: "Update Available",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = SpeedoTextPrimary,
@@ -172,28 +115,12 @@ fun ForceUpdateOverlay(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Version comparison Pill
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = SpeedoSurfaceVariant
-                ) {
-                    Text(
-                        text = "Installed: v${promptState.currentVersionName} (Build ${promptState.currentVersionCode})  ➔  Latest: v${config?.latestVersionName ?: "1.1.0"}",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = SpeedoTextSecondary
-                        )
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Message Text
+                // Clean Message
                 Text(
-                    text = config?.message ?: "A new version of Speedo is required to continue booking rides with the latest security and real-time backend enhancements.",
+                    text = config?.message?.ifBlank { null }
+                        ?: "A new version of Speedo is available. Please update now to continue.",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = SpeedoTextSecondary,
                         lineHeight = 22.sp
@@ -201,120 +128,33 @@ fun ForceUpdateOverlay(
                     textAlign = TextAlign.Center
                 )
 
-                // Release Notes Card (if available)
-                if (!config?.releaseNotes.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFFF7F8FA),
-                        border = BorderStroke(1.dp, SpeedoCardBorder)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "WHAT'S NEW IN THIS VERSION",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = SpeedoOrange
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = config!!.releaseNotes!!,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = SpeedoTextPrimary,
-                                    lineHeight = 20.sp
-                                )
-                            )
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(32.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Installation Instructions Card
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = SpeedoOrange.copy(alpha = 0.08f),
-                    border = BorderStroke(1.dp, SpeedoOrange.copy(alpha = 0.25f))
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Info, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "HOW TO INSTALL UPDATE",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = SpeedoOrange
-                                )
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "1. Tap 'Download in Browser & Install' below.\n2. When prompted in your browser, tap Download.\n3. Open the downloaded APK file from your notifications to install.",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = SpeedoTextSecondary,
-                                lineHeight = 18.sp
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Big Primary Update Button (Browser Download)
+                // Clean Primary Update Now Button
                 SpeedoPrimaryButton(
-                    text = "DOWNLOAD IN BROWSER & INSTALL",
-                    leadingIcon = Icons.Default.OpenInBrowser,
+                    text = "UPDATE NOW",
+                    leadingIcon = Icons.Default.SystemUpdate,
                     onClick = {
                         openBrowserForUpdate(context, config?.updateUrl)
                         onDismiss()
                     }
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Secondary In-App Direct Download Button
-                OutlinedButton(
-                    onClick = {
-                        val fileName = "speedo-${config?.appId ?: "app"}-v${config?.latestVersionName ?: "latest"}.apk"
-                        downloadApkViaDownloadManager(context, config?.updateUrl, fileName)
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.5.dp, SpeedoOrange)
-                ) {
-                    Icon(Icons.Default.Download, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("DIRECT DOWNLOAD IN APP", fontWeight = FontWeight.Bold, color = SpeedoOrange)
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = onDismiss
                 ) {
-                    Text("Already updated or downloaded? Dismiss", color = SpeedoTextSecondary, style = MaterialTheme.typography.bodySmall)
+                    Text("Dismiss", color = SpeedoTextTertiary, style = MaterialTheme.typography.bodySmall)
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "Ensure you are using the latest version for real-time tracking.",
-                    style = MaterialTheme.typography.labelSmall.copy(color = SpeedoTextTertiary),
-                    textAlign = TextAlign.Center
-                )
             }
         }
     }
 }
 
 /**
- * Flexible (Optional) Update Dialog with "Download in Browser", "Direct Download", and "Later"
+ * Clean & direct Update Now Dialog for Flexible (Optional) Updates
+ * Displays only title, message, "Update Now" and "Later".
  */
 @Composable
 fun FlexibleUpdateDialog(
@@ -344,83 +184,44 @@ fun FlexibleUpdateDialog(
         },
         title = {
             Text(
-                text = config?.title ?: "New Version Available 🚀",
+                text = config?.title?.ifBlank { null } ?: "Update Available",
                 fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = SpeedoSurfaceVariant,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) {
-                    Text(
-                        text = "Current: v${promptState.currentVersionName}  ➔  New: v${config?.latestVersionName ?: "1.1.0"}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = SpeedoOrange)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = config?.message ?: "Upgrade to the latest version of Speedo to enjoy smoother rides, new destinations, and bug fixes.",
-                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp)
-                )
-
-                if (!config?.releaseNotes.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = config!!.releaseNotes!!,
-                        style = MaterialTheme.typography.bodySmall.copy(color = SpeedoTextSecondary, lineHeight = 18.sp)
-                    )
-                }
-            }
+            Text(
+                text = config?.message?.ifBlank { null }
+                    ?: "A new version of Speedo is available. Please update now to continue enjoying the latest features.",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = SpeedoTextSecondary,
+                    lineHeight = 20.sp
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         },
         confirmButton = {
-            Column(
+            Button(
+                onClick = {
+                    openBrowserForUpdate(context, config?.updateUrl)
+                    onDismiss()
+                },
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Button(
-                    onClick = {
-                        openBrowserForUpdate(context, config?.updateUrl)
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = SpeedoOrange),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Download in Browser & Install", fontWeight = FontWeight.Bold)
-                }
-
-                OutlinedButton(
-                    onClick = {
-                        val fileName = "speedo-${config?.appId ?: "app"}-v${config?.latestVersionName ?: "latest"}.apk"
-                        downloadApkViaDownloadManager(context, config?.updateUrl, fileName)
-                        onDismiss()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, SpeedoOrange)
-                ) {
-                    Icon(Icons.Default.Download, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Direct Download in App", fontWeight = FontWeight.Bold, color = SpeedoOrange)
-                }
+                Text("Update Now", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(
+            OutlinedButton(
                 onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Remind Me Later", color = SpeedoTextSecondary)
+                Text("Later", color = SpeedoTextSecondary)
             }
         },
         shape = RoundedCornerShape(20.dp),

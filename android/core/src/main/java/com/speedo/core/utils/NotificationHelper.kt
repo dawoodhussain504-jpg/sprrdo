@@ -145,7 +145,7 @@ object NotificationHelper {
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
             .setContentTitle(displayTitle)
             .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("$message\n\nTap to download and install the latest update directly in your browser."))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_SYSTEM)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
@@ -153,7 +153,7 @@ object NotificationHelper {
             .setContentIntent(pendingIntent)
             .addAction(
                 android.R.drawable.stat_sys_download,
-                "Download & Install",
+                "Update Now",
                 pendingIntent
             )
 
