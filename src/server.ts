@@ -40,67 +40,117 @@ app.use('/uploads', express.static(uploadDir));
 const GITHUB_CDN_BASE = 'https://raw.githubusercontent.com/dawoodhussain504-jpg/sprrdo/main/downloads';
 
 // Serve APK downloads directly for Over-the-Air App Updates
-const downloadsDir = path.resolve(__dirname, '../downloads');
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir, { recursive: true });
+const preferredDownloadsDir = path.resolve(__dirname, '../downloads');
+if (!fs.existsSync(preferredDownloadsDir)) {
+  try { fs.mkdirSync(preferredDownloadsDir, { recursive: true }); } catch (_) {}
 }
-app.use('/downloads', express.static(downloadsDir));
-
-// Fallback for direct APK requests if not stored locally in container
-app.get('/downloads/speedo-rider.apk', (_req, res) => {
-  const file = path.join(downloadsDir, 'speedo-rider.apk');
-  if (fs.existsSync(file)) {
-    res.download(file, 'speedo-rider.apk');
-  } else {
-    res.redirect(`${GITHUB_CDN_BASE}/speedo-rider.apk`);
+app.use('/downloads', express.static(preferredDownloadsDir, {
+  maxAge: '1d',
+  setHeaders: (res, pathStr) => {
+    if (pathStr.endsWith('.apk')) {
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    }
   }
-});
+}));
 
-app.get('/downloads/speedo-captain.apk', (_req, res) => {
-  const file = path.join(downloadsDir, 'speedo-captain.apk');
-  if (fs.existsSync(file)) {
-    res.download(file, 'speedo-captain.apk');
-  } else {
-    res.redirect(`${GITHUB_CDN_BASE}/speedo-captain.apk`);
+/**
+ * Searches all candidate paths where APK files might reside inside container
+ */
+function findLocalApk(filename: string): string | null {
+  const candidates = [
+    path.resolve(__dirname, '../downloads', filename),
+    path.resolve(__dirname, '../../downloads', filename),
+    path.resolve(__dirname, '../../../downloads', filename),
+    path.resolve(process.cwd(), 'downloads', filename),
+    path.resolve(process.cwd(), 'backend/downloads', filename),
+    path.join('/app/downloads', filename),
+    path.join('/app/backend/downloads', filename),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      try {
+        const stats = fs.statSync(c);
+        if (stats.size > 5 * 1024 * 1024) { // Valid APK > 5MB
+          return c;
+        }
+      } catch (_) {}
+    }
   }
-});
+  return null;
+}
 
-app.get('/downloads/speedo-admin.apk', (_req, res) => {
-  const file = path.join(downloadsDir, 'speedo-admin.apk');
-  if (fs.existsSync(file)) {
-    res.download(file, 'speedo-admin.apk');
-  } else {
-    res.redirect(`${GITHUB_CDN_BASE}/speedo-admin.apk`);
+/**
+ * High-speed APK streaming handler with full HTTP Range (206) and zero-copy sendfile
+ */
+function handleApkDownload(filename: string, _req: express.Request, res: express.Response) {
+  const localFile = findLocalApk(filename);
+  if (localFile) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    return res.sendFile(localFile);
   }
-});
 
-// Direct download shortcuts
-app.get('/download/rider', (_req, res) => {
-  const file = path.join(downloadsDir, 'speedo-rider.apk');
-  if (fs.existsSync(file)) {
-    res.download(file, 'speedo-rider.apk');
-  } else {
-    res.redirect(`${GITHUB_CDN_BASE}/speedo-rider.apk`);
-  }
-});
+  // Fallback: If not found on local disk, redirect to GitHub
+  console.warn(`[ApkServer] Local APK not found for ${filename}, falling back to remote CDN`);
+  return res.redirect(`${GITHUB_CDN_BASE}/${filename}`);
+}
 
-app.get('/download/captain', (_req, res) => {
-  const file = path.join(downloadsDir, 'speedo-captain.apk');
-  if (fs.existsSync(file)) {
-    res.download(file, 'speedo-captain.apk');
-  } else {
-    res.redirect(`${GITHUB_CDN_BASE}/speedo-captain.apk`);
-  }
-});
+// Direct & legacy routes with HEAD and GET support
+const apkRoutes = [
+  { route: '/downloads/speedo-rider.apk', file: 'speedo-rider.apk' },
+  { route: '/downloads/speedo-captain.apk', file: 'speedo-captain.apk' },
+  { route: '/downloads/speedo-admin.apk', file: 'speedo-admin.apk' },
+  { route: '/download/rider', file: 'speedo-rider.apk' },
+  { route: '/download/captain', file: 'speedo-captain.apk' },
+  { route: '/download/admin', file: 'speedo-admin.apk' },
+];
 
-app.get('/download/admin', (_req, res) => {
-  const file = path.join(downloadsDir, 'speedo-admin.apk');
-  if (fs.existsSync(file)) {
-    res.download(file, 'speedo-admin.apk');
-  } else {
-    res.redirect(`${GITHUB_CDN_BASE}/speedo-admin.apk`);
+for (const { route, file } of apkRoutes) {
+  app.get(route, (req, res) => handleApkDownload(file, req, res));
+  app.head(route, (req, res) => handleApkDownload(file, req, res));
+}
+
+// Background pre-warmer: Ensures APKs are cached locally on Railway SSD disk
+export async function prewarmApkStorage() {
+  const apks = ['speedo-rider.apk', 'speedo-captain.apk', 'speedo-admin.apk'];
+  for (const apk of apks) {
+    const existing = findLocalApk(apk);
+    if (!existing) {
+      const dest = path.join(preferredDownloadsDir, apk);
+      console.log(`[ApkPrewarm] Downloading ${apk} from GitHub into local cache: ${dest}...`);
+      try {
+        const https = await import('https');
+        const fileStream = fs.createWriteStream(dest);
+        https.get(`${GITHUB_CDN_BASE}/${apk}`, (response) => {
+          if (response.statusCode === 200) {
+            response.pipe(fileStream);
+            fileStream.on('finish', () => {
+              fileStream.close();
+              try {
+                console.log(`🚀 [ApkPrewarm] Successfully cached ${apk} locally (${fs.statSync(dest).size} bytes)`);
+              } catch (_) {}
+            });
+          } else {
+            fileStream.close();
+            try { fs.unlinkSync(dest); } catch (_) {}
+          }
+        }).on('error', (err) => {
+          fileStream.close();
+          try { fs.unlinkSync(dest); } catch (_) {}
+          console.warn(`[ApkPrewarm] Error caching ${apk}:`, err.message);
+        });
+      } catch (e: any) {
+        console.warn(`[ApkPrewarm] Exception caching ${apk}:`, e.message);
+      }
+    } else {
+      console.log(`✅ [ApkPrewarm] ${apk} is present locally: ${existing}`);
+    }
   }
-});
+}
 
 // Request logging middleware
 app.use((req, _res, next) => {
@@ -201,6 +251,7 @@ async function startServer() {
       const { syncAppVersions, startAppVersionWatcher } = await import('./services/app-version-sync.service');
       await syncAppVersions(true);
       startAppVersionWatcher(30000);
+      prewarmApkStorage().catch((e) => console.log('⚠️ Prewarm error:', e.message));
     } catch (syncErr: any) {
       console.log('⚠️ App version sync info:', syncErr.message);
     }
