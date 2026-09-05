@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 7,
-    "versionName": "1.0.7",
-    "title": "Speedo Update Available (v1.0.7) \ud83d\ude80",
-    "message": "Seamless in-app background updates, smoother performance, and stability improvements.",
+    "versionCode": 8,
+    "versionName": "1.0.8",
+    "title": "Speedo Update Available (v1.0.8) \ud83d\ude80",
+    "message": "Ultra-fast high-speed in-app updates, optimized downloads, and stability improvements.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 7,
-    "versionName": "1.0.7",
-    "title": "Speedo Update Available (v1.0.7) \ud83d\ude80",
-    "message": "Seamless in-app background updates, smoother performance, and stability improvements.",
+    "versionCode": 8,
+    "versionName": "1.0.8",
+    "title": "Speedo Update Available (v1.0.8) \ud83d\ude80",
+    "message": "Ultra-fast high-speed in-app updates, optimized downloads, and stability improvements.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 7,
-    "versionName": "1.0.7",
-    "title": "Speedo Update Available (v1.0.7) \ud83d\ude80",
-    "message": "Seamless in-app background updates, smoother performance, and stability improvements.",
+    "versionCode": 8,
+    "versionName": "1.0.8",
+    "title": "Speedo Update Available (v1.0.8) \ud83d\ude80",
+    "message": "Ultra-fast high-speed in-app updates, optimized downloads, and stability improvements.",
     "forceUpdate": false
   }
 }

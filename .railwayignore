@@ -1,6 +1,7 @@
-node_modules
-android
-*.apk
-downloads/*.apk
-backend/downloads/*.apk
-.git
+node_modules/
+android/
+.git/
+.gradle/
+uploads/*.tmp
+dist/
+*.log

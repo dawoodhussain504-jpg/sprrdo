@@ -9,6 +9,3 @@ uploads/*.tmp
 build/
 android/.gradle/
 android/*/build/
-*.apk
-!downloads/*.apk
-!backend/downloads/*.apk
