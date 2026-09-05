@@ -35,27 +35,24 @@ import com.speedo.core.utils.DownloadStatus
 import com.speedo.core.utils.InAppUpdateManager
 
 /**
- * Safely launches the browser as a fallback to download the latest APK
+ * Seamless in-app download and update trigger without external browser redirects
  */
 fun openBrowserForUpdate(context: Context, url: String?) {
-    try {
-        val targetUrl = if (!url.isNullOrBlank()) {
-            url
-        } else {
-            "https://web-production-5d826.up.railway.app/downloads/"
+    val targetUrl = if (!url.isNullOrBlank()) {
+        url
+    } else {
+        val app = when {
+            context.packageName.contains("rider") -> "rider"
+            context.packageName.contains("captain") -> "captain"
+            else -> "admin"
         }
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl)).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        context.startActivity(intent)
-        Toast.makeText(context, "Opening browser for update...", Toast.LENGTH_SHORT).show()
-    } catch (e: Exception) {
-        Toast.makeText(context, "Could not open browser: ${e.message}", Toast.LENGTH_LONG).show()
+        "https://web-production-5d826.up.railway.app/downloads/speedo-$app.apk"
     }
+    InAppUpdateManager.startDownloadAndInstall(context, targetUrl)
 }
 
 /**
- * Backwards compatibility delegate
+ * Backwards compatibility delegate - triggers in-app update directly
  */
 fun openUpdateUrl(context: Context, url: String?) {
     openBrowserForUpdate(context, url)
@@ -248,16 +245,6 @@ fun ForceUpdateOverlay(
                                     InAppUpdateManager.startDownloadAndInstall(context, targetUrl)
                                 }
                             )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            OutlinedButton(
-                                onClick = { openBrowserForUpdate(context, targetUrl) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("Open in Browser", color = SpeedoOrange, fontWeight = FontWeight.Bold)
-                            }
                         }
                     }
                     else -> { // Idle
@@ -270,17 +257,6 @@ fun ForceUpdateOverlay(
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Direct Browser Fallback Link
-                Text(
-                    text = "Having trouble? Tap here to download in browser",
-                    style = MaterialTheme.typography.bodySmall.copy(color = SpeedoTextTertiary),
-                    modifier = Modifier.clickable {
-                        openBrowserForUpdate(context, targetUrl)
-                    }
-                )
             }
         }
     }
