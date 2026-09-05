@@ -255,3 +255,41 @@ export async function syncAppVersions(force = false): Promise<void> {
     }
   }
 }
+
+let watcherTimer: NodeJS.Timeout | null = null;
+
+/**
+ * Starts a recurring background watcher that automatically detects version sequence increases
+ * and auto-sends update notices to all existing users without requiring a server reboot.
+ */
+export function startAppVersionWatcher(intervalMs = 30000): void {
+  if (watcherTimer) {
+    clearInterval(watcherTimer);
+  }
+  console.log(`[AppVersionSync] Automated app version watcher running (interval: ${intervalMs / 1000}s)`);
+  watcherTimer = setInterval(async () => {
+    try {
+      await syncAppVersions(false);
+    } catch (e: any) {
+      console.error('[AppVersionSync] Background check error:', e.message);
+    }
+  }, intervalMs);
+}
+
+/**
+ * Forces an immediate database synchronization and real-time WebSocket update broadcast.
+ */
+export async function forceSyncAppVersions(): Promise<Record<string, any>> {
+  await syncAppVersions(true);
+  const db = getDb();
+  const res = await db.query(
+    'SELECT app_id, latest_version_code, latest_version_name, title, message, updated_at FROM app_version_configs ORDER BY app_id ASC'
+  );
+  return {
+    success: true,
+    message: 'App version configs synchronized and broadcast to existing users',
+    timestamp: new Date().toISOString(),
+    versions: res.rows,
+  };
+}
+

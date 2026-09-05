@@ -9,7 +9,8 @@
     "dev": "ts-node src/server.ts",
     "db:migrate": "node dist/database/migrate.js",
     "db:seed": "node dist/seed/seed.js",
-    "test": "ts-node src/test/api.test.ts"
+    "test": "ts-node src/test/api.test.ts",
+    "update-apps": "python scripts/publish_update.py"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

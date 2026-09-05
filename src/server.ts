@@ -123,6 +123,15 @@ app.get(['/', '/health', '/api/health'], (_req, res) => {
 app.get('/api/destinations', getPopularDestinationsPublic);
 app.get('/api/destinations/popular', getPopularDestinationsPublic);
 app.get('/api/app-version', getAppVersionConfig);
+app.all(['/api/app-version/sync-now', '/api/app-version/publish-update'], async (_req, res) => {
+  try {
+    const { forceSyncAppVersions } = await import('./services/app-version-sync.service');
+    const result = await forceSyncAppVersions();
+    res.status(200).json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 app.use('/api/auth', authRoutes);
 app.use('/api/rider', riderRoutes);
 app.use('/api/captain', captainRoutes);
@@ -187,10 +196,11 @@ async function startServer() {
       console.log('⚠️ Patch info:', patchErr.message);
     }
 
-    // Automated App Version Synchronization & Broadcast
+    // Automated App Version Synchronization & Background Watcher
     try {
-      const { syncAppVersions } = await import('./services/app-version-sync.service');
+      const { syncAppVersions, startAppVersionWatcher } = await import('./services/app-version-sync.service');
       await syncAppVersions(true);
+      startAppVersionWatcher(30000);
     } catch (syncErr: any) {
       console.log('⚠️ App version sync info:', syncErr.message);
     }
