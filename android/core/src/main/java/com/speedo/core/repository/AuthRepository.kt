@@ -25,7 +25,7 @@ class AuthRepository(private val context: Context) {
                 NetworkResult.Error(res.body()?.message ?: "Login failed", res.code())
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error occurred")
+            NetworkResult.Error(formatNetworkError(e))
         }
     }
 
@@ -41,7 +41,7 @@ class AuthRepository(private val context: Context) {
                 NetworkResult.Error(res.body()?.message ?: "Registration failed", res.code())
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error occurred")
+            NetworkResult.Error(formatNetworkError(e))
         }
     }
 
@@ -57,7 +57,7 @@ class AuthRepository(private val context: Context) {
                 NetworkResult.Error(res.body()?.message ?: "Login failed", res.code())
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error occurred")
+            NetworkResult.Error(formatNetworkError(e))
         }
     }
 
@@ -82,7 +82,7 @@ class AuthRepository(private val context: Context) {
                 NetworkResult.Error(res.body()?.message ?: "Registration failed", res.code())
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error occurred")
+            NetworkResult.Error(formatNetworkError(e))
         }
     }
 
@@ -98,7 +98,16 @@ class AuthRepository(private val context: Context) {
                 NetworkResult.Error(res.body()?.message ?: "Invalid admin credentials", res.code())
             }
         } catch (e: Exception) {
-            NetworkResult.Error(e.localizedMessage ?: "Network error occurred")
+            NetworkResult.Error(formatNetworkError(e))
+        }
+    }
+
+    private fun formatNetworkError(e: Exception): String {
+        return when {
+            e is java.net.UnknownHostException -> "Unable to connect to Speedo server. Please check your internet connection."
+            e is java.net.SocketTimeoutException -> "Connection timed out. Please check your internet connection and try again."
+            e.localizedMessage?.contains("Unable to resolve host", ignoreCase = true) == true -> "Server connection unavailable. Please check your data connection."
+            else -> e.localizedMessage ?: "Network error occurred"
         }
     }
 

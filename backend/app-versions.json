@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 4,
-    "versionName": "1.0.4",
-    "title": "Speedo Rider Update Available (v1.0.4) \ud83d\ude80",
-    "message": "A new version of Speedo Rider is ready with the latest performance and UI improvements. Update now or choose later.",
+    "versionCode": 5,
+    "versionName": "1.0.5",
+    "title": "Speedo Update v1.0.5 - 5G & Connectivity Fix \ud83d\ude80",
+    "message": "Resolved network connectivity on 5G mobile data, faster signup, and stability fixes.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 4,
-    "versionName": "1.0.4",
-    "title": "Speedo Captain Update Available (v1.0.4) \ud83d\ude80",
-    "message": "A new version of Speedo Captain is ready with the latest performance and UI improvements. Update now or choose later.",
+    "versionCode": 5,
+    "versionName": "1.0.5",
+    "title": "Speedo Update v1.0.5 - 5G & Connectivity Fix \ud83d\ude80",
+    "message": "Resolved network connectivity on 5G mobile data, faster signup, and stability fixes.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 4,
-    "versionName": "1.0.4",
-    "title": "Speedo Admin Update Available (v1.0.4) \ud83d\ude80",
-    "message": "A new version of Speedo Admin is ready with the latest performance and UI improvements. Update now or choose later.",
+    "versionCode": 5,
+    "versionName": "1.0.5",
+    "title": "Speedo Update v1.0.5 - 5G & Connectivity Fix \ud83d\ude80",
+    "message": "Resolved network connectivity on 5G mobile data, faster signup, and stability fixes.",
     "forceUpdate": false
   }
 }

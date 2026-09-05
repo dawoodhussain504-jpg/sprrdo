@@ -115,47 +115,25 @@ object InAppUpdateManager {
         Toast.makeText(context, "Downloading update in background... You can continue using Speedo.", Toast.LENGTH_LONG).show()
 
         downloadJob = scope.launch(Dispatchers.IO) {
-            var connection: HttpURLConnection? = null
             var inputStream: InputStream? = null
             var outputStream: FileOutputStream? = null
 
             try {
                 var currentUrl = downloadUrl
-                var redirects = 0
-                val maxRedirects = 5
+                val client = com.speedo.core.network.RetrofitClient.getOkHttpClient(context)
+                val request = okhttp3.Request.Builder()
+                    .url(currentUrl)
+                    .header("User-Agent", "Speedo-InApp-Updater/1.0")
+                    .build()
 
-                // Handle HTTP redirects (301, 302, 307)
-                while (redirects < maxRedirects) {
-                    val url = URL(currentUrl)
-                    connection = url.openConnection() as HttpURLConnection
-                    connection.instanceFollowRedirects = true
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 30000
-                    connection.setRequestProperty("User-Agent", "Speedo-InApp-Updater/1.0")
-                    connection.connect()
-
-                    val responseCode = connection.responseCode
-                    if (responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
-                        responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
-                        responseCode == 307 || responseCode == 308
-                    ) {
-                        val location = connection.getHeaderField("Location")
-                        if (!location.isNullOrBlank()) {
-                            currentUrl = location
-                            connection.disconnect()
-                            redirects++
-                            continue
-                        }
-                    }
-                    break
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful || response.body == null) {
+                    throw IllegalStateException("Server returned HTTP ${response.code}")
                 }
 
-                if (connection == null || connection.responseCode !in 200..299) {
-                    throw IllegalStateException("Server returned HTTP ${connection?.responseCode ?: "connection failure"}")
-                }
-
-                val totalBytes = connection.contentLengthLong.takeIf { it > 0 } ?: (21L * 1024L * 1024L) // fallback 21MB
-                inputStream = connection.inputStream
+                val responseBody = response.body!!
+                val totalBytes = responseBody.contentLength().takeIf { it > 0 } ?: (21L * 1024L * 1024L) // fallback 21MB
+                inputStream = responseBody.byteStream()
 
                 // Destination file inside app storage
                 val downloadDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.cacheDir
@@ -257,7 +235,6 @@ object InAppUpdateManager {
             } finally {
                 try { outputStream?.close() } catch (_: Exception) {}
                 try { inputStream?.close() } catch (_: Exception) {}
-                try { connection?.disconnect() } catch (_: Exception) {}
             }
         }
     }

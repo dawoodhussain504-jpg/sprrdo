@@ -12,6 +12,31 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
     @Volatile
     private var apiService: SpeedoApiService? = null
+    @Volatile
+    private var okHttpClient: OkHttpClient? = null
+
+    fun getOkHttpClient(context: Context): OkHttpClient {
+        return okHttpClient ?: synchronized(this) {
+            okHttpClient ?: buildOkHttpClient(context.applicationContext).also { okHttpClient = it }
+        }
+    }
+
+    private fun buildOkHttpClient(context: Context): OkHttpClient {
+        val tokenManager = TokenManager.getInstance(context)
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+        }
+
+        return OkHttpClient.Builder()
+            .dns(SpeedoResilientDns)
+            .addInterceptor(AuthInterceptor(tokenManager))
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .writeTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
 
     fun getService(context: Context): SpeedoApiService {
         return apiService ?: synchronized(this) {
@@ -20,25 +45,12 @@ object RetrofitClient {
     }
 
     private fun buildService(context: Context): SpeedoApiService {
-        val tokenManager = TokenManager.getInstance(context)
-        val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.HEADERS
-        }
-
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(tokenManager))
-            .addInterceptor(loggingInterceptor)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .build()
-
+        val client = getOkHttpClient(context)
         val baseUrl = Constants.getBaseUrl(context)
 
         val retrofit = Retrofit.Builder()
             .baseUrl(baseUrl)
-            .client(okHttpClient)
+            .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
 
@@ -47,5 +59,6 @@ object RetrofitClient {
 
     fun resetService() {
         apiService = null
+        okHttpClient = null
     }
 }

@@ -126,7 +126,10 @@ class SpeedoSocketManager private constructor(private val context: Context) {
 
                 Log.d(TAG, "Connecting to WebSocket at $socketUri with token=${token?.take(10)}...")
 
+                val okHttpClient = com.speedo.core.network.RetrofitClient.getOkHttpClient(context)
                 val opts = IO.Options().apply {
+                    callFactory = okHttpClient
+                    webSocketFactory = okHttpClient
                     reconnection = true
                     reconnectionAttempts = Int.MAX_VALUE
                     reconnectionDelay = 1000

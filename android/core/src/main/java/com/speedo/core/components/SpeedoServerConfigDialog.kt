@@ -59,11 +59,10 @@ fun SpeedoServerConfigDialog(
             val result = withContext(Dispatchers.IO) {
                 try {
                     val healthUrl = if (urlToTest.endsWith("/")) "${urlToTest}health" else "$urlToTest/health"
-                    val connection = URL(healthUrl).openConnection() as HttpURLConnection
-                    connection.connectTimeout = 4000
-                    connection.readTimeout = 4000
-                    connection.requestMethod = "GET"
-                    val code = connection.responseCode
+                    val client = RetrofitClient.getOkHttpClient(context)
+                    val request = okhttp3.Request.Builder().url(healthUrl).build()
+                    val response = client.newCall(request).execute()
+                    val code = response.code
                     val elapsed = System.currentTimeMillis() - startTime
                     if (code in 200..299) {
                         Pair(true, "✅ Connected (Status: $code, ${elapsed}ms)")
