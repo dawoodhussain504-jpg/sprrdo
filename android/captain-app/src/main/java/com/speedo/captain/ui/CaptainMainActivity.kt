@@ -11,6 +11,7 @@ import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.theme.SpeedoTheme
+import com.speedo.core.utils.NotificationHelper
 
 class CaptainMainActivity : ComponentActivity() {
     private val viewModel: CaptainViewModel by viewModels()
@@ -21,6 +22,7 @@ class CaptainMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NotificationHelper.cancelUpdateNotification(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
                 splashScreenView.remove()

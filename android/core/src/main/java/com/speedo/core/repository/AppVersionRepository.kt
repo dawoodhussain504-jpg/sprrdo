@@ -58,21 +58,9 @@ class AppVersionRepository(private val context: Context) {
                 val isForce = hasUpdate && (config.forceUpdate || (currentCode < config.minSupportedVersionCode))
                 val isAvailable = hasUpdate
 
-                val lastNotified = prefs.getInt("last_notified_version_code", 0)
-                if (isAvailable && !isAlreadyLatest && lastNotified < config.latestVersionCode) {
-                    NotificationHelper.showAppUpdateNotification(
-                        context = context,
-                        title = config.title,
-                        message = config.message,
-                        updateUrl = config.updateUrl,
-                        versionName = config.latestVersionName
-                    )
-                    prefs.edit().putInt("last_notified_version_code", config.latestVersionCode).apply()
-                }
-
-                if (isAlreadyLatest) {
-                    NotificationHelper.cancelUpdateNotification(context)
-                }
+                // User requested: NO notification banner for app updates. In-app update dialog handles updates.
+                // Always clear any pending/existing update notification banner from notification shade.
+                NotificationHelper.cancelUpdateNotification(context)
 
                 AppUpdatePromptState(
                     isUpdateAvailable = if (isAlreadyLatest) false else isAvailable,

@@ -15,12 +15,6 @@ import com.speedo.core.R
 
 object NotificationHelper {
 
-    fun cancelUpdateNotification(context: Context) {
-        try {
-            androidx.core.app.NotificationManagerCompat.from(context).cancel(Constants.NOTIFICATION_ID_APP_UPDATE)
-        } catch (_: Exception) {}
-    }
-
     fun createNotificationChannels(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -127,43 +121,9 @@ object NotificationHelper {
         updateUrl: String,
         versionName: String? = null
     ) {
-        createNotificationChannels(context)
-
-        // Launch Speedo app directly instead of external browser for seamless in-app update
-        val appIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("speedo_trigger_update_dialog", true)
-            putExtra("speedo_update_url", updateUrl)
-        } ?: Intent()
-
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            Constants.NOTIFICATION_ID_APP_UPDATE,
-            appIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val displayTitle = if (!versionName.isNullOrBlank()) {
-            "$title (v$versionName)"
-        } else {
-            title
-        }
-
-        // Clean normal banner popup - opens app directly for in-app download
-        val builder = NotificationCompat.Builder(context, Constants.CHANNEL_APP_UPDATES)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle(displayTitle)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-
-        try {
-            NotificationManagerCompat.from(context).notify(Constants.NOTIFICATION_ID_APP_UPDATE, builder.build())
-        } catch (e: Exception) {
-            // Safe fallback if permission is missing on Android 13+
-        }
+        // User requested: NO system notification banner for app updates in Android shade.
+        // In-app download & update dialog is enough. Cancel any existing update banners.
+        cancelUpdateNotification(context)
     }
 
     fun showDownloadProgressNotification(
@@ -172,24 +132,7 @@ object NotificationHelper {
         downloadedBytes: Long,
         totalBytes: Long
     ) {
-        createNotificationChannels(context)
-
-        val sizeText = "${InAppUpdateManager.formatFileSize(downloadedBytes)} / ${InAppUpdateManager.formatFileSize(totalBytes)}"
-        val builder = NotificationCompat.Builder(context, Constants.CHANNEL_APP_UPDATES)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Speedo Update: Downloading ($progressPercent%)")
-            .setContentText(sizeText)
-            .setProgress(100, progressPercent, false)
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-
-        try {
-            NotificationManagerCompat.from(context).notify(
-                Constants.NOTIFICATION_ID_APP_UPDATE_PROGRESS,
-                builder.build()
-            )
-        } catch (_: Exception) {}
+        // In-app progress indicator is shown directly inside the app dialog.
     }
 
     fun cancelDownloadProgressNotification(context: Context) {
@@ -202,42 +145,14 @@ object NotificationHelper {
         context: Context,
         apkFile: java.io.File
     ) {
-        createNotificationChannels(context)
-        cancelDownloadProgressNotification(context)
+        // User requested: NO notification banner for app updates. In-app installer launch is enough.
+        cancelUpdateNotification(context)
+    }
 
+    fun cancelUpdateNotification(context: Context) {
         try {
-            val apkUri = androidx.core.content.FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                apkFile
-            )
-
-            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(apkUri, "application/vnd.android.package-archive")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-            }
-
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                Constants.NOTIFICATION_ID_APP_UPDATE,
-                installIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            // Normal completion banner popup without intrusive 'Install Now' popup action button
-            val builder = NotificationCompat.Builder(context, Constants.CHANNEL_APP_UPDATES)
-                .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setContentTitle("Speedo Update Downloaded 🚀")
-                .setContentText("Download complete. Tap to finish updating Speedo.")
-                .setStyle(NotificationCompat.BigTextStyle().bigText("Download complete. Tap to finish updating Speedo."))
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-
-            NotificationManagerCompat.from(context).notify(
-                Constants.NOTIFICATION_ID_APP_UPDATE,
-                builder.build()
-            )
+            NotificationManagerCompat.from(context).cancel(Constants.NOTIFICATION_ID_APP_UPDATE)
+            NotificationManagerCompat.from(context).cancel(Constants.NOTIFICATION_ID_APP_UPDATE_PROGRESS)
         } catch (_: Exception) {}
     }
 }

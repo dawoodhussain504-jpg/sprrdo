@@ -436,7 +436,6 @@ fun FlexibleUpdateDialog(
                 else -> { // Idle
                     Button(
                         onClick = {
-                            onDismiss()
                             InAppUpdateManager.startDownloadAndInstall(context, targetUrl)
                         },
                         modifier = Modifier.fillMaxWidth(),

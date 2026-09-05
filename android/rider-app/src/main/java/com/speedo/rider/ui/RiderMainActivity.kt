@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import com.speedo.core.theme.SpeedoTheme
+import com.speedo.core.utils.NotificationHelper
 import com.speedo.rider.viewmodel.RiderViewModel
 
 class RiderMainActivity : ComponentActivity() {
@@ -25,6 +26,7 @@ class RiderMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NotificationHelper.cancelUpdateNotification(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
                 splashScreenView.remove()

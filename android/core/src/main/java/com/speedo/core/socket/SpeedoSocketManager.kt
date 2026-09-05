@@ -458,19 +458,10 @@ class SpeedoSocketManager private constructor(private val context: Context) {
                                             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                                             val installedCode = PackageInfoCompat.getLongVersionCode(pInfo).toInt()
                                             if (installedCode < config.latestVersionCode) {
-                                                val prefs = context.getSharedPreferences("speedo_update_prefs", Context.MODE_PRIVATE)
-                                                val lastNotified = prefs.getInt("last_notified_version_code", 0)
-                                                if (lastNotified < config.latestVersionCode) {
-                                                    Log.i(TAG, "🔔 [UPDATE NOTIFICATION] Displaying update notification: installed=$installedCode < latest=${config.latestVersionCode}")
-                                                    NotificationHelper.showAppUpdateNotification(
-                                                        context = context,
-                                                        title = config.title,
-                                                        message = config.message,
-                                                        updateUrl = config.updateUrl,
-                                                        versionName = config.latestVersionName
-                                                    )
-                                                    prefs.edit().putInt("last_notified_version_code", config.latestVersionCode).apply()
-                                                }
+                                                // User requested: NO notification banner for app updates in Android shade.
+                                                // In-app update dialog handles the update. Dismiss any existing banners.
+                                                NotificationHelper.cancelUpdateNotification(context)
+                                                Log.i(TAG, "🔔 [UPDATE NOTIFICATION] Suppressed update notification banner per user preference. In-app dialog will handle update.")
                                             } else {
                                                 NotificationHelper.cancelUpdateNotification(context)
                                             }

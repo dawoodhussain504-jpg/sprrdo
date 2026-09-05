@@ -7,12 +7,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import com.speedo.admin.viewmodel.AdminViewModel
 import com.speedo.core.theme.SpeedoTheme
+import com.speedo.core.utils.NotificationHelper
 
 class AdminMainActivity : ComponentActivity() {
     private val viewModel: AdminViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        NotificationHelper.cancelUpdateNotification(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
                 splashScreenView.remove()
