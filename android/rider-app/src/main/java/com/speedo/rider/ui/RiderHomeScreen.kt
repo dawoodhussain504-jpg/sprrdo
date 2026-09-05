@@ -34,10 +34,12 @@ import com.speedo.core.maps.RouteHelper
 import com.speedo.core.model.PopularDestination
 import com.speedo.core.model.PopularDestinationsData
 import com.speedo.core.model.VehicleCategory
+import com.speedo.core.maps.LocationSearchHelper
 import com.speedo.core.theme.*
 import com.speedo.core.utils.InAppUpdateManager
 import com.speedo.rider.ui.components.*
 import com.speedo.rider.viewmodel.RiderViewModel
+import kotlinx.coroutines.launch
 import org.osmdroid.util.GeoPoint
 
 @Composable
@@ -59,8 +61,10 @@ fun RiderHomeScreen(
         viewModel.fetchCurrentLocation()
     }
 
+    val scope = rememberCoroutineScope()
     var showSearchDialog by remember { mutableStateOf(false) }
     var searchInitialFocusPickup by remember { mutableStateOf(false) }
+    var showVoiceBookingSheet by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
@@ -414,12 +418,33 @@ fun RiderHomeScreen(
                                 )
                             }
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search Destination",
-                                tint = RapidoYellowDark,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = RapidoYellow,
+                                    shadowElevation = 2.dp,
+                                    modifier = Modifier.clickable { showVoiceBookingSheet = true }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Mic,
+                                            contentDescription = "Voice Booking (Speech-to-Ride)",
+                                            tint = RapidoBlack,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Search Destination",
+                                    tint = RapidoYellowDark,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -966,6 +991,37 @@ fun RiderHomeScreen(
         // 7. Safety Shield Sheet
         if (showSafetySheet) {
             RapidoSafetySheet(onDismiss = { showSafetySheet = false })
+        }
+
+        // 8. Speech-to-Ride Voice Booking Sheet
+        if (showVoiceBookingSheet) {
+            VoiceBookingSheet(
+                onDismiss = { showVoiceBookingSheet = false },
+                onConfirmed = { destinationQuery, vehicleType ->
+                    showVoiceBookingSheet = false
+                    if (vehicleType != null) {
+                        viewModel.selectVehicleType(vehicleType)
+                    }
+                    scope.launch {
+                        val results = LocationSearchHelper.searchAddress(
+                            context = context,
+                            query = destinationQuery,
+                            userLat = if (uiState.pickupLat != 0.0) uiState.pickupLat else 12.9716,
+                            userLng = if (uiState.pickupLng != 0.0) uiState.pickupLng else 77.5946
+                        )
+                        if (results.isNotEmpty()) {
+                            val top = results[0]
+                            viewModel.updateDropLocation(top.fullAddress, top.lat, top.lng)
+                        } else {
+                            viewModel.updateDropLocation(
+                                destinationQuery,
+                                if (uiState.pickupLat != 0.0) uiState.pickupLat + 0.015 else 12.9866,
+                                if (uiState.pickupLng != 0.0) uiState.pickupLng + 0.015 else 77.6096
+                            )
+                        }
+                    }
+                }
+            )
         }
     }
 }

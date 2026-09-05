@@ -570,6 +570,7 @@ fun RapidoLocationSearchDialog(
     var dropInput by remember { mutableStateOf(currentDrop) }
     var suggestions by remember { mutableStateOf<List<AddressSuggestion>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
+    var showVoiceSheetInDialog by remember { mutableStateOf(false) }
 
     val liveDestinations by com.speedo.core.repository.PopularDestinationRepository.getInstance(context).destinationsFlow.collectAsState()
     val rankedDestinations = remember(liveDestinations, userLat, userLng, currentPickup) {
@@ -766,9 +767,14 @@ fun RapidoLocationSearchDialog(
                             ),
                             shape = RoundedCornerShape(10.dp),
                             trailingIcon = {
-                                if (dropInput.isNotEmpty()) {
-                                    IconButton(onClick = { dropInput = "" }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = SpeedoTextSecondary)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (dropInput.isNotEmpty()) {
+                                        IconButton(onClick = { dropInput = "" }) {
+                                            Icon(Icons.Default.Close, contentDescription = "Clear", tint = SpeedoTextSecondary)
+                                        }
+                                    }
+                                    IconButton(onClick = { showVoiceSheetInDialog = true }) {
+                                        Icon(Icons.Default.Mic, contentDescription = "Voice Search", tint = RapidoYellowDark)
                                     }
                                 }
                             }
@@ -1022,6 +1028,17 @@ fun RapidoLocationSearchDialog(
                     }
                 }
             }
+        }
+
+        if (showVoiceSheetInDialog) {
+            VoiceBookingSheet(
+                onDismiss = { showVoiceSheetInDialog = false },
+                onConfirmed = { dest, _ ->
+                    showVoiceSheetInDialog = false
+                    dropInput = dest
+                    activeField = LocationFieldType.DROP
+                }
+            )
         }
     }
 }

@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.speedo.captain.audio.CaptainVoiceCueManager
 import com.speedo.captain.ui.components.*
 import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.maps.MapMarkerData
@@ -79,6 +80,28 @@ fun CaptainDashboardScreen(
         val ride = uiState.activeRide
         if (ride != null && ride.status in listOf("accepted", "arrived", "ongoing")) {
             onNavigateToActiveRide()
+        }
+    }
+
+    val voiceCueManager = remember { CaptainVoiceCueManager.getInstance(context) }
+    var lastAnnouncedRideId by remember { mutableStateOf<String?>(null) }
+
+    // Vernacular voice announcement for new incoming ride requests
+    LaunchedEffect(uiState.incomingRequests) {
+        if (uiState.incomingRequests.isNotEmpty()) {
+            val first = uiState.incomingRequests.first()
+            if (first.id != lastAnnouncedRideId) {
+                lastAnnouncedRideId = first.id
+                val dist = if (first.distanceKm > 0) first.distanceKm else 2.5
+                voiceCueManager.speakIncomingRide(
+                    fare = first.fare.toInt(),
+                    distanceKm = dist,
+                    pickup = first.pickupAddress,
+                    vehicleType = first.vehicleType
+                )
+            }
+        } else {
+            lastAnnouncedRideId = null
         }
     }
 
@@ -419,16 +442,22 @@ fun CaptainDashboardScreen(
             }
         }
 
-        // Floating Rapido My Location Recenter FAB (Compact Right HUD)
-        Surface(
-            shape = CircleShape,
-            color = SpeedoWhite,
-            shadowElevation = 5.dp,
-            border = BorderStroke(1.dp, SpeedoCardBorder),
+        // Floating Controls (Compact Right HUD): Voice Cues Toggle + Recenter FAB
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 280.dp)
-                .clickable {
+                .padding(end = 16.dp, bottom = 280.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            CaptainVoiceControlHud()
+
+            Surface(
+                shape = CircleShape,
+                color = SpeedoWhite,
+                shadowElevation = 5.dp,
+                border = BorderStroke(1.dp, SpeedoCardBorder),
+                modifier = Modifier.clickable {
                     val locHelper = com.speedo.core.maps.LocationHelper(context)
                     locHelper.getCurrentLiveLocation(
                         onSuccess = { loc ->
@@ -439,17 +468,18 @@ fun CaptainDashboardScreen(
                         }
                     )
                 }
-        ) {
-            Box(
-                modifier = Modifier.size(38.dp),
-                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Recenter GPS",
-                    tint = RapidoCaptainGreenDark,
-                    modifier = Modifier.size(20.dp)
-                )
+                Box(
+                    modifier = Modifier.size(38.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = "Recenter GPS",
+                        tint = RapidoCaptainGreenDark,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 

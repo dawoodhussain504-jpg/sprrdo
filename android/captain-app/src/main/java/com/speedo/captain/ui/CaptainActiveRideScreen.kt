@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.speedo.captain.audio.CaptainVoiceCueManager
 import com.speedo.captain.ui.components.*
 import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.components.*
@@ -99,6 +100,23 @@ fun CaptainActiveRideScreen(
     }
 
     val ride = currentRide
+
+    val voiceCueManager = remember { CaptainVoiceCueManager.getInstance(context) }
+    var lastSpokenStatus by remember(ride.id) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(ride.status, ride.id) {
+        if (ride.status != lastSpokenStatus) {
+            when (ride.status) {
+                "arrived" -> voiceCueManager.speakArrivedAtPickup()
+                "ongoing" -> voiceCueManager.speakRideStarted(ride.dropAddress)
+                "completed" -> voiceCueManager.speakRideCompleted(
+                    ride.fare.toInt(),
+                    isCash = ride.paymentMethod == "cash" || ride.paymentMethod.isNullOrEmpty()
+                )
+            }
+            lastSpokenStatus = ride.status
+        }
+    }
 
     val mapMarkers = remember(ride.pickupLat, ride.dropLat, ride.status, captainLat, captainLng, captainBearing, uiState.captain) {
         val list = mutableListOf<MapMarkerData>()
@@ -346,6 +364,11 @@ fun CaptainActiveRideScreen(
                         ) {
                             Icon(Icons.Default.Phone, contentDescription = "Call", tint = RapidoCaptainGreenDark)
                         }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Voice Cue Controls (Mute & Lang toggle)
+                        CaptainVoiceControlHud()
 
                         Spacer(modifier = Modifier.width(6.dp))
 

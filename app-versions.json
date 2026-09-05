@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 8,
-    "versionName": "1.0.8",
-    "title": "Speedo Update Available (v1.0.8) \ud83d\ude80",
-    "message": "Ultra-fast high-speed in-app updates, optimized downloads, and stability improvements.",
+    "versionCode": 9,
+    "versionName": "1.0.9",
+    "title": "Speedo Voice AI & Audio Cues Update (v1.0.9) \ud83d\ude80",
+    "message": "Speech-to-Ride voice booking for riders and vernacular voice cues for captains.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 8,
-    "versionName": "1.0.8",
-    "title": "Speedo Update Available (v1.0.8) \ud83d\ude80",
-    "message": "Ultra-fast high-speed in-app updates, optimized downloads, and stability improvements.",
+    "versionCode": 9,
+    "versionName": "1.0.9",
+    "title": "Speedo Voice AI & Audio Cues Update (v1.0.9) \ud83d\ude80",
+    "message": "Speech-to-Ride voice booking for riders and vernacular voice cues for captains.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 8,
-    "versionName": "1.0.8",
-    "title": "Speedo Update Available (v1.0.8) \ud83d\ude80",
-    "message": "Ultra-fast high-speed in-app updates, optimized downloads, and stability improvements.",
+    "versionCode": 9,
+    "versionName": "1.0.9",
+    "title": "Speedo Voice AI & Audio Cues Update (v1.0.9) \ud83d\ude80",
+    "message": "Speech-to-Ride voice booking for riders and vernacular voice cues for captains.",
     "forceUpdate": false
   }
 }

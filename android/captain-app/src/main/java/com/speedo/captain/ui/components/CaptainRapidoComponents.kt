@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.speedo.captain.audio.CaptainVoiceCueManager
 import com.speedo.core.model.Ride
 import com.speedo.core.theme.*
 import kotlinx.coroutines.delay
@@ -853,4 +854,64 @@ fun CaptainHotspotThumbnailCard(
         }
     }
 }
+
+/**
+ * Quick Floating Voice Cue Control (Mute/Unmute & Hindi/English Language Switcher)
+ */
+@Composable
+fun CaptainVoiceControlHud(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val cueManager = remember { CaptainVoiceCueManager.getInstance(context) }
+    val isMuted by cueManager.isMuted.collectAsState()
+    val language by cueManager.language.collectAsState()
+    val isSpeaking by cueManager.isSpeaking.collectAsState()
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = SpeedoWhite,
+        shadowElevation = 6.dp,
+        border = BorderStroke(1.dp, if (isMuted) SpeedoError.copy(alpha = 0.5f) else RapidoCaptainYellowDark),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Speaker icon / Mute toggle
+            IconButton(
+                onClick = { cueManager.toggleMute() },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                    contentDescription = if (isMuted) "Unmute Voice Cues" else "Mute Voice Cues",
+                    tint = if (isMuted) SpeedoError else (if (isSpeaking) RapidoCaptainGreenDark else RapidoCaptainBlack),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(2.dp))
+
+            // Language Pill (HI / EN)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (language == "hi") Color(0xFFFFCC00) else Color(0xFFE2E8F0),
+                modifier = Modifier.clickable { cueManager.toggleLanguage() }
+            ) {
+                Text(
+                    text = if (language == "hi") "HI" else "EN",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1E293B),
+                        fontSize = 11.sp
+                    ),
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                )
+            }
+        }
+    }
+}
+
 
