@@ -246,6 +246,8 @@ fun SpeedoChatSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(SpeedoWhite)
+                    .navigationBarsPadding()
+                    .imePadding()
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

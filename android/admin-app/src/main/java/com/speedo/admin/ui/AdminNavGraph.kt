@@ -74,7 +74,10 @@ fun AdminMainScaffold(
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = SpeedoWhite,
-                modifier = Modifier.width(300.dp)
+                modifier = Modifier
+                    .width(300.dp)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
                 Column(
                     modifier = Modifier

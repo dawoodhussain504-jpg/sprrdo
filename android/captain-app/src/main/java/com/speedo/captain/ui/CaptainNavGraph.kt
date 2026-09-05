@@ -20,7 +20,7 @@ import com.speedo.core.theme.SpeedoWhite
 sealed class CaptainScreen(val route: String, val title: String, val icon: ImageVector) {
     object Dashboard : CaptainScreen("dashboard", "Duty", Icons.Default.ElectricRickshaw)
     object KycUpload : CaptainScreen("kyc_upload", "KYC Upload", Icons.Default.UploadFile)
-    object KycStatus : CaptainScreen("kyc_status", "KYC Status", Icons.Default.VerifiedUser)
+    object KycStatus : CaptainScreen("kyc_status", "KYC", Icons.Default.VerifiedUser)
     object ActiveRide : CaptainScreen("active_ride", "Active Trip", Icons.Default.Navigation)
     object Earnings : CaptainScreen("earnings", "Earnings", Icons.Default.AccountBalanceWallet)
     object Notifications : CaptainScreen("notifications", "Alerts", Icons.Default.Notifications)
@@ -137,7 +137,7 @@ fun CaptainMainScaffold(
                                     )
                                 }
                             },
-                            label = { Text(screen.title) },
+                            label = { Text(screen.title, fontSize = 11.sp, maxLines = 1) },
                             selected = isSelected,
                             onClick = {
                                 navController.navigate(screen.route) {

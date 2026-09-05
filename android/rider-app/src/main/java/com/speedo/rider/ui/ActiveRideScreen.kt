@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -151,6 +153,9 @@ fun ActiveRideScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .verticalScroll(rememberScrollState())
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -306,7 +311,8 @@ fun ActiveRideScreen(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter),
             shape = RoundedCornerShape(18.dp),
             color = SpeedoWhite,
@@ -399,7 +405,10 @@ fun ActiveRideScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .heightIn(max = 460.dp)
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
                 // Large High-Visibility OTP Banner (Rapido Signature Feature)
                 if (ride.status in listOf("requested", "accepted", "arrived")) {
@@ -630,7 +639,8 @@ fun ActiveRideScreen(
             border = BorderStroke(1.dp, SpeedoCardBorder),
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 110.dp, end = 16.dp)
+                .statusBarsPadding()
+                .padding(top = 80.dp, end = 16.dp)
                 .clickable {
                     recenterTrigger = System.currentTimeMillis()
                 }

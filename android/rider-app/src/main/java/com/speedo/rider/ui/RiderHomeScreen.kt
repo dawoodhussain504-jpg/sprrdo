@@ -195,101 +195,103 @@ fun RiderHomeScreen(
             }
         )
 
-        // 2. Floating Rapido Top HUD (Safety Shield, Location & Menu)
-        Row(
+        // 2. Floating Rapido Top HUD & Location Search Card (Unified Responsive Layout)
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 20.dp)
-                .align(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Profile / Brand Pill
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = SpeedoWhite,
-                shadowElevation = 6.dp,
-                border = BorderStroke(1.dp, SpeedoCardBorder)
+            // Brand, Update Badge & Safety Shield Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // Profile / Brand Pill
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = SpeedoWhite,
+                    shadowElevation = 6.dp,
+                    border = BorderStroke(1.dp, SpeedoCardBorder)
                 ) {
-                    com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 28)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Speedo",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            color = RapidoBlack
-                        )
-                    )
-                }
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Clickable App Update Notification Badge (if update available)
-                val appUpdate = uiState.appUpdateState
-                if (appUpdate.isUpdateAvailable) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = SpeedoOrange,
-                        shadowElevation = 6.dp,
-                        modifier = Modifier
-                            .padding(end = 10.dp)
-                            .clickable {
-                                InAppUpdateManager.startDownloadAndInstall(
-                                    context,
-                                    appUpdate.updateUrl
-                                )
-                            }
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 28)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Speedo",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = RapidoBlack
+                            )
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Clickable App Update Notification Badge (if update available)
+                    val appUpdate = uiState.appUpdateState
+                    if (appUpdate.isUpdateAvailable) {
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = SpeedoOrange,
+                            shadowElevation = 6.dp,
+                            modifier = Modifier
+                                .padding(end = 10.dp)
+                                .clickable {
+                                    InAppUpdateManager.startDownloadAndInstall(
+                                        context,
+                                        appUpdate.updateUrl
+                                    )
+                                }
                         ) {
-                            Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = SpeedoWhite, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Update App", color = SpeedoWhite, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.RocketLaunch, contentDescription = null, tint = SpeedoWhite, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Update App", color = SpeedoWhite, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+
+                    // Safety Shield Button
+                    Surface(
+                        shape = CircleShape,
+                        color = SpeedoWhite,
+                        shadowElevation = 6.dp,
+                        border = BorderStroke(1.dp, SpeedoCardBorder),
+                        modifier = Modifier.clickable { showSafetySheet = true }
+                    ) {
+                        Box(
+                            modifier = Modifier.size(44.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = "Safety Shield",
+                                tint = SpeedoError,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
-
-                // Safety Shield Button
-                Surface(
-                    shape = CircleShape,
-                    color = SpeedoWhite,
-                    shadowElevation = 6.dp,
-                    border = BorderStroke(1.dp, SpeedoCardBorder),
-                    modifier = Modifier.clickable { showSafetySheet = true }
-                ) {
-                    Box(
-                        modifier = Modifier.size(44.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = "Safety Shield",
-                            tint = SpeedoError,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
             }
-        }
 
-        // 3. Floating Interactive Pickup & Drop Location Card (Top)
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 76.dp)
-                .align(Alignment.TopCenter),
-            shape = RoundedCornerShape(20.dp),
-            color = SpeedoWhite,
-            shadowElevation = 8.dp,
-            border = BorderStroke(1.dp, SpeedoCardBorder)
-        ) {
+            // Floating Interactive Pickup & Drop Location Card
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                color = SpeedoWhite,
+                shadowElevation = 8.dp,
+                border = BorderStroke(1.dp, SpeedoCardBorder)
+            ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 // 🟢 Pickup Row (Fully Editable / Tap to Change)
                 Surface(
@@ -468,30 +470,36 @@ fun RiderHomeScreen(
                 }
             }
         }
+        }
 
         // 4. Floating Rapido My Location / Recenter Target Button
         Surface(
             shape = CircleShape,
             color = SpeedoWhite,
-            shadowElevation = 5.dp,
+            shadowElevation = 6.dp,
             border = BorderStroke(1.dp, SpeedoCardBorder),
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 280.dp, end = 16.dp)
+                .align(Alignment.BottomEnd)
+                .padding(
+                    end = 16.dp,
+                    bottom = if (uiState.dropAddress.isBlank()) 170.dp
+                             else if (isDrawerCollapsed) 95.dp
+                             else 360.dp
+                )
                 .clickable {
                     viewModel.fetchCurrentLocation()
                     recenterTrigger = System.currentTimeMillis()
                 }
         ) {
             Box(
-                modifier = Modifier.size(38.dp),
+                modifier = Modifier.size(42.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.MyLocation,
                     contentDescription = "Recenter Location",
                     tint = SpeedoOrange,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -671,6 +679,8 @@ fun RiderHomeScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(max = 480.dp)
+                            .verticalScroll(rememberScrollState())
                             .padding(horizontal = 20.dp, vertical = 10.dp)
                     ) {
                         // Top Drag Handle & Minimize Indicator

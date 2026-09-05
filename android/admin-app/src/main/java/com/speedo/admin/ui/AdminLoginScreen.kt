@@ -47,7 +47,11 @@ fun AdminLoginScreen(
     }
 
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding(),
         color = SpeedoWhite
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

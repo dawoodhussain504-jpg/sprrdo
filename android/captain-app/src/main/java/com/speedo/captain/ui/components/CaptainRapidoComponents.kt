@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -62,13 +64,18 @@ fun IncomingRideFlashBanner(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(16.dp),
         shape = RoundedCornerShape(24.dp),
         color = SpeedoWhite,
         shadowElevation = 24.dp,
         border = BorderStroke(2.dp, RapidoCaptainYellowDark)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
             // Header with 15-second Circular Countdown Timer
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -288,6 +295,7 @@ fun CaptainOtpKeypadSheet(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null
@@ -299,7 +307,8 @@ fun CaptainOtpKeypadSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header with Title & Close
@@ -559,7 +568,9 @@ fun DynamicUpiQrPaymentSheet(
     }
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         color = SpeedoWhite,
         shadowElevation = 24.dp
@@ -567,6 +578,8 @@ fun DynamicUpiQrPaymentSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(max = 560.dp)
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

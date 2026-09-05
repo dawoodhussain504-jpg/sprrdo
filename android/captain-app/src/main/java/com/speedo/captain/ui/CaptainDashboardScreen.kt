@@ -9,6 +9,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -110,7 +112,8 @@ fun CaptainDashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter)
         ) {
             // Clickable App Update Notification Banner (if update available)
@@ -291,7 +294,10 @@ fun CaptainDashboardScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .heightIn(max = 440.dp)
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
                 // Demand Heatmap Strip & High-Demand Passenger Hubs
                 Surface(
@@ -413,15 +419,15 @@ fun CaptainDashboardScreen(
             }
         }
 
-        // Floating Rapido My Location Recenter FAB (Compact Top-Right HUD)
+        // Floating Rapido My Location Recenter FAB (Compact Right HUD)
         Surface(
             shape = CircleShape,
             color = SpeedoWhite,
             shadowElevation = 5.dp,
             border = BorderStroke(1.dp, SpeedoCardBorder),
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 180.dp, end = 16.dp)
+                .align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 280.dp)
                 .clickable {
                     val locHelper = com.speedo.core.maps.LocationHelper(context)
                     locHelper.getCurrentLiveLocation(

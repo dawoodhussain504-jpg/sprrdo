@@ -102,6 +102,7 @@ fun RiderNotificationsScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (appUpdate.isUpdateAvailable && !isUserOnLatestVersion) {

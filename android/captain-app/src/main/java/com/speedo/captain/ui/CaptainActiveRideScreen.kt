@@ -7,6 +7,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -183,7 +185,8 @@ fun CaptainActiveRideScreen(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
                 .align(Alignment.TopCenter),
             shape = RoundedCornerShape(18.dp),
             color = SpeedoWhite,
@@ -274,7 +277,10 @@ fun CaptainActiveRideScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
                 // Rider Info & Call / Chat
                 Row(
@@ -496,18 +502,25 @@ fun CaptainActiveRideScreen(
         if (uiState.pendingPaymentRide != null || showPaymentSheet) {
             val paymentTargetRide = uiState.pendingPaymentRide ?: ride
             val captainQr = uiState.captain?.paymentQrUrl ?: uiState.kycStatus?.paymentQrUrl
-            DynamicUpiQrPaymentSheet(
-                fare = paymentTargetRide.fare.toInt(),
-                rideId = paymentTargetRide.id,
-                riderName = paymentTargetRide.riderName,
-                uploadedQrUrl = captainQr,
-                onPaymentCollected = {
-                    viewModel.confirmPaymentAndFinishRide(paymentTargetRide.id) {
-                        showPaymentSheet = false
-                        onRideFinished()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.65f)),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                DynamicUpiQrPaymentSheet(
+                    fare = paymentTargetRide.fare.toInt(),
+                    rideId = paymentTargetRide.id,
+                    riderName = paymentTargetRide.riderName,
+                    uploadedQrUrl = captainQr,
+                    onPaymentCollected = {
+                        viewModel.confirmPaymentAndFinishRide(paymentTargetRide.id) {
+                            showPaymentSheet = false
+                            onRideFinished()
+                        }
                     }
-                }
-            )
+                )
+            }
         }
 
         // 6. In-App Real-Time Chat Modal

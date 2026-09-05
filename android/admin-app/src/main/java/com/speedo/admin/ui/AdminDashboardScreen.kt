@@ -85,6 +85,7 @@ fun AdminDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .navigationBarsPadding()
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
