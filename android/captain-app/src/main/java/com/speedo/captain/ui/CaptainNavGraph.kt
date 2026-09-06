@@ -10,9 +10,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.BackHandler
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.speedo.captain.viewmodel.CaptainViewModel
+import com.speedo.core.components.SpeedoExitConfirmDialog
 import com.speedo.core.theme.SpeedoOrange
 import com.speedo.core.theme.SpeedoTextSecondary
 import com.speedo.core.theme.SpeedoWhite
@@ -63,29 +65,63 @@ fun CaptainMainScaffold(
         )
     }
 
+    var showExitDialog by remember { mutableStateOf(false) }
+    var lastBackPressTime by remember { mutableStateOf(0L) }
+    val activity = context as? android.app.Activity
+
+    val onRootBackPress: () -> Unit = {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressTime < 2000L) {
+            showExitDialog = true
+        } else {
+            lastBackPressTime = now
+            android.widget.Toast.makeText(context, "Press back again to exit Speedo Captain", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     var showIntro by remember {
         mutableStateOf(!prefs.getBoolean("intro_seen", false) && !uiState.isLoggedIn)
     }
 
     // 1. Interactive Feature Intro Screen Slider (if first-time user)
     if (showIntro && !uiState.isLoggedIn) {
+        BackHandler(enabled = true) {
+            onRootBackPress()
+        }
         CaptainIntroScreen(
             onFinishIntro = {
                 prefs.edit().putBoolean("intro_seen", true).apply()
                 showIntro = false
             }
         )
+        if (showExitDialog) {
+            SpeedoExitConfirmDialog(
+                appName = "Speedo Captain",
+                onDismiss = { showExitDialog = false },
+                onConfirmExit = { activity?.finishAffinity() }
+            )
+        }
         return
     }
 
     // 2. If not authenticated, render CaptainAuthScreen directly
     if (!uiState.isLoggedIn) {
+        BackHandler(enabled = true) {
+            onRootBackPress()
+        }
         CaptainAuthScreen(
             viewModel = viewModel,
             onAuthSuccess = {
                 // Auth state update in uiState will immediately recompose into MainScaffold
             }
         )
+        if (showExitDialog) {
+            SpeedoExitConfirmDialog(
+                appName = "Speedo Captain",
+                onDismiss = { showExitDialog = false },
+                onConfirmExit = { activity?.finishAffinity() }
+            )
+        }
         return
     }
 
@@ -94,6 +130,24 @@ fun CaptainMainScaffold(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val unreadCount by viewModel.unreadCount.collectAsState(initial = 0)
+
+    BackHandler(enabled = true) {
+        if (showExitDialog) {
+            showExitDialog = false
+        } else if (currentRoute != null && currentRoute != CaptainScreen.Dashboard.route) {
+            // Single press: navigate back to Captain Dashboard!
+            navController.navigate(CaptainScreen.Dashboard.route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        } else {
+            // On dashboard: press twice within 2 seconds to confirm exit
+            onRootBackPress()
+        }
+    }
 
     val bottomNavItems = listOf(
         CaptainScreen.Dashboard,
@@ -222,5 +276,13 @@ fun CaptainMainScaffold(
                 CaptainProfileScreen(viewModel = viewModel)
             }
         }
+    }
+
+    if (showExitDialog) {
+        SpeedoExitConfirmDialog(
+            appName = "Speedo Captain",
+            onDismiss = { showExitDialog = false },
+            onConfirmExit = { activity?.finishAffinity() }
+        )
     }
 }

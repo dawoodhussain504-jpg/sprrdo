@@ -12,9 +12,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import com.speedo.admin.viewmodel.AdminViewModel
+import com.speedo.core.components.SpeedoExitConfirmDialog
 import com.speedo.core.theme.*
 import kotlinx.coroutines.launch
 
@@ -57,7 +59,25 @@ fun AdminMainScaffold(
         AdminScreen.DeletionRequests
     )
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showExitDialog by remember { mutableStateOf(false) }
+    var lastBackPressTime by remember { mutableStateOf(0L) }
+    val activity = context as? android.app.Activity
+
+    val onRootBackPress: () -> Unit = {
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressTime < 2000L) {
+            showExitDialog = true
+        } else {
+            lastBackPressTime = now
+            android.widget.Toast.makeText(context, "Press back again to exit Speedo Admin", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
     if (!uiState.isLoggedIn) {
+        BackHandler(enabled = true) {
+            onRootBackPress()
+        }
         AdminLoginScreen(
             viewModel = viewModel,
             onLoginSuccess = {
@@ -66,7 +86,32 @@ fun AdminMainScaffold(
                 }
             }
         )
+        if (showExitDialog) {
+            SpeedoExitConfirmDialog(
+                appName = "Speedo Admin",
+                onDismiss = { showExitDialog = false },
+                onConfirmExit = { activity?.finishAffinity() }
+            )
+        }
         return
+    }
+
+    BackHandler(enabled = true) {
+        if (showExitDialog) {
+            showExitDialog = false
+        } else if (drawerState.isOpen) {
+            scope.launch { drawerState.close() }
+        } else if (currentRoute != null && currentRoute != AdminScreen.Dashboard.route) {
+            navController.navigate(AdminScreen.Dashboard.route) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        } else {
+            onRootBackPress()
+        }
     }
 
     ModalNavigationDrawer(
@@ -263,4 +308,13 @@ fun AdminMainScaffold(
             }
         }
     }
+
+    if (showExitDialog) {
+        SpeedoExitConfirmDialog(
+            appName = "Speedo Admin",
+            onDismiss = { showExitDialog = false },
+            onConfirmExit = { activity?.finishAffinity() }
+        )
+    }
 }
+

@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 9,
-    "versionName": "1.0.9",
-    "title": "Speedo Voice AI & Audio Cues Update (v1.0.9) \ud83d\ude80",
-    "message": "Speech-to-Ride voice booking for riders and vernacular voice cues for captains.",
+    "versionCode": 10,
+    "versionName": "1.0.10",
+    "title": "Speedo Smart Back Navigation & Exit Protection (v1.0.10) \ud83d\ude80",
+    "message": "Smart back button navigation to home and double-tap exit confirmation protection across all screens.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 9,
-    "versionName": "1.0.9",
-    "title": "Speedo Voice AI & Audio Cues Update (v1.0.9) \ud83d\ude80",
-    "message": "Speech-to-Ride voice booking for riders and vernacular voice cues for captains.",
+    "versionCode": 10,
+    "versionName": "1.0.10",
+    "title": "Speedo Smart Back Navigation & Exit Protection (v1.0.10) \ud83d\ude80",
+    "message": "Smart back button navigation to home and double-tap exit confirmation protection across all screens.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 9,
-    "versionName": "1.0.9",
-    "title": "Speedo Voice AI & Audio Cues Update (v1.0.9) \ud83d\ude80",
-    "message": "Speech-to-Ride voice booking for riders and vernacular voice cues for captains.",
+    "versionCode": 10,
+    "versionName": "1.0.10",
+    "title": "Speedo Smart Back Navigation & Exit Protection (v1.0.10) \ud83d\ude80",
+    "message": "Smart back button navigation to home and double-tap exit confirmation protection across all screens.",
     "forceUpdate": false
   }
 }
