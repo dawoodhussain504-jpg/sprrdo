@@ -2,6 +2,7 @@ package com.speedo.captain.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.speedo.captain.viewmodel.CaptainViewModel
+import com.speedo.core.components.SpeedoAboutView
 import com.speedo.core.components.SpeedoPrimaryButton
 import com.speedo.core.components.SpeedoTopBar
 import com.speedo.core.theme.*
@@ -30,7 +32,7 @@ fun CaptainProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val captain = uiState.captain
-
+    var selectedMainTab by remember { mutableIntStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deleteReason by remember { mutableStateOf("") }
     var showCancelDialog by remember { mutableStateOf(false) }
@@ -42,7 +44,7 @@ fun CaptainProfileScreen(
 
     Scaffold(
         topBar = {
-            SpeedoTopBar(title = "Captain Profile")
+            SpeedoTopBar(title = if (selectedMainTab == 0) "Captain Profile" else "About Speedo")
         }
     ) { padding ->
         Column(
@@ -53,7 +55,62 @@ fun CaptainProfileScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Pending Deletion Warning Banner (24-Hour Review Notice)
+            // Main Tabs: Profile vs About & Legal
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = SpeedoSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    val mainTabs = listOf("My Profile", "About & Legal")
+                    mainTabs.forEachIndexed { index, title ->
+                        val isSelected = selectedMainTab == index
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) SpeedoOrange else Color.Transparent,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedMainTab = index }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = if (index == 0) Icons.Default.Person else Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = if (isSelected) SpeedoWhite else SpeedoTextSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) SpeedoWhite else SpeedoTextSecondary,
+                                        fontSize = 14.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (selectedMainTab == 1) {
+                SpeedoAboutView(isCaptain = true)
+            } else {
+                // 1. Pending Deletion Warning Banner (24-Hour Review Notice)
+
             if (uiState.deletionRequest != null && uiState.deletionRequest?.status == "pending") {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -260,6 +317,8 @@ fun CaptainProfileScreen(
             }
         }
     }
+}
+
 
     // Confirmation Dialog for Requesting Account Deletion (24-Hour Review Notice)
     if (showDeleteDialog) {
