@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 15,
-    "versionName": "1.0.15",
-    "title": "Speedo Update (v1.0.15) \ud83d\ude80",
-    "message": "Fixed payment popup to always show payment QR, removed encrypted placeholders, and made all captain KYC documents fully visible for admin review.",
+    "versionCode": 16,
+    "versionName": "1.0.16",
+    "title": "Speedo Update (v1.0.16) \ud83d\ude80",
+    "message": "Removed exact QR tab and sample QR. Payment popup now displays exclusively the captain's authentic uploaded QR code.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 15,
-    "versionName": "1.0.15",
-    "title": "Speedo Update (v1.0.15) \ud83d\ude80",
-    "message": "Fixed payment popup to always show payment QR, removed encrypted placeholders, and made all captain KYC documents fully visible for admin review.",
+    "versionCode": 16,
+    "versionName": "1.0.16",
+    "title": "Speedo Update (v1.0.16) \ud83d\ude80",
+    "message": "Removed exact QR tab and sample QR. Payment popup now displays exclusively the captain's authentic uploaded QR code.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 15,
-    "versionName": "1.0.15",
-    "title": "Speedo Update (v1.0.15) \ud83d\ude80",
-    "message": "Fixed payment popup to always show payment QR, removed encrypted placeholders, and made all captain KYC documents fully visible for admin review.",
+    "versionCode": 16,
+    "versionName": "1.0.16",
+    "title": "Speedo Update (v1.0.16) \ud83d\ude80",
+    "message": "Removed exact QR tab and sample QR. Payment popup now displays exclusively the captain's authentic uploaded QR code.",
     "forceUpdate": false
   }
 }

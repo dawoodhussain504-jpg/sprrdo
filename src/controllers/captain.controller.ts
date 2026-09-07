@@ -30,6 +30,8 @@ export async function getCaptainProfile(req: AuthenticatedRequest, res: Response
         try {
           await db.query('UPDATE captains SET payment_qr_url = $1 WHERE id = $2', [captain.payment_qr_url, captainId]);
         } catch (_) {}
+      } else if (captain.payment_qr_url?.includes('sample_qr')) {
+        captain.payment_qr_url = null;
       }
     }
 
@@ -270,6 +272,8 @@ export async function getCaptainActiveRide(req: AuthenticatedRequest, res: Respo
       );
       if (qrDoc.rows.length > 0 && qrDoc.rows[0].file_url) {
         ride.captain_qr_url = qrDoc.rows[0].file_url;
+      } else if (ride.captain_qr_url?.includes('sample_qr')) {
+        ride.captain_qr_url = null;
       }
     }
 

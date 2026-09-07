@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -582,23 +583,6 @@ fun DynamicUpiQrPaymentSheet(
         }
     }
 
-    val upiUri = remember(fare, rideId, riderName) {
-        QrCodeHelper.buildUpiPaymentUri(
-            upiId = "speedo.pay@upi",
-            payeeName = "Speedo Captain",
-            amount = fare,
-            tripRef = rideId
-        )
-    }
-
-    val dynamicQrBitmap = remember(upiUri) {
-        QrCodeHelper.generateQrBitmap(upiUri, 512)
-    }
-
-    var selectedMode by remember(normalizedCustomQrUrl) {
-        mutableStateOf(if (!normalizedCustomQrUrl.isNullOrBlank()) "custom" else "dynamic")
-    }
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -676,48 +660,15 @@ fun DynamicUpiQrPaymentSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Mode Selector if custom QR is provided
-            if (!normalizedCustomQrUrl.isNullOrBlank()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    FilterChip(
-                        selected = selectedMode == "custom",
-                        onClick = { selectedMode = "custom" },
-                        label = { Text("My Personal QR", fontWeight = FontWeight.Bold) },
-                        leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = RapidoCaptainGreenLight,
-                            selectedLabelColor = RapidoCaptainGreenDark
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilterChip(
-                        selected = selectedMode == "dynamic",
-                        onClick = { selectedMode = "dynamic" },
-                        label = { Text("Exact ₹$fare QR", fontWeight = FontWeight.Bold) },
-                        leadingIcon = { Icon(Icons.Default.QrCode2, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = RapidoCaptainGreenLight,
-                            selectedLabelColor = RapidoCaptainGreenDark
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-            }
-
-            // QR Code Box (230dp x 230dp)
+            // QR Code Box (240dp x 240dp) - Captain's Uploaded QR Only
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = SpeedoWhite,
                 border = BorderStroke(2.dp, RapidoCaptainGreen),
                 shadowElevation = 6.dp,
-                modifier = Modifier.size(230.dp)
+                modifier = Modifier.size(240.dp)
             ) {
                 Box(
                     modifier = Modifier
@@ -725,7 +676,7 @@ fun DynamicUpiQrPaymentSheet(
                         .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (selectedMode == "custom" && !normalizedCustomQrUrl.isNullOrBlank()) {
+                    if (!normalizedCustomQrUrl.isNullOrBlank()) {
                         SubcomposeAsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(normalizedCustomQrUrl)
@@ -738,48 +689,61 @@ fun DynamicUpiQrPaymentSheet(
                             },
                             error = {
                                 Column(
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    if (dynamicQrBitmap != null) {
-                                        Image(
-                                            bitmap = dynamicQrBitmap.asImageBitmap(),
-                                            contentDescription = "Dynamic UPI QR Code",
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = "Tap exact fare or verify internet",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = SpeedoTextSecondary
-                                        )
-                                    } else {
-                                        Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(64.dp), tint = RapidoCaptainGreen)
-                                    }
+                                    Icon(Icons.Default.BrokenImage, contentDescription = null, modifier = Modifier.size(44.dp), tint = SpeedoError)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "QR Image Unavailable",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = SpeedoError,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Please collect ₹$fare in Cash or direct UPI transfer",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SpeedoTextSecondary,
+                                        textAlign = TextAlign.Center
+                                    )
                                 }
                             },
-                            contentDescription = "Captain's Custom UPI QR Code",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else if (dynamicQrBitmap != null) {
-                        Image(
-                            bitmap = dynamicQrBitmap.asImageBitmap(),
-                            contentDescription = "Dynamic UPI QR Code ₹$fare",
+                            contentDescription = "Captain's Uploaded UPI QR Code",
+                            contentScale = ContentScale.Fit,
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        val fallbackUpi = java.net.URLEncoder.encode(upiUri, "UTF-8")
-                        SubcomposeAsyncImage(
-                            model = "https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=$fallbackUpi",
-                            contentDescription = "UPI QR Code",
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(48.dp), tint = SpeedoOrange)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No QR Code Uploaded",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Please collect ₹$fare in Cash or direct UPI transfer",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SpeedoTextSecondary,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Surface(
                 color = Color(0xFFE8F5E9),
@@ -787,7 +751,7 @@ fun DynamicUpiQrPaymentSheet(
                 border = BorderStroke(1.dp, RapidoCaptainGreen)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -798,7 +762,7 @@ fun DynamicUpiQrPaymentSheet(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (selectedMode == "dynamic") "Speedo Instant ₹$fare Payment QR" else "Captain's Verified Personal QR",
+                        text = "Captain's Uploaded UPI Payment QR",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             color = RapidoCaptainGreenDark
