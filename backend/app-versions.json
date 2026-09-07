@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 14,
-    "versionName": "1.0.14",
-    "title": "Speedo Update: Captain QR, Leaflet Map Tiles & Admin KYC Viewer (v1.0.14) \ud83d\ude80",
-    "message": "Rendered captain uploaded QR upon ride completion, replaced Carto with Leaflet standard map tiles, and fixed Admin KYC document viewer.",
+    "versionCode": 15,
+    "versionName": "1.0.15",
+    "title": "Speedo Update (v1.0.15) \ud83d\ude80",
+    "message": "Fixed payment popup to always show payment QR, removed encrypted placeholders, and made all captain KYC documents fully visible for admin review.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 14,
-    "versionName": "1.0.14",
-    "title": "Speedo Update: Captain QR, Leaflet Map Tiles & Admin KYC Viewer (v1.0.14) \ud83d\ude80",
-    "message": "Rendered captain uploaded QR upon ride completion, replaced Carto with Leaflet standard map tiles, and fixed Admin KYC document viewer.",
+    "versionCode": 15,
+    "versionName": "1.0.15",
+    "title": "Speedo Update (v1.0.15) \ud83d\ude80",
+    "message": "Fixed payment popup to always show payment QR, removed encrypted placeholders, and made all captain KYC documents fully visible for admin review.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 14,
-    "versionName": "1.0.14",
-    "title": "Speedo Update: Captain QR, Leaflet Map Tiles & Admin KYC Viewer (v1.0.14) \ud83d\ude80",
-    "message": "Rendered captain uploaded QR upon ride completion, replaced Carto with Leaflet standard map tiles, and fixed Admin KYC document viewer.",
+    "versionCode": 15,
+    "versionName": "1.0.15",
+    "title": "Speedo Update (v1.0.15) \ud83d\ude80",
+    "message": "Fixed payment popup to always show payment QR, removed encrypted placeholders, and made all captain KYC documents fully visible for admin review.",
     "forceUpdate": false
   }
 }

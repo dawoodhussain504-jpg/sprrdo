@@ -64,7 +64,8 @@ export function findLocalUpload(filename: string): string | null {
   return null;
 }
 
-function serveFallbackQr(res: express.Response) {
+function serveFallbackQr(res: express.Response, captainName?: string) {
+  const label = captainName ? `${captainName.toUpperCase()} UPI QR` : 'SPEEDO VERIFIED UPI QR';
   const qrSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
     <rect width="320" height="320" fill="#0F172A" rx="20"/>
     <rect x="20" y="20" width="280" height="280" fill="#ffffff" rx="16"/>
@@ -97,18 +98,18 @@ function serveFallbackQr(res: express.Response) {
     <circle cx="160" cy="160" r="32" fill="#00C853" stroke="#ffffff" stroke-width="4"/>
     <text x="160" y="166" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="900" fill="#ffffff" text-anchor="middle">UPI</text>
     <!-- Bottom Badge -->
-    <rect x="50" y="280" width="220" height="24" fill="#E8F5E9" rx="12"/>
-    <text x="160" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#009624" text-anchor="middle">SPEEDO VERIFIED UPI QR</text>
+    <rect x="35" y="280" width="250" height="24" fill="#E8F5E9" rx="12"/>
+    <text x="160" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="700" fill="#009624" text-anchor="middle">${label}</text>
   </svg>`;
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   return res.status(200).send(qrSvg);
 }
 
-function serveFallbackDoc(res: express.Response, docType?: string) {
+function serveFallbackDoc(res: express.Response, docType?: string, captainName?: string, vehicleNumber?: string) {
   let title = "Speedo Verified KYC Document";
-  let subtitle = "Secure Verified Driver Archive";
-  let badgeText = "ENCRYPTED DOCUMENT";
+  let subtitle = "Official Speedo Driver Archive";
+  let badgeText = "SPEEDO KYC RECORD";
   let bgGradient = "#0F172A";
   let accentColor = "#0284C7";
   let badgeBg = "#0284C7";
@@ -136,25 +137,31 @@ function serveFallbackDoc(res: express.Response, docType?: string) {
     badgeBg = "#B45309";
   }
 
+  const nameDisplay = captainName ? captainName.toUpperCase() : "VERIFIED SPEEDO CAPTAIN";
+  const vehicleDisplay = vehicleNumber ? vehicleNumber.toUpperCase() : "RECORD ARCHIVED";
+
   const docSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280" width="420" height="280">
     <rect width="420" height="280" fill="${bgGradient}" rx="18"/>
     <rect x="8" y="8" width="404" height="264" fill="none" stroke="${accentColor}" stroke-width="2" stroke-dasharray="6,4" rx="14"/>
     
     <!-- Top Pill -->
-    <rect x="120" y="24" width="180" height="28" fill="${badgeBg}" rx="14"/>
-    <text x="210" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">${badgeText}</text>
+    <rect x="110" y="22" width="200" height="28" fill="${badgeBg}" rx="14"/>
+    <text x="210" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">${badgeText}</text>
     
     <!-- Icon Circle -->
-    <circle cx="210" cy="112" r="36" fill="#1E293B" stroke="${accentColor}" stroke-width="3"/>
-    <path d="M198 112 L206 120 L224 102" stroke="${accentColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <circle cx="210" cy="96" r="32" fill="#1E293B" stroke="${accentColor}" stroke-width="3"/>
+    <path d="M198 96 L206 104 L224 86" stroke="${accentColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     
     <!-- Text Labels -->
-    <text x="210" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="800" fill="#FFFFFF" text-anchor="middle">${title}</text>
-    <text x="210" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#94A3B8" text-anchor="middle">${subtitle}</text>
+    <text x="210" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="800" fill="#FFFFFF" text-anchor="middle">${title}</text>
+    <text x="210" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#94A3B8" text-anchor="middle">${subtitle}</text>
     
+    <!-- Driver Info Pill -->
+    <rect x="40" y="188" width="340" height="34" fill="#1E293B" rx="8" stroke="${accentColor}" stroke-width="1"/>
+    <text x="210" y="209" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">${nameDisplay} • ${vehicleDisplay}</text>
+
     <!-- Bottom Verified Stamp -->
-    <rect x="110" y="226" width="200" height="26" fill="#1E293B" stroke="${accentColor}" stroke-width="1" rx="13"/>
-    <text x="210" y="243" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="700" fill="${accentColor}" text-anchor="middle">✓ SPEEDO PLATFORM VERIFIED</text>
+    <text x="210" y="252" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="700" fill="${accentColor}" text-anchor="middle">✓ SPEEDO OFFICIAL VERIFIED RECORD</text>
   </svg>`;
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -170,20 +177,26 @@ app.get('/uploads/:filename', async (req, res) => {
   }
 
   let identifiedDocType: string | null = null;
+  let captainName: string = '';
+  let vehicleNumber: string = '';
 
-  // Check database for persisted base64 file data
+  // Check database for persisted base64 file data or captain metadata
   try {
     const { getDb } = await import('./config/db');
     const db = getDb();
 
-    // 1. Check kyc_documents table
+    // 1. Check kyc_documents table joined with captains
     const docRes = await db.query(
-      `SELECT file_data, mime_type, document_type FROM kyc_documents 
-       WHERE file_url LIKE $1 LIMIT 1`,
+      `SELECT d.file_data, d.mime_type, d.document_type, c.name, c.vehicle_number 
+       FROM kyc_documents d 
+       LEFT JOIN captains c ON d.captain_id = c.id 
+       WHERE d.file_url LIKE $1 LIMIT 1`,
       [`%${filename}%`]
     );
     if (docRes.rows.length > 0) {
       identifiedDocType = docRes.rows[0].document_type;
+      captainName = docRes.rows[0].name || '';
+      vehicleNumber = docRes.rows[0].vehicle_number || '';
       if (docRes.rows[0].file_data) {
         const { file_data, mime_type } = docRes.rows[0];
         const buffer = Buffer.from(file_data, 'base64');
@@ -197,14 +210,16 @@ app.get('/uploads/:filename', async (req, res) => {
       }
     }
 
-    // 2. Check captains table for payment_qr_data
+    // 2. Check captains table for payment_qr_data or matching payment_qr_url
     const captRes = await db.query(
-      `SELECT payment_qr_data, payment_qr_mime FROM captains 
+      `SELECT id, name, vehicle_number, payment_qr_data, payment_qr_mime FROM captains 
        WHERE payment_qr_url LIKE $1 LIMIT 1`,
       [`%${filename}%`]
     );
     if (captRes.rows.length > 0) {
       if (!identifiedDocType) identifiedDocType = 'payment_qr';
+      if (!captainName) captainName = captRes.rows[0].name || '';
+      if (!vehicleNumber) vehicleNumber = captRes.rows[0].vehicle_number || '';
       if (captRes.rows[0].payment_qr_data) {
         const { payment_qr_data, payment_qr_mime } = captRes.rows[0];
         const buffer = Buffer.from(payment_qr_data, 'base64');
@@ -227,12 +242,12 @@ app.get('/uploads/:filename', async (req, res) => {
     filename.toLowerCase().includes('qr') ||
     filename.toLowerCase().includes('payment')
   ) {
-    return serveFallbackQr(res);
+    return serveFallbackQr(res, captainName);
   }
 
-  // Fallback 2: Any image / document format (renders rich, dark-mode preview card)
+  // Fallback 2: Any image / document format (renders rich, dark-mode preview card with captain name & vehicle)
   if (/\.(png|jpe?g|webp|gif|svg)$/i.test(filename) || filename.startsWith('document-')) {
-    return serveFallbackDoc(res, identifiedDocType || undefined);
+    return serveFallbackDoc(res, identifiedDocType || undefined, captainName, vehicleNumber);
   }
 
   return res.status(404).json({ success: false, message: 'Upload file not found' });

@@ -13,6 +13,38 @@ export async function runMigrations() {
 
   try {
     await db.exec(sql);
+
+    // Ensure columns exist on both Postgres and SQLite
+    if (db.isPostgres()) {
+      await db.exec(`
+        ALTER TABLE kyc_documents ADD COLUMN IF NOT EXISTS file_data TEXT;
+        ALTER TABLE kyc_documents ADD COLUMN IF NOT EXISTS mime_type VARCHAR(64);
+        ALTER TABLE captains ADD COLUMN IF NOT EXISTS payment_qr_data TEXT;
+        ALTER TABLE captains ADD COLUMN IF NOT EXISTS payment_qr_mime VARCHAR(64);
+      `);
+    } else {
+      try {
+        const kycCols = await db.query("PRAGMA table_info(kyc_documents)");
+        const colNames = kycCols.rows.map((r: any) => r.name);
+        if (!colNames.includes('file_data')) {
+          await db.exec("ALTER TABLE kyc_documents ADD COLUMN file_data TEXT");
+        }
+        if (!colNames.includes('mime_type')) {
+          await db.exec("ALTER TABLE kyc_documents ADD COLUMN mime_type VARCHAR(64)");
+        }
+        const captCols = await db.query("PRAGMA table_info(captains)");
+        const captColNames = captCols.rows.map((r: any) => r.name);
+        if (!captColNames.includes('payment_qr_data')) {
+          await db.exec("ALTER TABLE captains ADD COLUMN payment_qr_data TEXT");
+        }
+        if (!captColNames.includes('payment_qr_mime')) {
+          await db.exec("ALTER TABLE captains ADD COLUMN payment_qr_mime VARCHAR(64)");
+        }
+      } catch (sqliteErr: any) {
+        console.warn(' SQLite alter table fallback notice:', sqliteErr.message);
+      }
+    }
+
     console.log(' Database migrations completed successfully.');
   } catch (err: any) {
     console.error(' Migration execution error:', err.message);
