@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 13,
-    "versionName": "1.0.13",
-    "title": "Speedo Captain Fix: Submitted QR Code & Resilient Storage (v1.0.13) \ud83d\ude80",
-    "message": "Fixed submitted payment QR rendering after ride completion, eliminated sample QR fallback, and added persistent database storage for uploads.",
+    "versionCode": 14,
+    "versionName": "1.0.14",
+    "title": "Speedo Update: Captain QR, Leaflet Map Tiles & Admin KYC Viewer (v1.0.14) \ud83d\ude80",
+    "message": "Rendered captain uploaded QR upon ride completion, replaced Carto with Leaflet standard map tiles, and fixed Admin KYC document viewer.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 13,
-    "versionName": "1.0.13",
-    "title": "Speedo Captain Fix: Submitted QR Code & Resilient Storage (v1.0.13) \ud83d\ude80",
-    "message": "Fixed submitted payment QR rendering after ride completion, eliminated sample QR fallback, and added persistent database storage for uploads.",
+    "versionCode": 14,
+    "versionName": "1.0.14",
+    "title": "Speedo Update: Captain QR, Leaflet Map Tiles & Admin KYC Viewer (v1.0.14) \ud83d\ude80",
+    "message": "Rendered captain uploaded QR upon ride completion, replaced Carto with Leaflet standard map tiles, and fixed Admin KYC document viewer.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 13,
-    "versionName": "1.0.13",
-    "title": "Speedo Captain Fix: Submitted QR Code & Resilient Storage (v1.0.13) \ud83d\ude80",
-    "message": "Fixed submitted payment QR rendering after ride completion, eliminated sample QR fallback, and added persistent database storage for uploads.",
+    "versionCode": 14,
+    "versionName": "1.0.14",
+    "title": "Speedo Update: Captain QR, Leaflet Map Tiles & Admin KYC Viewer (v1.0.14) \ud83d\ude80",
+    "message": "Rendered captain uploaded QR upon ride completion, replaced Carto with Leaflet standard map tiles, and fixed Admin KYC document viewer.",
     "forceUpdate": false
   }
 }

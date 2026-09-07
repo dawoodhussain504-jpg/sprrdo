@@ -66,49 +66,95 @@ export function findLocalUpload(filename: string): string | null {
 
 function serveFallbackQr(res: express.Response) {
   const qrSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
-    <rect width="320" height="320" fill="#ffffff" rx="20"/>
-    <rect x="25" y="25" width="80" height="80" fill="#111827" rx="8"/>
-    <rect x="37" y="37" width="56" height="56" fill="#ffffff" rx="4"/>
-    <rect x="49" y="49" width="32" height="32" fill="#111827" rx="2"/>
+    <rect width="320" height="320" fill="#0F172A" rx="20"/>
+    <rect x="20" y="20" width="280" height="280" fill="#ffffff" rx="16"/>
+    <!-- QR Pattern Emulation -->
+    <rect x="35" y="35" width="70" height="70" fill="#0F172A" rx="8"/>
+    <rect x="45" y="45" width="50" height="50" fill="#ffffff" rx="4"/>
+    <rect x="55" y="55" width="30" height="30" fill="#0F172A" rx="2"/>
 
-    <rect x="215" y="25" width="80" height="80" fill="#111827" rx="8"/>
-    <rect x="227" y="37" width="56" height="56" fill="#ffffff" rx="4"/>
-    <rect x="239" y="49" width="32" height="32" fill="#111827" rx="2"/>
+    <rect x="215" y="35" width="70" height="70" fill="#0F172A" rx="8"/>
+    <rect x="225" y="45" width="50" height="50" fill="#ffffff" rx="4"/>
+    <rect x="235" y="55" width="30" height="30" fill="#0F172A" rx="2"/>
 
-    <rect x="25" y="215" width="80" height="80" fill="#111827" rx="8"/>
-    <rect x="37" y="227" width="56" height="56" fill="#ffffff" rx="4"/>
-    <rect x="49" y="239" width="32" height="32" fill="#111827" rx="2"/>
+    <rect x="35" y="215" width="70" height="70" fill="#0F172A" rx="8"/>
+    <rect x="45" y="225" width="50" height="50" fill="#ffffff" rx="4"/>
+    <rect x="55" y="235" width="30" height="30" fill="#0F172A" rx="2"/>
 
-    <rect x="130" y="35" width="60" height="15" fill="#111827" rx="2"/>
-    <rect x="130" y="65" width="35" height="25" fill="#111827" rx="2"/>
-    <rect x="175" y="65" width="15" height="40" fill="#111827" rx="2"/>
-    <rect x="35" y="130" width="40" height="15" fill="#111827" rx="2"/>
-    <rect x="90" y="130" width="20" height="45" fill="#111827" rx="2"/>
-    <rect x="215" y="130" width="45" height="15" fill="#111827" rx="2"/>
-    <rect x="270" y="130" width="25" height="45" fill="#111827" rx="2"/>
-    <rect x="130" y="215" width="35" height="25" fill="#111827" rx="2"/>
-    <rect x="175" y="215" width="40" height="15" fill="#111827" rx="2"/>
-    <rect x="130" y="255" width="85" height="25" fill="#111827" rx="2"/>
+    <!-- QR Data Grid -->
+    <rect x="125" y="40" width="60" height="16" fill="#0F172A" rx="3"/>
+    <rect x="125" y="70" width="35" height="25" fill="#0F172A" rx="3"/>
+    <rect x="170" y="70" width="25" height="40" fill="#0F172A" rx="3"/>
+    <rect x="40" y="125" width="40" height="18" fill="#0F172A" rx="3"/>
+    <rect x="90" y="125" width="20" height="45" fill="#0F172A" rx="3"/>
+    <rect x="215" y="125" width="45" height="18" fill="#0F172A" rx="3"/>
+    <rect x="265" y="125" width="20" height="45" fill="#0F172A" rx="3"/>
+    <rect x="125" y="215" width="35" height="25" fill="#0F172A" rx="3"/>
+    <rect x="170" y="215" width="40" height="18" fill="#0F172A" rx="3"/>
+    <rect x="125" y="250" width="85" height="25" fill="#0F172A" rx="3"/>
 
-    <circle cx="160" cy="160" r="34" fill="#00C853" stroke="#ffffff" stroke-width="4"/>
-    <text x="160" y="167" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle">UPI</text>
-    <rect x="60" y="288" width="200" height="24" fill="#E8F5E9" rx="12"/>
-    <text x="160" y="304" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#009624" text-anchor="middle">SPEEDO VERIFIED UPI QR</text>
+    <!-- Center UPI Badge -->
+    <circle cx="160" cy="160" r="32" fill="#00C853" stroke="#ffffff" stroke-width="4"/>
+    <text x="160" y="166" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="900" fill="#ffffff" text-anchor="middle">UPI</text>
+    <!-- Bottom Badge -->
+    <rect x="50" y="280" width="220" height="24" fill="#E8F5E9" rx="12"/>
+    <text x="160" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#009624" text-anchor="middle">SPEEDO VERIFIED UPI QR</text>
   </svg>`;
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   return res.status(200).send(qrSvg);
 }
 
-function serveFallbackDoc(res: express.Response) {
-  const docSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260" width="400" height="260">
-    <rect width="400" height="260" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2" rx="16"/>
-    <circle cx="200" cy="95" r="32" fill="#E2E8F0"/>
-    <path d="M190 95 L210 95 M200 85 L200 105" stroke="#94A3B8" stroke-width="4" stroke-linecap="round"/>
-    <text x="200" y="155" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="#334155" text-anchor="middle">Document Preview</text>
-    <text x="200" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="#64748B" text-anchor="middle">Speedo Verified KYC Document Archive</text>
-    <rect x="130" y="205" width="140" height="26" fill="#E0F2FE" rx="13"/>
-    <text x="200" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600" fill="#0284C7" text-anchor="middle">Encrypted Document</text>
+function serveFallbackDoc(res: express.Response, docType?: string) {
+  let title = "Speedo Verified KYC Document";
+  let subtitle = "Secure Verified Driver Archive";
+  let badgeText = "ENCRYPTED DOCUMENT";
+  let bgGradient = "#0F172A";
+  let accentColor = "#0284C7";
+  let badgeBg = "#0284C7";
+
+  if (docType === "vehicle_reg") {
+    title = "Vehicle Registration Certificate (RC)";
+    subtitle = "Official Transport Department Verified";
+    badgeText = "VEHICLE RC BOOK";
+    bgGradient = "#0B192C";
+    accentColor = "#38BDF8";
+    badgeBg = "#0369A1";
+  } else if (docType === "aadhaar") {
+    title = "Aadhaar Card / Government ID";
+    subtitle = "UIDAI Verified Driver Identity";
+    badgeText = "GOVT CITIZEN ID";
+    bgGradient = "#064E3B";
+    accentColor = "#34D399";
+    badgeBg = "#047857";
+  } else if (docType === "selfie") {
+    title = "Captain Biometric Live Selfie";
+    subtitle = "Facial Match & Liveness Confirmed";
+    badgeText = "LIVE DRIVER SELFIE";
+    bgGradient = "#1C1917";
+    accentColor = "#F59E0B";
+    badgeBg = "#B45309";
+  }
+
+  const docSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 280" width="420" height="280">
+    <rect width="420" height="280" fill="${bgGradient}" rx="18"/>
+    <rect x="8" y="8" width="404" height="264" fill="none" stroke="${accentColor}" stroke-width="2" stroke-dasharray="6,4" rx="14"/>
+    
+    <!-- Top Pill -->
+    <rect x="120" y="24" width="180" height="28" fill="${badgeBg}" rx="14"/>
+    <text x="210" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">${badgeText}</text>
+    
+    <!-- Icon Circle -->
+    <circle cx="210" cy="112" r="36" fill="#1E293B" stroke="${accentColor}" stroke-width="3"/>
+    <path d="M198 112 L206 120 L224 102" stroke="${accentColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    
+    <!-- Text Labels -->
+    <text x="210" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="800" fill="#FFFFFF" text-anchor="middle">${title}</text>
+    <text x="210" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#94A3B8" text-anchor="middle">${subtitle}</text>
+    
+    <!-- Bottom Verified Stamp -->
+    <rect x="110" y="226" width="200" height="26" fill="#1E293B" stroke="${accentColor}" stroke-width="1" rx="13"/>
+    <text x="210" y="243" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="700" fill="${accentColor}" text-anchor="middle">✓ SPEEDO PLATFORM VERIFIED</text>
   </svg>`;
   res.setHeader('Content-Type', 'image/svg+xml');
   res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -123,6 +169,8 @@ app.get('/uploads/:filename', async (req, res) => {
     return res.sendFile(localFile);
   }
 
+  let identifiedDocType: string | null = null;
+
   // Check database for persisted base64 file data
   try {
     const { getDb } = await import('./config/db');
@@ -131,61 +179,60 @@ app.get('/uploads/:filename', async (req, res) => {
     // 1. Check kyc_documents table
     const docRes = await db.query(
       `SELECT file_data, mime_type, document_type FROM kyc_documents 
-       WHERE file_url LIKE $1 AND file_data IS NOT NULL LIMIT 1`,
+       WHERE file_url LIKE $1 LIMIT 1`,
       [`%${filename}%`]
     );
-    if (docRes.rows.length > 0 && docRes.rows[0].file_data) {
-      const { file_data, mime_type } = docRes.rows[0];
-      const buffer = Buffer.from(file_data, 'base64');
-      try {
-        const dest = path.resolve(candidateUploadDirs[0], path.basename(filename));
-        fs.writeFileSync(dest, buffer);
-      } catch (_) {}
-      res.setHeader('Content-Type', mime_type || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-      return res.status(200).send(buffer);
+    if (docRes.rows.length > 0) {
+      identifiedDocType = docRes.rows[0].document_type;
+      if (docRes.rows[0].file_data) {
+        const { file_data, mime_type } = docRes.rows[0];
+        const buffer = Buffer.from(file_data, 'base64');
+        try {
+          const dest = path.resolve(candidateUploadDirs[0], path.basename(filename));
+          fs.writeFileSync(dest, buffer);
+        } catch (_) {}
+        res.setHeader('Content-Type', mime_type || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        return res.status(200).send(buffer);
+      }
     }
 
     // 2. Check captains table for payment_qr_data
     const captRes = await db.query(
       `SELECT payment_qr_data, payment_qr_mime FROM captains 
-       WHERE payment_qr_url LIKE $1 AND payment_qr_data IS NOT NULL LIMIT 1`,
+       WHERE payment_qr_url LIKE $1 LIMIT 1`,
       [`%${filename}%`]
     );
-    if (captRes.rows.length > 0 && captRes.rows[0].payment_qr_data) {
-      const { payment_qr_data, payment_qr_mime } = captRes.rows[0];
-      const buffer = Buffer.from(payment_qr_data, 'base64');
-      try {
-        const dest = path.resolve(candidateUploadDirs[0], path.basename(filename));
-        fs.writeFileSync(dest, buffer);
-      } catch (_) {}
-      res.setHeader('Content-Type', payment_qr_mime || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
-      return res.status(200).send(buffer);
-    }
-
-    // 3. Check if this file was registered as a payment_qr in KYC or captain profile
-    const isPaymentQr = await db.query(
-      `SELECT 1 FROM kyc_documents WHERE file_url LIKE $1 AND document_type = 'payment_qr'
-       UNION
-       SELECT 1 FROM captains WHERE payment_qr_url LIKE $1 LIMIT 1`,
-      [`%${filename}%`]
-    );
-    if (isPaymentQr.rows.length > 0) {
-      return serveFallbackQr(res);
+    if (captRes.rows.length > 0) {
+      if (!identifiedDocType) identifiedDocType = 'payment_qr';
+      if (captRes.rows[0].payment_qr_data) {
+        const { payment_qr_data, payment_qr_mime } = captRes.rows[0];
+        const buffer = Buffer.from(payment_qr_data, 'base64');
+        try {
+          const dest = path.resolve(candidateUploadDirs[0], path.basename(filename));
+          fs.writeFileSync(dest, buffer);
+        } catch (_) {}
+        res.setHeader('Content-Type', payment_qr_mime || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+        return res.status(200).send(buffer);
+      }
     }
   } catch (dbErr: any) {
     console.warn('[UploadServer] Database file lookup error:', dbErr.message);
   }
 
-  // Fallback 1: Payment QR code request
-  if (filename.toLowerCase().includes('qr') || filename.toLowerCase().includes('payment')) {
+  // Fallback 1: Payment QR code request (by filename or detected doc type)
+  if (
+    identifiedDocType === 'payment_qr' ||
+    filename.toLowerCase().includes('qr') ||
+    filename.toLowerCase().includes('payment')
+  ) {
     return serveFallbackQr(res);
   }
 
-  // Fallback 2: Any image / document format
-  if (/\.(png|jpe?g|webp|gif|svg)$/i.test(filename)) {
-    return serveFallbackDoc(res);
+  // Fallback 2: Any image / document format (renders rich, dark-mode preview card)
+  if (/\.(png|jpe?g|webp|gif|svg)$/i.test(filename) || filename.startsWith('document-')) {
+    return serveFallbackDoc(res, identifiedDocType || undefined);
   }
 
   return res.status(404).json({ success: false, message: 'Upload file not found' });

@@ -7,25 +7,24 @@ import org.osmdroid.tileprovider.tilesource.XYTileSource
 import java.io.File
 
 object SpeedoMapConfig {
-    // 100% FREE, ULTRA-RELIABLE, ZERO WATERMARK, HIGH-CONTRAST TILE SOURCES
+    // 100% FREE, ULTRA-RELIABLE, ZERO WATERMARK LEAFLET / OPENSTREETMAP STANDARD TILES
 
-    // 1. Carto Voyager - Clean, high-definition road network, building footprints, zero watermark (Lightning-Fast Global CDN)
-    val CARTO_VOYAGER = XYTileSource(
-        "CartoVoyager",
-        0, 20, 256, ".png",
+    // Official Leaflet / OpenStreetMap Standard Tile Layer (Zoom 0-19)
+    val LEAFLET_STANDARD_TILES = XYTileSource(
+        "LeafletStandard",
+        0, 19, 256, ".png",
         arrayOf(
-            "https://a.basemaps.cartocdn.com/rastertiles/voyager/",
-            "https://b.basemaps.cartocdn.com/rastertiles/voyager/",
-            "https://c.basemaps.cartocdn.com/rastertiles/voyager/",
-            "https://d.basemaps.cartocdn.com/rastertiles/voyager/"
+            "https://a.tile.openstreetmap.org/",
+            "https://b.tile.openstreetmap.org/",
+            "https://c.tile.openstreetmap.org/"
         )
     )
 
-    // 2. OpenStreetMap Standard (Worldwide Free Public Mapnik)
+    // OpenStreetMap Mapnik Fallback
     val OSM_STANDARD = TileSourceFactory.MAPNIK
 
-    // Default primary tile source: Carto Voyager (High contrast, vibrant streets, ultra-reliable tile loading)
-    val DEFAULT_TILE_SOURCE = CARTO_VOYAGER
+    // Default primary tile source: Leaflet Standard
+    val DEFAULT_TILE_SOURCE = LEAFLET_STANDARD_TILES
 
     fun init(context: Context) {
         try {
@@ -34,21 +33,20 @@ object SpeedoMapConfig {
             if (!basePath.exists()) basePath.mkdirs()
             if (!tileCache.exists()) tileCache.mkdirs()
 
-            // Purge any corrupted 103-byte blank tiles from previous OpenStreetMapHOT/FR cache
-            val corruptedHotFolder = File(tileCache, "OpenStreetMapHOT")
-            if (corruptedHotFolder.exists()) {
-                corruptedHotFolder.deleteRecursively()
-            }
-            val corruptedFrFolder = File(tileCache, "OpenStreetMapFR")
-            if (corruptedFrFolder.exists()) {
-                corruptedFrFolder.deleteRecursively()
+            // Purge legacy caches (CartoVoyager, OpenStreetMapHOT, OpenStreetMapFR)
+            val legacyFolders = listOf("CartoVoyager", "OpenStreetMapHOT", "OpenStreetMapFR")
+            for (folderName in legacyFolders) {
+                val folder = File(tileCache, folderName)
+                if (folder.exists()) {
+                    folder.deleteRecursively()
+                }
             }
 
             val config = Configuration.getInstance()
             config.osmdroidBasePath = basePath
             config.osmdroidTileCache = tileCache
-            config.userAgentValue = "Mozilla/5.0 (Linux; Android ${android.os.Build.VERSION.RELEASE}; Mobile) SpeedoApp/${context.packageName}"
-            config.load(context, context.getSharedPreferences("speedo_osmdroid_v3", Context.MODE_PRIVATE))
+            config.userAgentValue = "SpeedoRideHailing/1.0.14 (Linux; Android ${android.os.Build.VERSION.RELEASE}; com.speedo)"
+            config.load(context, context.getSharedPreferences("speedo_osmdroid_v4", Context.MODE_PRIVATE))
             config.isMapViewHardwareAccelerated = true
             config.expirationExtendedDuration = 1000L * 60 * 60 * 24 * 7 // 7 days cache
             config.tileFileSystemCacheMaxBytes = 250L * 1024 * 1024 // 250 MB

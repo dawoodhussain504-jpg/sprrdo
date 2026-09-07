@@ -10,6 +10,7 @@ class CaptainApplication : Application() {
         super.onCreate()
         // Initialize osmdroid internal cache, User-Agent, and tile storage configuration safely
         SpeedoMapConfig.init(this)
+        com.speedo.core.utils.ImageLoaderHelper.init(this)
 
         NotificationHelper.createNotificationChannels(this)
         WorkScheduler.schedulePeriodicNotificationPolling(this)

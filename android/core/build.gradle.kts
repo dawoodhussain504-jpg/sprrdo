@@ -77,6 +77,7 @@ dependencies {
 
     // Image loading & QR Code generation
     api(libs.coil.compose)
+    api("io.coil-kt:coil-svg:2.6.0")
     api("com.google.zxing:core:3.5.3")
 
     // Security
