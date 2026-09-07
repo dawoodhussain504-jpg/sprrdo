@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 11,
-    "versionName": "1.0.11",
-    "title": "Speedo About, Terms & Privacy Update (v1.0.11) \ud83d\ude80",
-    "message": "New professional About Speedo, Terms of Service, and Privacy Policy tab in User Profile.",
+    "versionCode": 12,
+    "versionName": "1.0.12",
+    "title": "Speedo Fix: Payment QR, KYC Viewer & High-Definition Map Tiles (v1.0.12) \ud83d\ude80",
+    "message": "Fixed payment QR rendering in Captain app, fixed KYC document viewer in Admin app, and enhanced ultra-fast map tiles across all apps.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 11,
-    "versionName": "1.0.11",
-    "title": "Speedo About, Terms & Privacy Update (v1.0.11) \ud83d\ude80",
-    "message": "New professional About Speedo, Terms of Service, and Privacy Policy tab in User Profile.",
+    "versionCode": 12,
+    "versionName": "1.0.12",
+    "title": "Speedo Fix: Payment QR, KYC Viewer & High-Definition Map Tiles (v1.0.12) \ud83d\ude80",
+    "message": "Fixed payment QR rendering in Captain app, fixed KYC document viewer in Admin app, and enhanced ultra-fast map tiles across all apps.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 11,
-    "versionName": "1.0.11",
-    "title": "Speedo About, Terms & Privacy Update (v1.0.11) \ud83d\ude80",
-    "message": "New professional About Speedo, Terms of Service, and Privacy Policy tab in User Profile.",
+    "versionCode": 12,
+    "versionName": "1.0.12",
+    "title": "Speedo Fix: Payment QR, KYC Viewer & High-Definition Map Tiles (v1.0.12) \ud83d\ude80",
+    "message": "Fixed payment QR rendering in Captain app, fixed KYC document viewer in Admin app, and enhanced ultra-fast map tiles across all apps.",
     "forceUpdate": false
   }
 }

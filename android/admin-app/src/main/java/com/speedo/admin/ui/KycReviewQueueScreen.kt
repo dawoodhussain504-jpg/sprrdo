@@ -1,5 +1,7 @@
 package com.speedo.admin.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,35 +19,44 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.speedo.admin.viewmodel.AdminViewModel
 import com.speedo.core.components.*
 import com.speedo.core.model.Captain
 import com.speedo.core.model.KycDocument
 import com.speedo.core.theme.*
+import com.speedo.core.utils.Constants
 
-fun normalizeDocUrl(rawUrl: String?): String? {
+fun normalizeDocUrl(rawUrl: String?, context: android.content.Context? = null): String? {
     if (rawUrl.isNullOrBlank()) return null
-    if (rawUrl.startsWith("http://localhost:5000/")) {
-        return rawUrl.replace("http://localhost:5000", "https://web-production-5d826.up.railway.app")
+    val baseUrl = if (context != null) {
+        Constants.getBaseUrl(context).removeSuffix("api/").removeSuffix("/")
+    } else {
+        "https://web-production-5d826.up.railway.app"
     }
-    if (rawUrl.startsWith("http://127.0.0.1:5000/")) {
-        return rawUrl.replace("http://127.0.0.1:5000", "https://web-production-5d826.up.railway.app")
+
+    var clean = rawUrl.trim()
+    if (clean.contains("localhost:5000") || clean.contains("127.0.0.1:5000") || clean.contains("10.0.2.2:5000")) {
+        clean = clean
+            .replace("http://localhost:5000", baseUrl)
+            .replace("http://127.0.0.1:5000", baseUrl)
+            .replace("http://10.0.2.2:5000", baseUrl)
     }
-    if (rawUrl.startsWith("http://10.0.2.2:5000/")) {
-        return rawUrl.replace("http://10.0.2.2:5000", "https://web-production-5d826.up.railway.app")
+
+    if (clean.startsWith("http://") || clean.startsWith("https://")) {
+        return clean
     }
-    if (rawUrl.startsWith("/uploads/")) {
-        return "https://web-production-5d826.up.railway.app$rawUrl"
-    }
-    if (rawUrl.startsWith("uploads/")) {
-        return "https://web-production-5d826.up.railway.app/$rawUrl"
-    }
-    return rawUrl
+
+    val path = if (clean.startsWith("/")) clean.substring(1) else clean
+    val finalPath = if (!path.startsWith("uploads/")) "uploads/$path" else path
+    return "$baseUrl/$finalPath"
 }
 
 @Composable
@@ -55,6 +66,7 @@ fun KycReviewQueueScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val captains = uiState.kycQueue
+    val context = LocalContext.current
 
     var selectedCaptainForReview by remember { mutableStateOf<Captain?>(null) }
     var reviewRemarks by remember { mutableStateOf("") }
@@ -335,10 +347,10 @@ fun KycReviewQueueScreen(
                     val selfieDoc = capt.documents.firstOrNull { it.documentType == "selfie" }
                     val qrDoc = capt.documents.firstOrNull { it.documentType == "payment_qr" }
 
-                    val rcUrl = normalizeDocUrl(rcDoc?.fileUrl ?: capt.avatarUrl)
-                    val aadhaarUrl = normalizeDocUrl(aadhaarDoc?.fileUrl)
-                    val selfieUrl = normalizeDocUrl(selfieDoc?.fileUrl)
-                    val qrUrl = normalizeDocUrl(qrDoc?.fileUrl ?: capt.paymentQrUrl)
+                    val rcUrl = normalizeDocUrl(rcDoc?.fileUrl ?: capt.avatarUrl, context)
+                    val aadhaarUrl = normalizeDocUrl(aadhaarDoc?.fileUrl, context)
+                    val selfieUrl = normalizeDocUrl(selfieDoc?.fileUrl, context)
+                    val qrUrl = normalizeDocUrl(qrDoc?.fileUrl ?: capt.paymentQrUrl, context)
 
                     val docList = listOf(
                         Triple("Vehicle RC", rcUrl, rcDoc?.status ?: if (rcUrl != null) "uploaded" else "missing"),
@@ -368,8 +380,21 @@ fun KycReviewQueueScreen(
                                     modifier = Modifier.size(54.dp)
                                 ) {
                                     if (hasDoc) {
-                                        AsyncImage(
-                                            model = docUrl,
+                                        SubcomposeAsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(docUrl)
+                                                .crossfade(true)
+                                                .build(),
+                                            loading = {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = SpeedoOrange)
+                                                }
+                                            },
+                                            error = {
+                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                    Icon(Icons.Default.BrokenImage, contentDescription = "Load error", tint = SpeedoError, modifier = Modifier.size(20.dp))
+                                                }
+                                            },
                                             contentDescription = docTitle,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier.fillMaxSize()
@@ -478,34 +503,88 @@ fun KycReviewQueueScreen(
 
     // Full Size Image Viewer Dialog
     if (previewImageUrl != null) {
+        val currentContext = LocalContext.current
         Dialog(onDismissRequest = { previewImageUrl = null }) {
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 color = SpeedoWhite,
+                shadowElevation = 16.dp,
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "Document Full Viewer", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.DocumentScanner, contentDescription = null, tint = SpeedoOrange, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = "Document Full Viewer", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                        }
                         IconButton(onClick = { previewImageUrl = null }) {
                             Icon(Icons.Default.Close, contentDescription = "Close")
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AsyncImage(
-                        model = previewImageUrl,
-                        contentDescription = "Full Doc",
-                        contentScale = ContentScale.Fit,
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF1F5F9),
+                        border = BorderStroke(1.dp, SpeedoDivider),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp)
-                    )
+                            .height(340.dp)
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(currentContext)
+                                .data(previewImageUrl)
+                                .crossfade(true)
+                                .build(),
+                            loading = {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = SpeedoOrange, modifier = Modifier.size(36.dp))
+                                }
+                            },
+                            error = {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(Icons.Default.BrokenImage, contentDescription = null, tint = SpeedoError, modifier = Modifier.size(48.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Preview unavailable or format unsupported", style = MaterialTheme.typography.bodySmall, color = SpeedoTextSecondary)
+                                }
+                            },
+                            contentDescription = "Full KYC Document",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(previewImageUrl))
+                                    currentContext.startActivity(intent)
+                                } catch (_: Exception) {}
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, SpeedoDivider)
+                        ) {
+                            Icon(Icons.Default.OpenInBrowser, contentDescription = null, modifier = Modifier.size(18.dp), tint = SpeedoTextPrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open in Browser", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = SpeedoTextPrimary)
+                        }
+                    }
                 }
             }
         }

@@ -75,8 +75,9 @@ dependencies {
     // WorkManager
     api(libs.androidx.work.runtime.ktx)
 
-    // Image loading
+    // Image loading & QR Code generation
     api(libs.coil.compose)
+    api("com.google.zxing:core:3.5.3")
 
     // Security
     api(libs.androidx.security.crypto)

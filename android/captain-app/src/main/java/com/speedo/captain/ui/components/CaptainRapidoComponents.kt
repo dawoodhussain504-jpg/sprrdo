@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,15 +20,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.speedo.captain.audio.CaptainVoiceCueManager
 import com.speedo.core.model.Ride
 import com.speedo.core.theme.*
+import com.speedo.core.utils.Constants
+import com.speedo.core.utils.QrCodeHelper
 import kotlinx.coroutines.delay
 
 // Rapido Captain Signature Colors
@@ -552,21 +558,43 @@ fun DynamicUpiQrPaymentSheet(
     val context = LocalContext.current
     val rawQrUrl = uploadedQrUrl?.trim()
 
-    val resolvedQrUrl = remember(rawQrUrl, fare, rideId) {
-        if (!rawQrUrl.isNullOrBlank()) {
-            if (rawQrUrl.startsWith("http://") || rawQrUrl.startsWith("https://")) {
-                rawQrUrl
-            } else {
-                val base = com.speedo.core.utils.Constants.getBaseUrl(context).removeSuffix("api/").removeSuffix("/")
-                val cleanPath = if (rawQrUrl.startsWith("/")) rawQrUrl.substring(1) else rawQrUrl
-                "$base/$cleanPath"
+    val normalizedCustomQrUrl = remember(rawQrUrl) {
+        if (rawQrUrl.isNullOrBlank()) null
+        else {
+            val base = Constants.getBaseUrl(context).removeSuffix("api/").removeSuffix("/")
+            var url = rawQrUrl.trim()
+            if (url.contains("localhost:5000") || url.contains("127.0.0.1:5000") || url.contains("10.0.2.2:5000")) {
+                url = url.replace("http://localhost:5000", base)
+                    .replace("http://127.0.0.1:5000", base)
+                    .replace("http://10.0.2.2:5000", base)
             }
-        } else {
-            val upiPayload = "upi://pay?pa=speedo.pay@upi&pn=Speedo%20Ride&am=$fare&cu=INR&tn=SpeedoRide-${rideId.takeLast(6)}"
-            val encodedUpi = java.net.URLEncoder.encode(upiPayload, "UTF-8")
-            "https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=$encodedUpi"
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                val cleanPath = if (url.startsWith("/")) url.substring(1) else url
+                val finalPath = if (!cleanPath.startsWith("uploads/")) "uploads/$cleanPath" else cleanPath
+                "$base/$finalPath"
+            } else {
+                url
+            }
         }
     }
+
+    val upiUri = remember(fare, rideId, riderName) {
+        QrCodeHelper.buildUpiPaymentUri(
+            upiId = "speedo.pay@upi",
+            payeeName = "Speedo Captain",
+            amount = fare,
+            tripRef = rideId
+        )
+    }
+
+    val dynamicQrBitmap = remember(upiUri) {
+        QrCodeHelper.generateQrBitmap(upiUri, 512)
+    }
+
+    var selectedMode by remember(normalizedCustomQrUrl) {
+        mutableStateOf(if (!normalizedCustomQrUrl.isNullOrBlank()) "custom" else "dynamic")
+    }
+    var customQrFailed by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier
@@ -579,7 +607,7 @@ fun DynamicUpiQrPaymentSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 560.dp)
+                .heightIn(max = 620.dp)
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -645,54 +673,124 @@ fun DynamicUpiQrPaymentSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Captain's Uploaded QR Code Box
+            // Mode Selector if custom QR is provided
+            if (!normalizedCustomQrUrl.isNullOrBlank() && !customQrFailed) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    FilterChip(
+                        selected = selectedMode == "dynamic",
+                        onClick = { selectedMode = "dynamic" },
+                        label = { Text("Exact ₹$fare QR", fontWeight = FontWeight.Bold) },
+                        leadingIcon = { Icon(Icons.Default.QrCode2, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RapidoCaptainGreenLight,
+                            selectedLabelColor = RapidoCaptainGreenDark
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilterChip(
+                        selected = selectedMode == "custom",
+                        onClick = { selectedMode = "custom" },
+                        label = { Text("My Personal QR", fontWeight = FontWeight.Bold) },
+                        leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = RapidoCaptainGreenLight,
+                            selectedLabelColor = RapidoCaptainGreenDark
+                        )
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // QR Code Box (230dp x 230dp)
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = SpeedoWhite,
-                border = BorderStroke(1.5.dp, if (!rawQrUrl.isNullOrBlank()) RapidoCaptainGreen else Color(0xFFE0E0E0)),
-                shadowElevation = 4.dp,
-                modifier = Modifier.size(220.dp)
+                border = BorderStroke(2.dp, RapidoCaptainGreen),
+                shadowElevation = 6.dp,
+                modifier = Modifier.size(230.dp)
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(10.dp),
+                        .padding(12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    coil.compose.AsyncImage(
-                        model = resolvedQrUrl,
-                        contentDescription = "Captain's Onboarding Payment QR Code",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                    )
+                    if (selectedMode == "custom" && !normalizedCustomQrUrl.isNullOrBlank() && !customQrFailed) {
+                        SubcomposeAsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(normalizedCustomQrUrl)
+                                .crossfade(true)
+                                .build(),
+                            loading = {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = RapidoCaptainGreen, modifier = Modifier.size(36.dp))
+                                }
+                            },
+                            error = {
+                                LaunchedEffect(Unit) {
+                                    customQrFailed = true
+                                    selectedMode = "dynamic"
+                                }
+                                if (dynamicQrBitmap != null) {
+                                    Image(
+                                        bitmap = dynamicQrBitmap.asImageBitmap(),
+                                        contentDescription = "Fallback UPI QR Code",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(64.dp), tint = RapidoCaptainGreen)
+                                }
+                            },
+                            contentDescription = "Captain's Custom UPI QR Code",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else if (dynamicQrBitmap != null) {
+                        Image(
+                            bitmap = dynamicQrBitmap.asImageBitmap(),
+                            contentDescription = "Dynamic UPI QR Code ₹$fare",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        val fallbackUpi = java.net.URLEncoder.encode(upiUri, "UTF-8")
+                        SubcomposeAsyncImage(
+                            model = "https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=$fallbackUpi",
+                            contentDescription = "UPI QR Code",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             Surface(
-                color = if (!rawQrUrl.isNullOrBlank()) Color(0xFFE8F5E9) else Color(0xFFE3F2FD),
+                color = Color(0xFFE8F5E9),
                 shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, if (!rawQrUrl.isNullOrBlank()) RapidoCaptainGreen else Color(0xFF90CAF9))
+                border = BorderStroke(1.dp, RapidoCaptainGreen)
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (!rawQrUrl.isNullOrBlank()) Icons.Default.Verified else Icons.Default.QrCode,
+                        imageVector = Icons.Default.Verified,
                         contentDescription = null,
-                        tint = if (!rawQrUrl.isNullOrBlank()) RapidoCaptainGreenDark else Color(0xFF1565C0),
-                        modifier = Modifier.size(14.dp)
+                        tint = RapidoCaptainGreenDark,
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (!rawQrUrl.isNullOrBlank()) "Captain's Verified UPI QR" else "Scan with any UPI App",
+                        text = if (selectedMode == "dynamic" || customQrFailed) "Speedo Instant ₹$fare Payment QR" else "Captain's Verified Personal QR",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            color = if (!rawQrUrl.isNullOrBlank()) RapidoCaptainGreenDark else Color(0xFF1565C0)
+                            color = RapidoCaptainGreenDark
                         )
                     )
                 }
