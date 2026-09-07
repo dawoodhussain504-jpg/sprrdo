@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS captains (
   total_earnings REAL DEFAULT 0.0,
   avatar_url TEXT,
   payment_qr_url TEXT,
+  payment_qr_data TEXT,
+  payment_qr_mime VARCHAR(64),
   is_active INTEGER DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -47,6 +49,8 @@ CREATE TABLE IF NOT EXISTS kyc_documents (
   captain_id VARCHAR(64) NOT NULL,
   document_type VARCHAR(64) NOT NULL, -- 'vehicle_reg', 'aadhaar', 'selfie', 'payment_qr'
   file_url TEXT NOT NULL,
+  file_data TEXT,
+  mime_type VARCHAR(64),
   status VARCHAR(32) DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
   admin_remarks TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

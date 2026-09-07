@@ -1,3 +1,4 @@
+import fs from 'fs';
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { getFileUrl } from '../middleware/upload';
@@ -23,19 +24,35 @@ export async function uploadKycDocument(req: AuthenticatedRequest, res: Response
     const fileUrl = getFileUrl(req, req.file.filename);
     const docId = 'kyc_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
 
+    // Read uploaded file buffer and store base64 in database for indestructible persistence
+    let fileBase64: string | null = null;
+    const mimeType = req.file.mimetype || 'image/jpeg';
+    try {
+      if (req.file.path && fs.existsSync(req.file.path)) {
+        fileBase64 = fs.readFileSync(req.file.path).toString('base64');
+      } else if (req.file.buffer) {
+        fileBase64 = req.file.buffer.toString('base64');
+      }
+    } catch (e: any) {
+      console.warn('Failed reading file buffer for base64 storage:', e.message);
+    }
+
     // Delete existing doc of this type for this captain if any
     await db.query('DELETE FROM kyc_documents WHERE captain_id = $1 AND document_type = $2', [captainId, documentType]);
 
-    // Insert new document record
+    // Insert new document record with persistent file_data
     await db.query(
-      `INSERT INTO kyc_documents (id, captain_id, document_type, file_url, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [docId, captainId, documentType, fileUrl]
+      `INSERT INTO kyc_documents (id, captain_id, document_type, file_url, file_data, mime_type, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      [docId, captainId, documentType, fileUrl, fileBase64, mimeType]
     );
 
-    // If it's payment_qr, update captain's payment_qr_url field directly
+    // If it's payment_qr, update captain's payment_qr_url and payment_qr_data field directly
     if (documentType === 'payment_qr') {
-      await db.query('UPDATE captains SET payment_qr_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [fileUrl, captainId]);
+      await db.query(
+        'UPDATE captains SET payment_qr_url = $1, payment_qr_data = $2, payment_qr_mime = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
+        [fileUrl, fileBase64, mimeType, captainId]
+      );
     }
 
     // Check how many documents captain has uploaded
@@ -103,12 +120,20 @@ export async function getKycStatus(req: AuthenticatedRequest, res: Response) {
       admin_remarks: uploadedMap[type]?.admin_remarks || null,
     }));
 
+    let paymentQrUrl = captRes.rows[0].payment_qr_url;
+    if (!paymentQrUrl && uploadedMap['payment_qr']?.file_url) {
+      paymentQrUrl = uploadedMap['payment_qr'].file_url;
+      try {
+        await db.query('UPDATE captains SET payment_qr_url = $1 WHERE id = $2', [paymentQrUrl, captainId]);
+      } catch (_) {}
+    }
+
     return res.json({
       success: true,
       data: {
         kyc_status: captRes.rows[0].kyc_status,
         admin_remarks: captRes.rows[0].admin_remarks,
-        payment_qr_url: captRes.rows[0].payment_qr_url,
+        payment_qr_url: paymentQrUrl,
         documents: documentStatuses,
         is_complete: documentStatuses.every((d) => d.is_uploaded),
         is_approved: captRes.rows[0].kyc_status === 'approved',

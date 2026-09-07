@@ -29,7 +29,7 @@ export async function seedDatabase() {
   const capt1Id = 'capt_approved_001';
   await db.query(
     `INSERT INTO captains (id, name, email, password_hash, phone, vehicle_type, vehicle_number, kyc_status, is_online, rating, total_rides, total_earnings, payment_qr_url)
-     VALUES ($1, $2, $3, $4, $5, 'bike', 'KA-01-EQ-9876', 'approved', 1, 4.8, 142, 8520.0, 'http://localhost:5000/uploads/sample_qr.png')`,
+     VALUES ($1, $2, $3, $4, $5, 'bike', 'KA-01-EQ-9876', 'approved', 1, 4.8, 142, 8520.0, NULL)`,
     [capt1Id, 'Rajesh Kumar (Speedo Moto)', 'captain@speedo.com', captainPasswordHash, '+919876543210']
   );
 
@@ -44,7 +44,7 @@ export async function seedDatabase() {
   const capt3Id = 'capt_approved_003';
   await db.query(
     `INSERT INTO captains (id, name, email, password_hash, phone, vehicle_type, vehicle_number, kyc_status, is_online, rating, total_rides, total_earnings, payment_qr_url)
-     VALUES ($1, $2, $3, $4, $5, 'cab', 'KA-05-CA-1234', 'approved', 1, 4.9, 88, 12400.0, 'http://localhost:5000/uploads/sample_qr.png')`,
+     VALUES ($1, $2, $3, $4, $5, 'cab', 'KA-05-CA-1234', 'approved', 1, 4.9, 88, 12400.0, NULL)`,
     [capt3Id, 'Vikram Singh (Speedo 4)', 'cab_captain@speedo.com', captainPasswordHash, '+919877665544']
   );
 

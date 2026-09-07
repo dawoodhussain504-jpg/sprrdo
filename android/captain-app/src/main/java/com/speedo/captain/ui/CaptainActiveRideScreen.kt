@@ -524,7 +524,13 @@ fun CaptainActiveRideScreen(
         // 5. Dynamic UPI QR Payment Sheet (Persists until Captain explicitly taps PAID)
         if (uiState.pendingPaymentRide != null || showPaymentSheet) {
             val paymentTargetRide = uiState.pendingPaymentRide ?: ride
-            val captainQr = uiState.captain?.paymentQrUrl ?: uiState.kycStatus?.paymentQrUrl
+            val captainQr = remember(uiState.captain, uiState.kycStatus, paymentTargetRide) {
+                val raw = uiState.captain?.paymentQrUrl
+                    ?: uiState.kycStatus?.paymentQrUrl
+                    ?: uiState.kycStatus?.documents?.firstOrNull { it.documentType == "payment_qr" }?.fileUrl
+                    ?: paymentTargetRide.captainQrUrl
+                if (raw != null && (raw.contains("sample_qr") || raw.contains("picsum.photos"))) null else raw
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()

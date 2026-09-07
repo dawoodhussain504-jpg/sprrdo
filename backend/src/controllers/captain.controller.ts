@@ -20,6 +20,19 @@ export async function getCaptainProfile(req: AuthenticatedRequest, res: Response
     }
 
     const captain = captRes.rows[0];
+    if (!captain.payment_qr_url || captain.payment_qr_url.includes('sample_qr')) {
+      const qrDoc = await db.query(
+        "SELECT file_url FROM kyc_documents WHERE captain_id = $1 AND document_type = 'payment_qr' ORDER BY created_at DESC LIMIT 1",
+        [captainId]
+      );
+      if (qrDoc.rows.length > 0 && qrDoc.rows[0].file_url) {
+        captain.payment_qr_url = qrDoc.rows[0].file_url;
+        try {
+          await db.query('UPDATE captains SET payment_qr_url = $1 WHERE id = $2', [captain.payment_qr_url, captainId]);
+        } catch (_) {}
+      }
+    }
+
     return res.json({
       success: true,
       data: {
@@ -235,9 +248,11 @@ export async function getCaptainActiveRide(req: AuthenticatedRequest, res: Respo
   try {
     const captainId = req.user?.id;
     const rideRes = await db.query(
-      `SELECT r.*, u.name as rider_name, u.phone as rider_phone, u.avatar_url as rider_avatar_url
+      `SELECT r.*, u.name as rider_name, u.phone as rider_phone, u.avatar_url as rider_avatar_url,
+              c.payment_qr_url as captain_qr_url
        FROM rides r
        JOIN users u ON r.rider_id = u.id
+       JOIN captains c ON r.captain_id = c.id
        WHERE r.captain_id = $1 AND r.status IN ('accepted', 'arrived', 'ongoing')
        ORDER BY r.created_at DESC LIMIT 1`,
       [captainId]
@@ -247,7 +262,18 @@ export async function getCaptainActiveRide(req: AuthenticatedRequest, res: Respo
       return res.json({ success: true, data: null, message: 'No active ride' });
     }
 
-    return res.json({ success: true, data: rideRes.rows[0] });
+    const ride = rideRes.rows[0];
+    if (!ride.captain_qr_url || ride.captain_qr_url.includes('sample_qr')) {
+      const qrDoc = await db.query(
+        "SELECT file_url FROM kyc_documents WHERE captain_id = $1 AND document_type = 'payment_qr' ORDER BY created_at DESC LIMIT 1",
+        [captainId]
+      );
+      if (qrDoc.rows.length > 0 && qrDoc.rows[0].file_url) {
+        ride.captain_qr_url = qrDoc.rows[0].file_url;
+      }
+    }
+
+    return res.json({ success: true, data: ride });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to fetch active ride', error: error.message });
   }

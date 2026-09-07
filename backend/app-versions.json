@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 12,
-    "versionName": "1.0.12",
-    "title": "Speedo Fix: Payment QR, KYC Viewer & High-Definition Map Tiles (v1.0.12) \ud83d\ude80",
-    "message": "Fixed payment QR rendering in Captain app, fixed KYC document viewer in Admin app, and enhanced ultra-fast map tiles across all apps.",
+    "versionCode": 13,
+    "versionName": "1.0.13",
+    "title": "Speedo Captain Fix: Submitted QR Code & Resilient Storage (v1.0.13) \ud83d\ude80",
+    "message": "Fixed submitted payment QR rendering after ride completion, eliminated sample QR fallback, and added persistent database storage for uploads.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 12,
-    "versionName": "1.0.12",
-    "title": "Speedo Fix: Payment QR, KYC Viewer & High-Definition Map Tiles (v1.0.12) \ud83d\ude80",
-    "message": "Fixed payment QR rendering in Captain app, fixed KYC document viewer in Admin app, and enhanced ultra-fast map tiles across all apps.",
+    "versionCode": 13,
+    "versionName": "1.0.13",
+    "title": "Speedo Captain Fix: Submitted QR Code & Resilient Storage (v1.0.13) \ud83d\ude80",
+    "message": "Fixed submitted payment QR rendering after ride completion, eliminated sample QR fallback, and added persistent database storage for uploads.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 12,
-    "versionName": "1.0.12",
-    "title": "Speedo Fix: Payment QR, KYC Viewer & High-Definition Map Tiles (v1.0.12) \ud83d\ude80",
-    "message": "Fixed payment QR rendering in Captain app, fixed KYC document viewer in Admin app, and enhanced ultra-fast map tiles across all apps.",
+    "versionCode": 13,
+    "versionName": "1.0.13",
+    "title": "Speedo Captain Fix: Submitted QR Code & Resilient Storage (v1.0.13) \ud83d\ude80",
+    "message": "Fixed submitted payment QR rendering after ride completion, eliminated sample QR fallback, and added persistent database storage for uploads.",
     "forceUpdate": false
   }
 }

@@ -561,19 +561,23 @@ fun DynamicUpiQrPaymentSheet(
     val normalizedCustomQrUrl = remember(rawQrUrl) {
         if (rawQrUrl.isNullOrBlank()) null
         else {
-            val base = Constants.getBaseUrl(context).removeSuffix("api/").removeSuffix("/")
             var url = rawQrUrl.trim()
-            if (url.contains("localhost:5000") || url.contains("127.0.0.1:5000") || url.contains("10.0.2.2:5000")) {
-                url = url.replace("http://localhost:5000", base)
-                    .replace("http://127.0.0.1:5000", base)
-                    .replace("http://10.0.2.2:5000", base)
-            }
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                val cleanPath = if (url.startsWith("/")) url.substring(1) else url
-                val finalPath = if (!cleanPath.startsWith("uploads/")) "uploads/$cleanPath" else cleanPath
-                "$base/$finalPath"
+            if (url.contains("sample_qr") || url.contains("picsum.photos")) {
+                null
             } else {
-                url
+                val base = Constants.getBaseUrl(context).removeSuffix("api/").removeSuffix("/")
+                if (url.contains("localhost:5000") || url.contains("127.0.0.1:5000") || url.contains("10.0.2.2:5000")) {
+                    url = url.replace("http://localhost:5000", base)
+                        .replace("http://127.0.0.1:5000", base)
+                        .replace("http://10.0.2.2:5000", base)
+                }
+                if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                    val cleanPath = if (url.startsWith("/")) url.substring(1) else url
+                    val finalPath = if (!cleanPath.startsWith("uploads/")) "uploads/$cleanPath" else cleanPath
+                    "$base/$finalPath"
+                } else {
+                    url
+                }
             }
         }
     }
