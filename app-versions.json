@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 18,
-    "versionName": "1.0.18",
-    "title": "Speedo Update (v1.0.18) \ud83d\ude80",
-    "message": "Added Firebase Cloud Messaging (FCM) background system-tray push notifications with sound & vibration.",
+    "versionCode": 19,
+    "versionName": "1.0.19",
+    "title": "Speedo Firebase Live (v1.0.19) \ud83d\ude80",
+    "message": "Activated live Firebase Cloud Messaging (FCM) push notifications powered by project speedo-c55b4.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 18,
-    "versionName": "1.0.18",
-    "title": "Speedo Update (v1.0.18) \ud83d\ude80",
-    "message": "Added Firebase Cloud Messaging (FCM) background system-tray push notifications with sound & vibration.",
+    "versionCode": 19,
+    "versionName": "1.0.19",
+    "title": "Speedo Firebase Live (v1.0.19) \ud83d\ude80",
+    "message": "Activated live Firebase Cloud Messaging (FCM) push notifications powered by project speedo-c55b4.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 18,
-    "versionName": "1.0.18",
-    "title": "Speedo Update (v1.0.18) \ud83d\ude80",
-    "message": "Added Firebase Cloud Messaging (FCM) background system-tray push notifications with sound & vibration.",
+    "versionCode": 19,
+    "versionName": "1.0.19",
+    "title": "Speedo Firebase Live (v1.0.19) \ud83d\ude80",
+    "message": "Activated live Firebase Cloud Messaging (FCM) push notifications powered by project speedo-c55b4.",
     "forceUpdate": false
   }
 }

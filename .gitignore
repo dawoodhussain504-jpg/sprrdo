@@ -9,3 +9,6 @@ uploads/*.tmp
 build/
 android/.gradle/
 android/*/build/
+*service-account*.json
+*.pem
+*.key

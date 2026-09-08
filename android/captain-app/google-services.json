@@ -1,13 +1,70 @@
 {
   "project_info": {
-    "project_number": "103948572910",
-    "project_id": "speedo-ride-platform",
-    "storage_bucket": "speedo-ride-platform.appspot.com"
+    "project_number": "796491416091",
+    "project_id": "speedo-c55b4",
+    "storage_bucket": "speedo-c55b4.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:103948572910:android:a1b2c3d4e5f60718293a11",
+        "mobilesdk_app_id": "1:796491416091:android:3e087054bef1180d96aebe",
+        "android_client_info": {
+          "package_name": "com.speedo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQwJLGpGdf4OAV0Eap5z9zAuVxpWn6eJk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796491416091:android:38a76a1e32d614ac96aebe",
+        "android_client_info": {
+          "package_name": "com.speedoadmin.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQwJLGpGdf4OAV0Eap5z9zAuVxpWn6eJk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796491416091:android:a108bc7b44f4d09496aebe",
+        "android_client_info": {
+          "package_name": "com.speedocaptain.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQwJLGpGdf4OAV0Eap5z9zAuVxpWn6eJk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796491416091:android:3e087054bef1180d96aebe",
         "android_client_info": {
           "package_name": "com.speedo.rider"
         }
@@ -15,7 +72,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD-SPEEDO-RIDER-CLIENT-KEY-SAMPLE01"
+          "current_key": "AIzaSyDQwJLGpGdf4OAV0Eap5z9zAuVxpWn6eJk"
         }
       ],
       "services": {
@@ -26,7 +83,7 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:103948572910:android:b2c3d4e5f60718293a1122",
+        "mobilesdk_app_id": "1:796491416091:android:a108bc7b44f4d09496aebe",
         "android_client_info": {
           "package_name": "com.speedo.captain"
         }
@@ -34,7 +91,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD-SPEEDO-CAPTAIN-CLIENT-KEY-SAMPLE02"
+          "current_key": "AIzaSyDQwJLGpGdf4OAV0Eap5z9zAuVxpWn6eJk"
         }
       ],
       "services": {
@@ -45,7 +102,7 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:103948572910:android:c3d4e5f60718293a112233",
+        "mobilesdk_app_id": "1:796491416091:android:38a76a1e32d614ac96aebe",
         "android_client_info": {
           "package_name": "com.speedo.admin"
         }
@@ -53,7 +110,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyD-SPEEDO-ADMIN-CLIENT-KEY-SAMPLE03"
+          "current_key": "AIzaSyDQwJLGpGdf4OAV0Eap5z9zAuVxpWn6eJk"
         }
       ],
       "services": {
