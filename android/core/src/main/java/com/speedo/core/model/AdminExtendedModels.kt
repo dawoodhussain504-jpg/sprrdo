@@ -140,3 +140,33 @@ data class SendBroadcastRequest(
     @SerializedName("discount_percent") val discountPercent: Double = 0.0,
     @SerializedName("bonus_amount") val bonusAmount: Double = 0.0
 )
+
+// -------------------------------------------------------------
+// 5. AUTOMATED SCHEDULED CRON ENGINE MODELS
+// -------------------------------------------------------------
+data class CronJobItem(
+    @SerializedName("key") val key: String,
+    @SerializedName("name") val name: String,
+    @SerializedName("schedule") val schedule: String,
+    @SerializedName("timezone") val timezone: String = "Asia/Kolkata",
+    @SerializedName("description") val description: String = "",
+    @SerializedName("lastRunAt") val lastRunAt: String? = null,
+    @SerializedName("lastStatus") val lastStatus: String = "idle",
+    @SerializedName("lastMessage") val lastMessage: String? = null,
+    @SerializedName("totalRuns") val totalRuns: Int = 0,
+    @SerializedName("totalNotificationsSent") val totalNotificationsSent: Int = 0
+)
+
+data class CronStatusResponse(
+    @SerializedName("timezone") val timezone: String = "Asia/Kolkata",
+    @SerializedName("serverTimeUtc") val serverTimeUtc: String = "",
+    @SerializedName("currentIstTime") val currentIstTime: String = "",
+    @SerializedName("totalJobs") val totalJobs: Int = 0,
+    @SerializedName("jobs") val jobs: List<CronJobItem> = emptyList()
+)
+
+data class CronTriggerResult(
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("message") val message: String,
+    @SerializedName("notificationsSent") val notificationsSent: Int = 0
+)

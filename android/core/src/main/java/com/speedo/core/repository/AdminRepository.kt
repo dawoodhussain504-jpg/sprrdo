@@ -5,6 +5,8 @@ import com.speedo.core.model.Captain
 import com.speedo.core.model.DashboardStats
 import com.speedo.core.model.LiveMapResponse
 import com.speedo.core.model.Ride
+import com.speedo.core.model.CronStatusResponse
+import com.speedo.core.model.CronTriggerResult
 import com.speedo.core.network.NetworkResult
 import com.speedo.core.network.RetrofitClient
 import com.speedo.core.network.SpeedoApiService
@@ -323,6 +325,32 @@ class AdminRepository(context: Context) {
                 NetworkResult.Success(true)
             } else {
                 NetworkResult.Error(res.body()?.message ?: "Failed to reject deletion")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun getCronStatus(): NetworkResult<CronStatusResponse> {
+        return try {
+            val res = api.getCronJobStatus()
+            if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
+                NetworkResult.Success(res.body()!!.data!!)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to fetch cron status")
+            }
+        } catch (e: Exception) {
+            NetworkResult.Error(e.localizedMessage ?: "Network error")
+        }
+    }
+
+    suspend fun triggerCronJob(jobKey: String): NetworkResult<CronTriggerResult> {
+        return try {
+            val res = api.triggerCronJob(mapOf("job" to jobKey))
+            if (res.isSuccessful && res.body()?.success == true && res.body()?.data != null) {
+                NetworkResult.Success(res.body()!!.data!!)
+            } else {
+                NetworkResult.Error(res.body()?.message ?: "Failed to trigger cron job")
             }
         } catch (e: Exception) {
             NetworkResult.Error(e.localizedMessage ?: "Network error")

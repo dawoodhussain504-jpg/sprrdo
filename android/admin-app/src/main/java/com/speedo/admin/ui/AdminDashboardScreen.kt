@@ -32,6 +32,7 @@ fun AdminDashboardScreen(
     onNavigateToSurge: () -> Unit,
     onNavigateToSos: () -> Unit,
     onNavigateToBroadcasts: () -> Unit,
+    onNavigateToAutomatedJobs: () -> Unit = {},
     onNavigateToDestinations: () -> Unit = {},
     onNavigateToMap: () -> Unit,
     onNavigateToRides: () -> Unit,
@@ -262,6 +263,16 @@ fun AdminDashboardScreen(
                 title = "Targeted City-Wide Broadcasts",
                 subtitle = "Dispatch instant push offers, promo codes & bonuses",
                 onClick = onNavigateToBroadcasts
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AdminShortcutRow(
+                icon = Icons.Default.Schedule,
+                title = "Automated Cron Jobs Engine",
+                subtitle = "Monitor 6 scheduled routines, check IST schedules & test triggers",
+                badge = "6 ACTIVE",
+                onClick = onNavigateToAutomatedJobs
             )
 
             Spacer(modifier = Modifier.height(10.dp))

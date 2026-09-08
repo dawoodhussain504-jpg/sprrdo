@@ -36,6 +36,8 @@ data class AdminUiState(
     val deletionRequests: List<AccountDeletionRequest> = emptyList(),
     val pendingDeletionCount: Int = 0,
     val appVersions: List<AppVersionConfig> = emptyList(),
+    val cronStatus: CronStatusResponse? = null,
+    val isTriggeringCronJob: Map<String, Boolean> = emptyMap(),
     val isSubmittingAction: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -812,4 +814,61 @@ class AdminViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-}
+    fun fetchCronStatus() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            when (val res = adminRepo.getCronStatus()) {
+                is NetworkResult.Success -> {
+                    _uiState.value = _uiState.value.copy(
+                        cronStatus = res.data,
+                        isLoading = false
+                    )
+                }
+                is NetworkResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
+        }
+    }
+
+    fun triggerCronRoutine(jobKey: String) {
+        viewModelScope.launch {
+            val updating = _uiState.value.isTriggeringCronJob.toMutableMap()
+            updating[jobKey] = true
+            _uiState.value = _uiState.value.copy(isTriggeringCronJob = updating)
+
+            when (val res = adminRepo.triggerCronJob(jobKey)) {
+                is NetworkResult.Success -> {
+                    val result = res.data
+                    val updatedFlags = _uiState.value.isTriggeringCronJob.toMutableMap()
+                    updatedFlags[jobKey] = false
+                    _uiState.value = _uiState.value.copy(
+                        isTriggeringCronJob = updatedFlags,
+                        successMessage = "⚡ ${result.message}"
+                    )
+                    fetchCronStatus()
+                }
+                is NetworkResult.Error -> {
+                    val updatedFlags = _uiState.value.isTriggeringCronJob.toMutableMap()
+                    updatedFlags[jobKey] = false
+                    _uiState.value = _uiState.value.copy(
+                        isTriggeringCronJob = updatedFlags,
+                        errorMessage = res.message
+                    )
+                }
+                else -> {
+                    val updatedFlags = _uiState.value.isTriggeringCronJob.toMutableMap()
+                    updatedFlags[jobKey] = false
+                    _uiState.value = _uiState.value.copy(isTriggeringCronJob = updatedFlags)
+                }
+            }
+        }
+    }
+
+}

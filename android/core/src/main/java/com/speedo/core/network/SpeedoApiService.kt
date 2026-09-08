@@ -214,6 +214,15 @@ interface SpeedoApiService {
     @GET("admin/notifications")
     suspend fun getAdminNotifications(): Response<ApiResponse<List<NotificationItem>>>
 
+    // --- AUTOMATED CRON ENGINE ENDPOINTS ---
+    @GET("admin/cron/status")
+    suspend fun getCronJobStatus(): Response<ApiResponse<CronStatusResponse>>
+
+    @POST("admin/cron/trigger")
+    suspend fun triggerCronJob(
+        @Body body: Map<String, String>
+    ): Response<ApiResponse<CronTriggerResult>>
+
     // --- CHAT ENDPOINTS ---
     @POST("chat/rides/{rideId}/messages")
     suspend fun sendChatMessage(

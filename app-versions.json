@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 16,
-    "versionName": "1.0.16",
-    "title": "Speedo Update (v1.0.16) \ud83d\ude80",
-    "message": "Removed exact QR tab and sample QR. Payment popup now displays exclusively the captain's authentic uploaded QR code.",
+    "versionCode": 17,
+    "versionName": "1.0.17",
+    "title": "Speedo Update (v1.0.17) \ud83d\ude80",
+    "message": "Added Admin Automated Cron Jobs Control Center, real-time IST scheduling, and background notification management.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 16,
-    "versionName": "1.0.16",
-    "title": "Speedo Update (v1.0.16) \ud83d\ude80",
-    "message": "Removed exact QR tab and sample QR. Payment popup now displays exclusively the captain's authentic uploaded QR code.",
+    "versionCode": 17,
+    "versionName": "1.0.17",
+    "title": "Speedo Update (v1.0.17) \ud83d\ude80",
+    "message": "Added Admin Automated Cron Jobs Control Center, real-time IST scheduling, and background notification management.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 16,
-    "versionName": "1.0.16",
-    "title": "Speedo Update (v1.0.16) \ud83d\ude80",
-    "message": "Removed exact QR tab and sample QR. Payment popup now displays exclusively the captain's authentic uploaded QR code.",
+    "versionCode": 17,
+    "versionName": "1.0.17",
+    "title": "Speedo Update (v1.0.17) \ud83d\ude80",
+    "message": "Added Admin Automated Cron Jobs Control Center, real-time IST scheduling, and background notification management.",
     "forceUpdate": false
   }
 }
