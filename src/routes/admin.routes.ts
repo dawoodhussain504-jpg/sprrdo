@@ -35,6 +35,8 @@ import {
   getUsersManagement,
   toggleUserStatus,
   getAdminNotifications,
+  getCronStatusAdmin,
+  triggerCronJobAdmin,
 } from '../controllers/admin.controller';
 
 const router = Router();
@@ -95,6 +97,10 @@ router.post('/deletion-requests/:id/reject', rejectAccountDeletion);
 // 7. Over-the-Air App Version Management
 router.get('/app-versions', getAllAppVersionsAdmin);
 router.put('/app-versions/:app', updateAppVersionConfig);
+
+// 8. Automated Background Cron Notification Engine
+router.get('/cron/status', getCronStatusAdmin);
+router.post('/cron/trigger', triggerCronJobAdmin);
 
 export default router;
 

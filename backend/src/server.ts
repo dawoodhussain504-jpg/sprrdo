@@ -478,6 +478,14 @@ async function startServer() {
       console.log('⚠️ App version sync info:', syncErr.message);
     }
 
+    // Automated Background Cron Notification Engine
+    try {
+      const { initCronJobs } = await import('./services/cron.service');
+      initCronJobs();
+    } catch (cronErr: any) {
+      console.log('⚠️ Cron engine info:', cronErr.message);
+    }
+
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`====================================================`);
       console.log(` SPEEDO REAL-TIME BACKEND & SOCKETS RUNNING ON ${PORT}`);

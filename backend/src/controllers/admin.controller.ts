@@ -10,6 +10,7 @@ import {
   emitSurgeUpdate,
   emitBroadcast,
 } from '../services/socket';
+import { getCronJobStatus, triggerJobManually } from '../services/cron.service';
 
 export async function getDashboardStats(_req: AuthenticatedRequest, res: Response) {
   try {
@@ -661,5 +662,30 @@ export async function getBroadcasts(_req: AuthenticatedRequest, res: Response) {
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, message: 'Failed to fetch broadcasts', error: error.message });
+  }
+}
+
+export async function getCronStatusAdmin(_req: AuthenticatedRequest, res: Response) {
+  try {
+    const status = getCronJobStatus();
+    return res.json({
+      success: true,
+      data: status,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to get cron status', error: error.message });
+  }
+}
+
+export async function triggerCronJobAdmin(req: AuthenticatedRequest, res: Response) {
+  try {
+    const jobKey = req.body?.job || req.query?.job || 'all';
+    const result = await triggerJobManually(String(jobKey));
+    return res.json({
+      success: result.success,
+      data: result,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: 'Failed to trigger cron job', error: error.message });
   }
 }
