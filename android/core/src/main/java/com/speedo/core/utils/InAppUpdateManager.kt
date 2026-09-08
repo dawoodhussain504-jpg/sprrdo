@@ -146,7 +146,13 @@ object InAppUpdateManager {
                     destFile.delete()
                 }
 
-                Log.i(TAG, "⚡ [TURBO DOWNLOAD START] Target URL: $downloadUrl")
+                val targetUrl = if (downloadUrl.contains("?")) {
+                    "$downloadUrl&t=${System.currentTimeMillis()}"
+                } else {
+                    "$downloadUrl?t=${System.currentTimeMillis()}"
+                }
+
+                Log.i(TAG, "⚡ [TURBO DOWNLOAD START] Target URL: $targetUrl")
 
                 // Step 1: Probe server capabilities (HTTP Range & Content-Length)
                 var totalBytes = 22L * 1024L * 1024L // fallback 22MB
@@ -154,7 +160,7 @@ object InAppUpdateManager {
 
                 try {
                     val probeReq = Request.Builder()
-                        .url(downloadUrl)
+                        .url(targetUrl)
                         .header("User-Agent", "Speedo-Turbo-Updater/2.0")
                         .header("Accept-Encoding", "identity")
                         .header("Range", "bytes=0-1")
@@ -178,29 +184,27 @@ object InAppUpdateManager {
                             acceptsRanges = true
                         }
 
-                        if (totalBytes <= 22L * 1024L * 1024L && clHeader != null) {
+                        if (clHeader != null && totalBytes == 22L * 1024L * 1024L) {
                             clHeader.toLongOrNull()?.let { if (it > 0) totalBytes = it }
                         }
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Range probe warning: ${e.message}. Proceeding with high-speed buffered download.")
+                } catch (pe: Exception) {
+                    Log.w(TAG, "Probe check failed, proceeding with standard stream download: ${pe.message}")
                 }
-
-                Log.i(TAG, "⚡ [TURBO DOWNLOAD] AcceptsRanges=$acceptsRanges, totalBytes=$totalBytes")
 
                 // Step 2: Download via 4-worker parallel chunking OR high-speed buffered stream
                 val success = if (acceptsRanges && totalBytes > 3 * 1024 * 1024) {
                     try {
-                        downloadParallelChunks(downloadUrl, destFile, totalBytes)
+                        downloadParallelChunks(targetUrl, destFile, totalBytes)
                         true
                     } catch (pe: Exception) {
                         Log.w(TAG, "Parallel download encountered issue (${pe.message}), falling back to single-stream.", pe)
                         if (destFile.exists()) destFile.delete()
-                        downloadSingleStream(downloadUrl, destFile, totalBytes)
+                        downloadSingleStream(targetUrl, destFile, totalBytes)
                         true
                     }
                 } else {
-                    downloadSingleStream(downloadUrl, destFile, totalBytes)
+                    downloadSingleStream(targetUrl, destFile, totalBytes)
                     true
                 }
 

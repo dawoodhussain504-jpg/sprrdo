@@ -268,12 +268,13 @@ if (!fs.existsSync(preferredDownloadsDir)) {
   try { fs.mkdirSync(preferredDownloadsDir, { recursive: true }); } catch (_) {}
 }
 app.use('/downloads', express.static(preferredDownloadsDir, {
-  maxAge: '1d',
   setHeaders: (res, pathStr) => {
     if (pathStr.endsWith('.apk')) {
       res.setHeader('Content-Type', 'application/vnd.android.package-archive');
       res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
     }
   }
 }));
@@ -313,7 +314,9 @@ function handleApkDownload(filename: string, _req: express.Request, res: express
     res.setHeader('Content-Type', 'application/vnd.android.package-archive');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     return res.sendFile(localFile);
   }
 
@@ -348,7 +351,7 @@ export async function prewarmApkStorage() {
       try {
         const https = await import('https');
         const fileStream = fs.createWriteStream(dest);
-        https.get(`${GITHUB_CDN_BASE}/${apk}`, (response) => {
+        https.get(`${GITHUB_CDN_BASE}/${apk}?t=${Date.now()}`, (response) => {
           if (response.statusCode === 200) {
             response.pipe(fileStream);
             fileStream.on('finish', () => {

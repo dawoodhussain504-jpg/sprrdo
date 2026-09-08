@@ -5,4 +5,3 @@ android/
 uploads/*.tmp
 dist/
 *.log
-*.apk
