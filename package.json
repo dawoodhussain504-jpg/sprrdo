@@ -37,7 +37,8 @@
     "sqlite3": "^5.1.7",
     "tesseract.js": "^7.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "firebase-admin": "^14.3.0"
   },
   "devDependencies": {},
   "engines": {
