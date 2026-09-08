@@ -1,5 +1,6 @@
 import { db } from '../config/db';
 import { UserRole } from '../config/jwt';
+import { sendPushNotificationToUser } from './fcm.service';
 
 export interface CreateNotificationParams {
   recipientId: string;
@@ -19,6 +20,39 @@ export async function createNotification(params: CreateNotificationParams) {
      VALUES ($1, $2, $3, $4, $5, $6, 0, $7, CURRENT_TIMESTAMP)`,
     [id, params.recipientId, params.recipientRole, params.title, params.message, params.type, metadataJson]
   );
+
+  // Dispatch background FCM push notification to target device(s)
+  try {
+    let channelId = 'speedo_general';
+    if (params.type && params.type.startsWith('ride_')) {
+      channelId = 'speedo_ride_alerts';
+    } else if (params.type && params.type.startsWith('kyc_')) {
+      channelId = 'speedo_kyc_updates';
+    } else if (params.type === 'app_update') {
+      channelId = 'speedo_app_updates';
+    }
+
+    const fcmData: Record<string, string> = {
+      id,
+      type: params.type,
+      channelId,
+    };
+    if (params.metadata) {
+      for (const [k, v] of Object.entries(params.metadata)) {
+        fcmData[k] = typeof v === 'string' ? v : JSON.stringify(v);
+      }
+    }
+
+    sendPushNotificationToUser(params.recipientId, params.recipientRole, {
+      title: params.title,
+      body: params.message,
+      channelId,
+      type: params.type,
+      data: fcmData,
+    }).catch((err) => console.warn('[NotificationPush] Push send error:', err.message));
+  } catch (pushErr: any) {
+    console.warn('[NotificationPush] Push dispatch caught error:', pushErr.message);
+  }
 
   return id;
 }

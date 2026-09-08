@@ -266,3 +266,15 @@ CREATE TABLE IF NOT EXISTS app_version_configs (
   is_active INTEGER NOT NULL DEFAULT 1,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  role VARCHAR(32) NOT NULL, -- 'rider', 'captain', 'admin'
+  token TEXT NOT NULL,
+  device_model VARCHAR(128),
+  os_version VARCHAR(64),
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, token)
+);
+

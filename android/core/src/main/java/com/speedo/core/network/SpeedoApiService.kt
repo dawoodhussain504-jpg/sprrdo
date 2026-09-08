@@ -368,4 +368,15 @@ interface SpeedoApiService {
         @Path("app") app: String,
         @Body body: com.speedo.core.model.AppVersionConfig
     ): Response<ApiResponse<com.speedo.core.model.AppVersionConfig>>
+
+    // --- FCM SYSTEM-LEVEL PUSH NOTIFICATION ENDPOINTS ---
+    @POST("notifications/fcm-token")
+    suspend fun registerFcmToken(
+        @Body body: Map<String, String>
+    ): Response<ApiResponse<Any>>
+
+    @HTTP(method = "DELETE", path = "notifications/fcm-token", hasBody = true)
+    suspend fun deleteFcmToken(
+        @Body body: Map<String, String>
+    ): Response<ApiResponse<Any>>
 }

@@ -44,7 +44,18 @@ class TokenManager(context: Context) {
 
     fun isLoggedIn(): Boolean = !getToken().isNullOrBlank()
 
+    fun saveFcmToken(token: String) {
+        sharedPreferences.edit().putString("speedo_fcm_token", token).apply()
+    }
+
+    fun getFcmToken(): String? = sharedPreferences.getString("speedo_fcm_token", null)
+
     fun clear() {
+        val fcmToken = getFcmToken()
         sharedPreferences.edit().clear().apply()
+        // Preserve device push token across user logout/login
+        if (!fcmToken.isNullOrEmpty()) {
+            saveFcmToken(fcmToken)
+        }
     }
 }

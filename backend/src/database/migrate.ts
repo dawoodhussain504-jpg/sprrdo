@@ -45,6 +45,20 @@ export async function runMigrations() {
       }
     }
 
+    // Ensure device_tokens table exists for FCM push notifications
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS device_tokens (
+        id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(64) NOT NULL,
+        role VARCHAR(32) NOT NULL,
+        token TEXT NOT NULL,
+        device_model VARCHAR(128),
+        os_version VARCHAR(64),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, token)
+      );
+    `);
+
     console.log(' Database migrations completed successfully.');
   } catch (err: any) {
     console.error(' Migration execution error:', err.message);

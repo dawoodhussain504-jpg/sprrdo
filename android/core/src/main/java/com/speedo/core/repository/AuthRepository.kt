@@ -20,6 +20,7 @@ class AuthRepository(private val context: Context) {
                 val data = res.body()!!.data!!
                 tokenManager.saveToken(data.token)
                 data.user?.let { tokenManager.saveUserData(it.id, it.name, it.email, "rider") }
+                com.speedo.core.utils.SpeedoFcmManager.onUserLoggedIn(context)
                 NetworkResult.Success(data)
             } else {
                 NetworkResult.Error(res.body()?.message ?: "Login failed", res.code())
@@ -36,6 +37,7 @@ class AuthRepository(private val context: Context) {
                 val data = res.body()!!.data!!
                 tokenManager.saveToken(data.token)
                 data.user?.let { tokenManager.saveUserData(it.id, it.name, it.email, "rider") }
+                com.speedo.core.utils.SpeedoFcmManager.onUserLoggedIn(context)
                 NetworkResult.Success(data)
             } else {
                 NetworkResult.Error(res.body()?.message ?: "Registration failed", res.code())
@@ -52,6 +54,7 @@ class AuthRepository(private val context: Context) {
                 val data = res.body()!!.data!!
                 tokenManager.saveToken(data.token)
                 data.captain?.let { tokenManager.saveUserData(it.id, it.name, it.email, "captain") }
+                com.speedo.core.utils.SpeedoFcmManager.onUserLoggedIn(context)
                 NetworkResult.Success(data)
             } else {
                 NetworkResult.Error(res.body()?.message ?: "Login failed", res.code())
@@ -77,6 +80,7 @@ class AuthRepository(private val context: Context) {
                 val data = res.body()!!.data!!
                 tokenManager.saveToken(data.token)
                 data.captain?.let { tokenManager.saveUserData(it.id, it.name, it.email, "captain") }
+                com.speedo.core.utils.SpeedoFcmManager.onUserLoggedIn(context)
                 NetworkResult.Success(data)
             } else {
                 NetworkResult.Error(res.body()?.message ?: "Registration failed", res.code())
@@ -93,6 +97,7 @@ class AuthRepository(private val context: Context) {
                 val data = res.body()!!.data!!
                 tokenManager.saveToken(data.token)
                 data.admin?.let { tokenManager.saveUserData(it.id, it.name, it.email, "admin") }
+                com.speedo.core.utils.SpeedoFcmManager.onUserLoggedIn(context)
                 NetworkResult.Success(data)
             } else {
                 NetworkResult.Error(res.body()?.message ?: "Invalid admin credentials", res.code())

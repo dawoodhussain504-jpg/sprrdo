@@ -94,6 +94,10 @@ dependencies {
         exclude(group = "org.json", module = "json")
     }
 
+    // Firebase Cloud Messaging (FCM)
+    api(platform(libs.firebase.bom))
+    api(libs.firebase.messaging.ktx)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

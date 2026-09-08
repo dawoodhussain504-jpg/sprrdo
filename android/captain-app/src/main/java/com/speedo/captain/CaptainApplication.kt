@@ -13,6 +13,7 @@ class CaptainApplication : Application() {
         com.speedo.core.utils.ImageLoaderHelper.init(this)
 
         NotificationHelper.createNotificationChannels(this)
+        com.speedo.core.utils.SpeedoFcmManager.initialize(this)
         WorkScheduler.schedulePeriodicNotificationPolling(this)
     }
 }

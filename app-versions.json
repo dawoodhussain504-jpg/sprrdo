@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 17,
-    "versionName": "1.0.17",
-    "title": "Speedo Update (v1.0.17) \ud83d\ude80",
-    "message": "Added Admin Automated Cron Jobs Control Center, real-time IST scheduling, and background notification management.",
+    "versionCode": 18,
+    "versionName": "1.0.18",
+    "title": "Speedo Update (v1.0.18) \ud83d\ude80",
+    "message": "Added Firebase Cloud Messaging (FCM) background system-tray push notifications with sound & vibration.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 17,
-    "versionName": "1.0.17",
-    "title": "Speedo Update (v1.0.17) \ud83d\ude80",
-    "message": "Added Admin Automated Cron Jobs Control Center, real-time IST scheduling, and background notification management.",
+    "versionCode": 18,
+    "versionName": "1.0.18",
+    "title": "Speedo Update (v1.0.18) \ud83d\ude80",
+    "message": "Added Firebase Cloud Messaging (FCM) background system-tray push notifications with sound & vibration.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 17,
-    "versionName": "1.0.17",
-    "title": "Speedo Update (v1.0.17) \ud83d\ude80",
-    "message": "Added Admin Automated Cron Jobs Control Center, real-time IST scheduling, and background notification management.",
+    "versionCode": 18,
+    "versionName": "1.0.18",
+    "title": "Speedo Update (v1.0.18) \ud83d\ude80",
+    "message": "Added Firebase Cloud Messaging (FCM) background system-tray push notifications with sound & vibration.",
     "forceUpdate": false
   }
 }
