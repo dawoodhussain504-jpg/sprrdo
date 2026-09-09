@@ -15,6 +15,9 @@ object Constants {
     // Default API URL (Railway Live Cloud URL)
     const val DEFAULT_BASE_URL = "https://web-production-5d826.up.railway.app/api/"
 
+    // Google Maps Platform API Key (Official)
+    const val GOOGLE_MAPS_API_KEY = "AIzaSyAl4c7ort-C7mVrM-4eZKvqucgWkt03X1E"
+
     // Ola Maps API Key & Service Endpoints
     const val OLA_MAPS_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhIjoiYWNfOTJpbDFzMzIiLCJqdGkiOiIzM2U0ZWE5MyJ9.aBZsvaEcZVSpFU_4jJQpW90xqKJWW41-zct6mLYfVj4"
     const val OLA_MAPS_TILE_URL = "https://api.olamaps.io/tiles/v1/styles/default-light-standard/tiles/"

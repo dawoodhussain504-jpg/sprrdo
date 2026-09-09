@@ -29,7 +29,7 @@ import com.speedo.captain.ui.components.*
 import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
-import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.SpeedoMapView
 import com.speedo.core.theme.*
 import com.speedo.core.utils.InAppUpdateManager
 import com.speedo.core.model.PopularDestinationsData
@@ -121,8 +121,8 @@ fun CaptainDashboardScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Full-Screen Interactive Driver GPS Map (Rapido Voyager)
-        OsmMapView(
+        // 1. Full-Screen Interactive Driver GPS Map (Google Maps Engine with OSM fallback)
+        SpeedoMapView(
             modifier = Modifier.fillMaxSize(),
             centerLat = captainLat,
             centerLng = captainLng,

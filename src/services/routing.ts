@@ -25,12 +25,150 @@ export interface RouteResponse {
   summary: string;
 }
 
+/**
+ * Decodes Google Maps Encoded Polyline into LatLng coordinates
+ */
+export function decodeGooglePolyline(encoded: string): RoutePoint[] {
+  const points: RoutePoint[] = [];
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let b: number;
+    let shift = 0;
+    let result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    const dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+
+    points.push({
+      lat: lat / 1e5,
+      lng: lng / 1e5,
+    });
+  }
+
+  return points;
+}
+
+/**
+ * Calculates high-accuracy, real-time traffic-aware route using Google Maps Routes API
+ */
+async function calculateGoogleRoutes(
+  originLat: number,
+  originLng: number,
+  destLat: number,
+  destLng: number,
+  apiKey: string
+): Promise<RouteResponse | null> {
+  const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+  const body = {
+    origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+    destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
+    travelMode: 'DRIVE',
+    routingPreference: 'TRAFFIC_AWARE',
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.description,routes.legs.steps',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data: any = await response.json();
+      if (data.routes && data.routes.length > 0) {
+        const r0 = data.routes[0];
+        const distanceKm = Number(((r0.distanceMeters || 0) / 1000).toFixed(2));
+
+        let durationMins = 0;
+        if (typeof r0.duration === 'string') {
+          const secs = parseInt(r0.duration.replace('s', ''), 10) || 0;
+          durationMins = Math.max(1, Math.round(secs / 60));
+        } else {
+          durationMins = Math.max(1, Math.round((distanceKm / 22) * 60));
+        }
+
+        const encoded = r0.polyline?.encodedPolyline;
+        const coordinates = encoded ? decodeGooglePolyline(encoded) : [];
+
+        const maneuvers: RouteManeuver[] = [];
+        const steps = r0.legs?.[0]?.steps || [];
+        for (const step of steps) {
+          const stepDist = step.distanceMeters || 0;
+          let stepSecs = 0;
+          if (typeof step.staticDuration === 'string') {
+            stepSecs = parseInt(step.staticDuration.replace('s', ''), 10) || 0;
+          }
+          maneuvers.push({
+            instruction: step.navigationInstruction?.instructions || 'Continue on route',
+            distanceMeters: stepDist,
+            durationSeconds: stepSecs,
+            modifier: step.navigationInstruction?.maneuver || 'straight',
+            type: 'turn',
+            name: '',
+          });
+        }
+
+        return {
+          distanceKm,
+          durationMins,
+          coordinates: coordinates.length > 0 ? coordinates : generateSplineFallback(originLat, originLng, destLat, destLng),
+          maneuvers: maneuvers.length > 0 ? maneuvers : generateFallbackManeuvers(originLat, originLng, destLat, destLng, distanceKm),
+          summary: r0.description || 'Google Maps Traffic-Aware Route',
+        };
+      }
+    }
+  } catch (err: any) {
+    console.warn('[RoutingService] Google Routes API failed, falling back:', err.message);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  return null;
+}
+
 export async function calculateRoadRoute(
   originLat: number,
   originLng: number,
   destLat: number,
   destLng: number
 ): Promise<RouteResponse> {
+  // 1. Prioritize Google Maps Routes API with real-time live traffic
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyAl4c7ort-C7mVrM-4eZKvqucgWkt03X1E';
+  if (googleApiKey) {
+    const googleRoute = await calculateGoogleRoutes(originLat, originLng, destLat, destLng, googleApiKey);
+    if (googleRoute) {
+      return googleRoute;
+    }
+  }
+
+  // 2. Secondary fallback: OSRM engine
   const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true`;
 
   try {

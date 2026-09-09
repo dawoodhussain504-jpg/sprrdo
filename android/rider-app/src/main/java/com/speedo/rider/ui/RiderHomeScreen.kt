@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
-import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.SpeedoMapView
 import com.speedo.core.maps.RouteHelper
 import com.speedo.core.model.PopularDestination
 import com.speedo.core.model.PopularDestinationsData
@@ -179,8 +179,8 @@ fun RiderHomeScreen(
     val defaultLng = if (uiState.pickupLng != 0.0) uiState.pickupLng else 77.5946
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Full-Screen Rapido-Styled Voyager Interactive Map
-        OsmMapView(
+        // 1. Full-Screen Rapido-Styled Voyager Interactive Map (Google Maps Engine with OSM fallback)
+        SpeedoMapView(
             modifier = Modifier.fillMaxSize(),
             centerLat = if (uiState.dropLat != 0.0) (uiState.pickupLat + uiState.dropLat) / 2 else defaultLat,
             centerLng = if (uiState.dropLng != 0.0) (uiState.pickupLng + uiState.dropLng) / 2 else defaultLng,

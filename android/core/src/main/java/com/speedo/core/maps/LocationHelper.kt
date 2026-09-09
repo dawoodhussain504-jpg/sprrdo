@@ -214,21 +214,65 @@ object LocationSearchHelper {
 
         val results = mutableListOf<AddressSuggestion>()
 
-        // 1. Try Ola Maps Places Autocomplete API using user's Ola Maps API Key
+        // 1. Try Speedo Backend Google Places Autocomplete API
         try {
+            val baseUrl = com.speedo.core.utils.Constants.getBaseUrl(context)
             val encoded = java.net.URLEncoder.encode(cleanQuery, "UTF-8")
-            val urlStr = "https://api.olamaps.io/places/v1/autocomplete?input=$encoded&location=$userLat,$userLng&api_key=${com.speedo.core.utils.Constants.OLA_MAPS_API_KEY}"
+            val urlStr = "${baseUrl}places/autocomplete?input=$encoded&lat=$userLat&lng=$userLng"
             val url = java.net.URL(urlStr)
             val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                connectTimeout = 3000
-                readTimeout = 3000
-                setRequestProperty("Content-Type", "application/json")
+                connectTimeout = 3500
+                readTimeout = 3500
+                setRequestProperty("Accept", "application/json")
             }
 
             if (connection.responseCode == 200) {
                 val responseText = connection.inputStream.bufferedReader().use { it.readText() }
                 val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
-                val predictions = root.getAsJsonArray("predictions")
+                if (root.get("success")?.asBoolean == true) {
+                    val dataArray = root.getAsJsonArray("data")
+                    dataArray?.forEach { elem ->
+                        val item = elem.asJsonObject
+                        val title = item.get("title")?.asString ?: cleanQuery
+                        val subtitle = item.get("subtitle")?.asString ?: ""
+                        val fullAddress = item.get("fullAddress")?.asString ?: "$title, $subtitle"
+                        val lat = item.get("lat")?.asDouble ?: userLat
+                        val lng = item.get("lng")?.asDouble ?: userLng
+                        val dist = DistanceUtils.calculateDistanceKm(userLat, userLng, lat, lng)
+
+                        results.add(
+                            AddressSuggestion(
+                                title = title,
+                                subtitle = subtitle,
+                                fullAddress = fullAddress,
+                                lat = lat,
+                                lng = lng,
+                                distanceKm = dist
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "Backend Google Places autocomplete fallback: ${e.message}")
+        }
+
+        // 2. Try Ola Maps Places Autocomplete API fallback
+        if (results.isEmpty()) {
+            try {
+                val encoded = java.net.URLEncoder.encode(cleanQuery, "UTF-8")
+                val urlStr = "https://api.olamaps.io/places/v1/autocomplete?input=$encoded&location=$userLat,$userLng&api_key=${com.speedo.core.utils.Constants.OLA_MAPS_API_KEY}"
+                val url = java.net.URL(urlStr)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 3000
+                    readTimeout = 3000
+                    setRequestProperty("Content-Type", "application/json")
+                }
+
+                if (connection.responseCode == 200) {
+                    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                    val root = com.google.gson.JsonParser.parseString(responseText).asJsonObject
+                    val predictions = root.getAsJsonArray("predictions")
 
                 predictions?.forEach { elem ->
                     val pred = elem.asJsonObject
@@ -257,8 +301,9 @@ object LocationSearchHelper {
         } catch (e: Exception) {
             android.util.Log.w(TAG, "Ola Maps autocomplete fallback: ${e.message}")
         }
+    }
 
-        // 2. Try Photon OpenStreetMap Autocomplete API
+        // 3. Try Photon OpenStreetMap Autocomplete API
         if (results.isEmpty()) {
             try {
                 val encoded = java.net.URLEncoder.encode(cleanQuery, "UTF-8")

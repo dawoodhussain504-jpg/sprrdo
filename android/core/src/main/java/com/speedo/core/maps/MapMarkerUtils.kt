@@ -11,6 +11,18 @@ object MapMarkerUtils {
     private val pinCache = ConcurrentHashMap<String, Drawable>()
     private val vehicleCache = ConcurrentHashMap<String, Drawable>()
 
+    fun getPinBitmap(context: Context, color: Int, label: String? = null): Bitmap {
+        return (createPinDrawable(context, color, label) as BitmapDrawable).bitmap
+    }
+
+    fun getUserLocationBitmap(context: Context): Bitmap {
+        return (createUserLocationDrawable(context) as BitmapDrawable).bitmap
+    }
+
+    fun getVehicleBitmap(context: Context, vehicleType: String): Bitmap {
+        return (createVehicleDrawable(context, vehicleType) as BitmapDrawable).bitmap
+    }
+
     /**
      * Generates or retrieves a cached Rapido-style custom styled Map Pin (Pickup / Drop)
      */

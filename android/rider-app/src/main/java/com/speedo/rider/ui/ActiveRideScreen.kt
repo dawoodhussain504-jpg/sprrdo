@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.speedo.core.components.*
 import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
-import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.SpeedoMapView
 import com.speedo.core.maps.RouteHelper
 import com.speedo.core.socket.SpeedoSocketManager
 import com.speedo.core.theme.*
@@ -294,8 +294,8 @@ fun ActiveRideScreen(
         val centerLat = ride.liveCaptainLat ?: ride.pickupLat
         val centerLng = ride.liveCaptainLng ?: ride.pickupLng
 
-        // 1. Full-Screen Live Tracking Map with Road-Snapped Curves
-        OsmMapView(
+        // 1. Full-Screen Live Tracking Map (Google Maps Engine with OSM fallback)
+        SpeedoMapView(
             modifier = Modifier.fillMaxSize(),
             centerLat = centerLat,
             centerLng = centerLng,

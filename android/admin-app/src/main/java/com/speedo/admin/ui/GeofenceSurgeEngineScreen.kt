@@ -24,7 +24,7 @@ import com.speedo.admin.viewmodel.AdminViewModel
 import com.speedo.core.components.*
 import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
-import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.SpeedoMapView
 import com.speedo.core.model.SurgeZone
 import com.speedo.core.theme.*
 
@@ -89,7 +89,7 @@ fun GeofenceSurgeEngineScreen(
                     .fillMaxWidth()
                     .height(260.dp)
             ) {
-                OsmMapView(
+                SpeedoMapView(
                     modifier = Modifier.fillMaxSize(),
                     centerLat = 12.9716,
                     centerLng = 77.5946,

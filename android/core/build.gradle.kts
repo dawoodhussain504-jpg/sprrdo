@@ -69,7 +69,11 @@ dependencies {
     api(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
 
-    // Maps (osmdroid)
+    // Maps (Google Maps Compose & osmdroid fallback)
+    api(libs.play.services.maps)
+    api(libs.maps.compose)
+    api(libs.maps.compose.utils)
+    api(libs.google.places)
     api(libs.osmdroid.android)
 
     // WorkManager

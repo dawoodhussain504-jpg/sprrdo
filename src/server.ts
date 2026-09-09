@@ -14,6 +14,7 @@ import chatRoutes from './routes/chat.routes';
 import supportRoutes from './routes/support.routes';
 import sosRoutes from './routes/sos.routes';
 import notificationRoutes from './routes/notification.routes';
+import placesRoutes from './routes/places.routes';
 import { runMigrations } from './database/migrate';
 import { initSocketServer } from './services/socket';
 
@@ -416,6 +417,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/sos', sosRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/places', placesRoutes);
 
 // 404 handler
 app.use((_req, res) => {

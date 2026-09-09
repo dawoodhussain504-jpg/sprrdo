@@ -29,7 +29,7 @@ import com.speedo.captain.viewmodel.CaptainViewModel
 import com.speedo.core.components.*
 import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
-import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.SpeedoMapView
 import com.speedo.core.maps.RouteHelper
 import com.speedo.core.socket.SpeedoSocketManager
 import com.speedo.core.theme.*
@@ -186,8 +186,8 @@ fun CaptainActiveRideScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 1. Navigation Vector Map with Road-Snapped Curves
-        OsmMapView(
+        // 1. Navigation Vector Map (Google Maps Engine with OSM fallback)
+        SpeedoMapView(
             modifier = Modifier.fillMaxSize(),
             centerLat = if (ride.status == "ongoing") ride.dropLat else if (ride.status in listOf("accepted", "arrived")) captainLat else ride.pickupLat,
             centerLng = if (ride.status == "ongoing") ride.dropLng else if (ride.status in listOf("accepted", "arrived")) captainLng else ride.pickupLng,

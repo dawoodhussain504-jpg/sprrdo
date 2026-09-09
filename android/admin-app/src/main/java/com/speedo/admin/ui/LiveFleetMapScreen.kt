@@ -17,7 +17,7 @@ import com.speedo.admin.viewmodel.AdminViewModel
 import com.speedo.core.components.SpeedoTopBar
 import com.speedo.core.maps.MapMarkerData
 import com.speedo.core.maps.MarkerType
-import com.speedo.core.maps.OsmMapView
+import com.speedo.core.maps.SpeedoMapView
 import com.speedo.core.theme.*
 
 @Composable
@@ -97,8 +97,8 @@ fun LiveFleetMapScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // OSM Map (Rapido Voyager styled)
-            OsmMapView(
+            // Universal Map Engine (Google Maps Vector with OSM fallback)
+            SpeedoMapView(
                 modifier = Modifier.fillMaxSize(),
                 centerLat = 12.9716,
                 centerLng = 77.5946,

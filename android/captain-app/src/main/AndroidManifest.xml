@@ -26,6 +26,11 @@
         android:theme="@style/Theme.Speedo.App"
         android:usesCleartextTraffic="true">
 
+        <!-- Google Maps Platform API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <service
             android:name=".service.CaptainLocationService"
             android:enabled="true"

@@ -23,7 +23,62 @@ object RouteHelper {
         destLng: Double,
         isCaptain: Boolean = false
     ): NetworkResult<RouteResponse> = withContext(Dispatchers.IO) {
-        // 1. Try Ola Maps Directions API using user's Ola Maps API Key
+        // 1. Try Google Maps Routes API (Official Traffic-Aware Routing)
+        try {
+            val url = URL("https://routes.googleapis.com/directions/v2:computeRoutes")
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 4500
+                readTimeout = 4500
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("X-Goog-Api-Key", Constants.GOOGLE_MAPS_API_KEY)
+                setRequestProperty("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.description")
+                doOutput = true
+            }
+
+            val payload = """
+                {
+                    "origin": {"location": {"latLng": {"latitude": $originLat, "longitude": $originLng}}},
+                    "destination": {"location": {"latLng": {"latitude": $destLat, "longitude": $destLng}}},
+                    "travelMode": "DRIVE",
+                    "routingPreference": "TRAFFIC_AWARE"
+                }
+            """.trimIndent()
+
+            connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+
+            if (connection.responseCode == 200) {
+                val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+                val root = JsonParser.parseString(responseText).asJsonObject
+                val routes = root.getAsJsonArray("routes")
+                if (routes != null && routes.size() > 0) {
+                    val r0 = routes[0].asJsonObject
+                    val distMeters = r0.get("distanceMeters")?.asDouble ?: 0.0
+                    val durStr = r0.get("duration")?.asString ?: ""
+                    val durationSec = durStr.replace("s", "").toDoubleOrNull() ?: 0.0
+
+                    val encodedPolyline = r0.getAsJsonObject("polyline")?.get("encodedPolyline")?.asString ?: ""
+                    val finalPoints = if (encodedPolyline.isNotEmpty()) decodePolyline(encodedPolyline) else emptyList()
+
+                    if (finalPoints.isNotEmpty()) {
+                        val distKm = if (distMeters > 0) distMeters / 1000.0 else DistanceUtils.calculateDistanceKm(originLat, originLng, destLat, destLng)
+                        val durationMins = if (durationSec > 0) Math.max(1, (durationSec / 60.0).toInt()) else DistanceUtils.calculateEtaMinutes(distKm)
+                        return@withContext NetworkResult.Success(
+                            RouteResponse(
+                                distanceKm = Math.round(distKm * 10.0) / 10.0,
+                                durationMins = durationMins,
+                                coordinates = finalPoints,
+                                summary = r0.get("description")?.asString ?: "Google Maps Route"
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("RouteHelper", "Google Routes API direct call fallback: ${e.message}")
+        }
+
+        // 2. Try Ola Maps Directions API using user's Ola Maps API Key
         try {
             val urlStr = "https://api.olamaps.io/routing/v1/directions?origin=$originLat,$originLng&destination=$destLat,$destLng&api_key=${Constants.OLA_MAPS_API_KEY}"
             val url = URL(urlStr)
