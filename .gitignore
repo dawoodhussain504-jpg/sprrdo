@@ -12,3 +12,5 @@ android/*/build/
 *service-account*.json
 *.pem
 *.key
+local.properties
+**/local.properties
