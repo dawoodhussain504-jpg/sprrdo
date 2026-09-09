@@ -55,4 +55,31 @@ object SpeedoMapConfig {
             android.util.Log.e("SpeedoMapConfig", "Failed to configure Osmdroid storage cache", e)
         }
     }
+
+    private var googleMapsInitialized = false
+
+    fun initGoogleMaps(context: Context): Boolean {
+        if (googleMapsInitialized) return true
+        return try {
+            val availability = com.google.android.gms.common.GoogleApiAvailability.getInstance()
+            if (availability.isGooglePlayServicesAvailable(context) == com.google.android.gms.common.ConnectionResult.SUCCESS) {
+                com.google.android.gms.maps.MapsInitializer.initialize(context)
+                // Verify that BitmapDescriptorFactory is functional without throwing NPE
+                com.google.android.gms.maps.model.BitmapDescriptorFactory.defaultMarker()
+                googleMapsInitialized = true
+                true
+            } else {
+                false
+            }
+        } catch (e: Throwable) {
+            android.util.Log.w("SpeedoMapConfig", "Google Maps SDK unavailable on this device: ${e.message}")
+            googleMapsInitialized = false
+            false
+        }
+    }
+
+    fun isGoogleMapsReady(context: Context): Boolean {
+        if (googleMapsInitialized) return true
+        return initGoogleMaps(context)
+    }
 }

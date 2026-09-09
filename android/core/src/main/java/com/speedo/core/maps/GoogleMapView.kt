@@ -36,22 +36,37 @@ fun GoogleMapView(
         position = CameraPosition.fromLatLngZoom(initialPosition, zoomLevel.toFloat())
     }
 
-    // Cache BitmapDescriptors
-    val userLocationIcon = remember(context) {
-        BitmapDescriptorFactory.fromBitmap(MapMarkerUtils.getUserLocationBitmap(context))
-    }
-    val pickupIcon = remember(context) {
-        BitmapDescriptorFactory.fromBitmap(
-            MapMarkerUtils.getPinBitmap(context, AndroidColor.parseColor("#00C853"), "P")
-        )
-    }
-    val dropIcon = remember(context) {
-        BitmapDescriptorFactory.fromBitmap(
-            MapMarkerUtils.getPinBitmap(context, AndroidColor.parseColor("#D50000"), "D")
-        )
-    }
-    val vehicleIcons = remember(context) {
-        mutableMapOf<String, BitmapDescriptor>()
+    // Cache BitmapDescriptors safely without crashing if MapsInitializer is pending
+    var userLocationIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+    var pickupIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+    var dropIcon by remember { mutableStateOf<BitmapDescriptor?>(null) }
+    val vehicleIcons = remember { mutableMapOf<String, BitmapDescriptor?>() }
+
+    LaunchedEffect(context) {
+        try {
+            com.google.android.gms.maps.MapsInitializer.initialize(context)
+            userLocationIcon = try {
+                BitmapDescriptorFactory.fromBitmap(MapMarkerUtils.getUserLocationBitmap(context))
+            } catch (_: Throwable) {
+                runCatching { BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE) }.getOrNull()
+            }
+            pickupIcon = try {
+                BitmapDescriptorFactory.fromBitmap(
+                    MapMarkerUtils.getPinBitmap(context, AndroidColor.parseColor("#00C853"), "P")
+                )
+            } catch (_: Throwable) {
+                runCatching { BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN) }.getOrNull()
+            }
+            dropIcon = try {
+                BitmapDescriptorFactory.fromBitmap(
+                    MapMarkerUtils.getPinBitmap(context, AndroidColor.parseColor("#D50000"), "D")
+                )
+            } catch (_: Throwable) {
+                runCatching { BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED) }.getOrNull()
+            }
+        } catch (e: Throwable) {
+            android.util.Log.w("GoogleMapView", "Icon cache initialization warning: ${e.message}")
+        }
     }
 
     // Map properties & styling
@@ -235,9 +250,13 @@ fun GoogleMapView(
                     }
                     MarkerType.CAPTAIN -> {
                         val icon = vehicleIcons.getOrPut(markerData.vehicleType) {
-                            BitmapDescriptorFactory.fromBitmap(
-                                MapMarkerUtils.getVehicleBitmap(context, markerData.vehicleType)
-                            )
+                            try {
+                                BitmapDescriptorFactory.fromBitmap(
+                                    MapMarkerUtils.getVehicleBitmap(context, markerData.vehicleType)
+                                )
+                            } catch (_: Throwable) {
+                                runCatching { BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE) }.getOrNull()
+                            }
                         }
                         Marker(
                             state = rememberMarkerState(key = markerData.id, position = pos),

@@ -1,18 +1,14 @@
 package com.speedo.core.maps
 
-import android.content.Context
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import org.osmdroid.util.GeoPoint
 
 /**
  * Universal Speedo Map Composable
- * Automatically renders Google Maps Native Vector Engine when Google Play Services is available,
- * and gracefully falls back to OpenStreetMap (OsmMapView) on devices without Play Services.
+ * Automatically renders Google Maps Native Vector Engine when Google Play Services and Maps SDK are verified functional,
+ * and gracefully falls back to OpenStreetMap (OsmMapView) on devices without Play Services or if initialization fails.
  */
 @Composable
 fun SpeedoMapView(
@@ -32,16 +28,17 @@ fun SpeedoMapView(
     onMarkerClick: ((MapMarkerData) -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val isGooglePlayServicesAvailable = remember(context) {
-        try {
-            val availability = GoogleApiAvailability.getInstance()
-            availability.isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
-        } catch (_: Exception) {
-            false
+    var isGoogleMapsReady by remember {
+        mutableStateOf(SpeedoMapConfig.isGoogleMapsReady(context))
+    }
+
+    LaunchedEffect(context) {
+        if (!forceOsm && !isGoogleMapsReady) {
+            isGoogleMapsReady = SpeedoMapConfig.initGoogleMaps(context)
         }
     }
 
-    if (!forceOsm && isGooglePlayServicesAvailable) {
+    if (!forceOsm && isGoogleMapsReady) {
         GoogleMapView(
             modifier = modifier,
             centerLat = centerLat,

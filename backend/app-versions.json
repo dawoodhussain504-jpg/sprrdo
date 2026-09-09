@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 20,
-    "versionName": "1.0.20",
-    "title": "Speedo Google Maps Live (v1.0.20) \ud83d\ude80",
-    "message": "Official Google Maps Platform active! Live Google Routes, traffic-aware ETAs, and Google Places Autocomplete search.",
+    "versionCode": 21,
+    "versionName": "1.0.21",
+    "title": "Speedo Safe Maps Release (v1.0.21) \ud83d\ude80",
+    "message": "Crash-proof Google Maps & dynamic OpenStreetMap hybrid engine active! Uninterrupted navigation and live traffic.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 20,
-    "versionName": "1.0.20",
-    "title": "Speedo Google Maps Live (v1.0.20) \ud83d\ude80",
-    "message": "Official Google Maps Platform active! Live Google Routes, traffic-aware ETAs, and Google Places Autocomplete search.",
+    "versionCode": 21,
+    "versionName": "1.0.21",
+    "title": "Speedo Safe Maps Release (v1.0.21) \ud83d\ude80",
+    "message": "Crash-proof Google Maps & dynamic OpenStreetMap hybrid engine active! Uninterrupted navigation and live traffic.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 20,
-    "versionName": "1.0.20",
-    "title": "Speedo Google Maps Live (v1.0.20) \ud83d\ude80",
-    "message": "Official Google Maps Platform active! Live Google Routes, traffic-aware ETAs, and Google Places Autocomplete search.",
+    "versionCode": 21,
+    "versionName": "1.0.21",
+    "title": "Speedo Safe Maps Release (v1.0.21) \ud83d\ude80",
+    "message": "Crash-proof Google Maps & dynamic OpenStreetMap hybrid engine active! Uninterrupted navigation and live traffic.",
     "forceUpdate": false
   }
 }
