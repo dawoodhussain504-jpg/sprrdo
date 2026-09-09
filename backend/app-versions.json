@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 19,
-    "versionName": "1.0.19",
-    "title": "Speedo Firebase Live (v1.0.19) \ud83d\ude80",
-    "message": "Activated live Firebase Cloud Messaging (FCM) push notifications powered by project speedo-c55b4.",
+    "versionCode": 20,
+    "versionName": "1.0.20",
+    "title": "Speedo Google Maps Live (v1.0.20) \ud83d\ude80",
+    "message": "Official Google Maps Platform active! Live Google Routes, traffic-aware ETAs, and Google Places Autocomplete search.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 19,
-    "versionName": "1.0.19",
-    "title": "Speedo Firebase Live (v1.0.19) \ud83d\ude80",
-    "message": "Activated live Firebase Cloud Messaging (FCM) push notifications powered by project speedo-c55b4.",
+    "versionCode": 20,
+    "versionName": "1.0.20",
+    "title": "Speedo Google Maps Live (v1.0.20) \ud83d\ude80",
+    "message": "Official Google Maps Platform active! Live Google Routes, traffic-aware ETAs, and Google Places Autocomplete search.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 19,
-    "versionName": "1.0.19",
-    "title": "Speedo Firebase Live (v1.0.19) \ud83d\ude80",
-    "message": "Activated live Firebase Cloud Messaging (FCM) push notifications powered by project speedo-c55b4.",
+    "versionCode": 20,
+    "versionName": "1.0.20",
+    "title": "Speedo Google Maps Live (v1.0.20) \ud83d\ude80",
+    "message": "Official Google Maps Platform active! Live Google Routes, traffic-aware ETAs, and Google Places Autocomplete search.",
     "forceUpdate": false
   }
 }

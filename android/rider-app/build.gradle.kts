@@ -22,8 +22,8 @@ android {
         applicationId = "com.speedo.rider"
         minSdk = 24
         targetSdk = 34
-        versionCode = 19
-        versionName = "1.0.19"
+        versionCode = 20
+        versionName = "1.0.20"
 
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
