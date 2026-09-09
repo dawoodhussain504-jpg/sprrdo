@@ -128,7 +128,20 @@ fun CaptainDashboardScreen(
             centerLng = captainLng,
             zoomLevel = 16.5,
             recenterTrigger = recenterTrigger,
-            markers = mapMarkers
+            markers = mapMarkers,
+            showControls = true,
+            controlsBottomPadding = 140.dp,
+            contentPadding = PaddingValues(top = 110.dp, bottom = 140.dp, start = 24.dp, end = 24.dp),
+            onRecenterClick = {
+                com.speedo.core.maps.LocationHelper(context).getCurrentLiveLocation(
+                    onSuccess = { loc ->
+                        captainLat = loc.lat
+                        captainLng = loc.lng
+                        captainBearing = loc.bearing
+                        recenterTrigger = System.currentTimeMillis()
+                    }
+                )
+            }
         )
 
         // 2. Floating Top Driver HUD (Earnings & Online Switch)

@@ -1,7 +1,9 @@
 package com.speedo.core.maps
 
 import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,6 +22,11 @@ fun GoogleMapView(
     centerLng: Double = 77.5946,
     zoomLevel: Double = 16.0,
     recenterTrigger: Long = 0L,
+    zoomInTrigger: Long = 0L,
+    zoomOutTrigger: Long = 0L,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    userHasPanned: Boolean = false,
+    onUserPannedChanged: ((Boolean) -> Unit)? = null,
     markers: List<MapMarkerData> = emptyList(),
     polylinePoints: List<GeoPoint> = emptyList(),
     driverPolylinePoints: List<GeoPoint> = emptyList(),
@@ -88,6 +95,8 @@ fun GoogleMapView(
     // Camera animation for bounds / recenter
     var lastBoundsKey by remember { mutableStateOf("") }
     var lastRecenterTrigger by remember { mutableStateOf(0L) }
+    var lastZoomInTrigger by remember { mutableStateOf(0L) }
+    var lastZoomOutTrigger by remember { mutableStateOf(0L) }
 
     val convertedPolyline = remember(polylinePoints) {
         polylinePoints.map { it.toLatLng() }
@@ -96,23 +105,41 @@ fun GoogleMapView(
         driverPolylinePoints.map { it.toLatLng() }
     }
 
-    // Handle camera movement & recentering
-    LaunchedEffect(recenterTrigger) {
-        if (recenterTrigger > 0L && recenterTrigger != lastRecenterTrigger) {
-            lastRecenterTrigger = recenterTrigger
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(
-                    LatLng(centerLat, centerLng),
-                    zoomLevel.toFloat()
-                ),
-                600
-            )
+    // 1. Kinetic Zoom In / Zoom Out Controls
+    LaunchedEffect(zoomInTrigger) {
+        if (zoomInTrigger > 0L && zoomInTrigger != lastZoomInTrigger) {
+            lastZoomInTrigger = zoomInTrigger
+            cameraPositionState.animate(CameraUpdateFactory.zoomIn(), 250)
         }
     }
 
-    // Handle auto-fit bounds when routes or multiple markers are active
-    LaunchedEffect(autoFitBounds, convertedPolyline, markers) {
-        if (autoFitBounds) {
+    LaunchedEffect(zoomOutTrigger) {
+        if (zoomOutTrigger > 0L && zoomOutTrigger != lastZoomOutTrigger) {
+            lastZoomOutTrigger = zoomOutTrigger
+            cameraPositionState.animate(CameraUpdateFactory.zoomOut(), 250)
+        }
+    }
+
+    // 2. Smooth Recenter Trigger Handling (Rapido 1-tap recenter)
+    LaunchedEffect(recenterTrigger) {
+        if (recenterTrigger > 0L && recenterTrigger != lastRecenterTrigger) {
+            lastRecenterTrigger = recenterTrigger
+            onUserPannedChanged?.invoke(false)
+            if (centerLat != 0.0 && centerLng != 0.0) {
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(
+                        LatLng(centerLat, centerLng),
+                        zoomLevel.toFloat()
+                    ),
+                    500
+                )
+            }
+        }
+    }
+
+    // 3. Handle auto-fit bounds when routes or multiple markers are active (Respects user pan & content padding)
+    LaunchedEffect(autoFitBounds, convertedPolyline, markers, userHasPanned) {
+        if (autoFitBounds && !userHasPanned) {
             val builder = LatLngBounds.builder()
             var count = 0
 
@@ -137,8 +164,8 @@ fun GoogleMapView(
                     if (key != lastBoundsKey) {
                         lastBoundsKey = key
                         cameraPositionState.animate(
-                            CameraUpdateFactory.newLatLngBounds(bounds, 130),
-                            800
+                            CameraUpdateFactory.newLatLngBounds(bounds, 80),
+                            700
                         )
                     }
                 } catch (_: Exception) {}
@@ -146,13 +173,38 @@ fun GoogleMapView(
         }
     }
 
-    // Detect camera movement end
-    LaunchedEffect(cameraPositionState.isMoving) {
-        if (!cameraPositionState.isMoving && onMapMoveEnd != null) {
-            val target = cameraPositionState.position.target
-            onMapMoveEnd(GeoPoint(target.latitude, target.longitude))
+    // 4. Non-intrusive live GPS tracking when user has NOT panned away
+    LaunchedEffect(centerLat, centerLng, userHasPanned, autoFitBounds) {
+        if (!userHasPanned && !autoFitBounds && centerLat != 0.0 && centerLng != 0.0) {
+            val currentTarget = cameraPositionState.position.target
+            val distLat = Math.abs(currentTarget.latitude - centerLat)
+            val distLng = Math.abs(currentTarget.longitude - centerLng)
+            if (distLat > 0.00035 || distLng > 0.00035) { // > ~35m
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLng(LatLng(centerLat, centerLng)),
+                    400
+                )
+            }
         }
-        onMapTouchStateChanged?.invoke(cameraPositionState.isMoving)
+    }
+
+    // 5. Detect genuine user touch gestures (vs programmatic developer animations)
+    LaunchedEffect(cameraPositionState.isMoving) {
+        val isGesture = cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE
+        if (cameraPositionState.isMoving) {
+            if (isGesture) {
+                onUserPannedChanged?.invoke(true)
+                onMapTouchStateChanged?.invoke(true)
+            }
+        } else {
+            if (isGesture) {
+                onMapTouchStateChanged?.invoke(false)
+            }
+            if (onMapMoveEnd != null) {
+                val target = cameraPositionState.position.target
+                onMapMoveEnd(GeoPoint(target.latitude, target.longitude))
+            }
+        }
     }
 
     GoogleMap(
@@ -160,6 +212,7 @@ fun GoogleMapView(
         cameraPositionState = cameraPositionState,
         properties = properties,
         uiSettings = uiSettings,
+        contentPadding = contentPadding,
         onMapClick = { latLng ->
             onMapClick?.invoke(GeoPoint(latLng.latitude, latLng.longitude))
         }

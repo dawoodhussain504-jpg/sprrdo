@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 21,
-    "versionName": "1.0.21",
-    "title": "Speedo Safe Maps Release (v1.0.21) \ud83d\ude80",
-    "message": "Crash-proof Google Maps & dynamic OpenStreetMap hybrid engine active! Uninterrupted navigation and live traffic.",
+    "versionCode": 22,
+    "versionName": "1.0.22",
+    "title": "Speedo Rapido Map Interaction Release (v1.0.22) \ud83d\ude80",
+    "message": "Fluid Rapido-style map interaction: smooth auto-recentering, zero camera snapping while dragging/zooming, floating Recenter target button, and kinetic zoom controls.",
     "forceUpdate": false
   },
   "captain": {
-    "versionCode": 21,
-    "versionName": "1.0.21",
-    "title": "Speedo Safe Maps Release (v1.0.21) \ud83d\ude80",
-    "message": "Crash-proof Google Maps & dynamic OpenStreetMap hybrid engine active! Uninterrupted navigation and live traffic.",
+    "versionCode": 22,
+    "versionName": "1.0.22",
+    "title": "Speedo Rapido Map Interaction Release (v1.0.22) \ud83d\ude80",
+    "message": "Fluid Rapido-style map interaction: smooth auto-recentering, zero camera snapping while dragging/zooming, floating Recenter target button, and kinetic zoom controls.",
     "forceUpdate": false
   },
   "admin": {
-    "versionCode": 21,
-    "versionName": "1.0.21",
-    "title": "Speedo Safe Maps Release (v1.0.21) \ud83d\ude80",
-    "message": "Crash-proof Google Maps & dynamic OpenStreetMap hybrid engine active! Uninterrupted navigation and live traffic.",
+    "versionCode": 22,
+    "versionName": "1.0.22",
+    "title": "Speedo Rapido Map Interaction Release (v1.0.22) \ud83d\ude80",
+    "message": "Fluid Rapido-style map interaction: smooth auto-recentering, zero camera snapping while dragging/zooming, floating Recenter target button, and kinetic zoom controls.",
     "forceUpdate": false
   }
 }

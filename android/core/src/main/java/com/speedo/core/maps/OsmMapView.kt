@@ -3,7 +3,9 @@ package com.speedo.core.maps
 import android.content.Context
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,6 +49,11 @@ fun OsmMapView(
     centerLng: Double = 77.5946,
     zoomLevel: Double = 16.0,
     recenterTrigger: Long = 0L,
+    zoomInTrigger: Long = 0L,
+    zoomOutTrigger: Long = 0L,
+    contentPadding: PaddingValues = PaddingValues(0.dp),
+    userHasPanned: Boolean = false,
+    onUserPannedChanged: ((Boolean) -> Unit)? = null,
     markers: List<MapMarkerData> = emptyList(),
     polylinePoints: List<GeoPoint> = emptyList(),
     driverPolylinePoints: List<GeoPoint> = emptyList(),
@@ -62,6 +69,9 @@ fun OsmMapView(
     var mapViewRef by remember { mutableStateOf<MapView?>(null) }
     var lastBoundsKey by remember { mutableStateOf<String>("") }
     var lastRecenterTrigger by remember { mutableStateOf<Long>(0L) }
+    var lastZoomInTrigger by remember { mutableStateOf<Long>(0L) }
+    var lastZoomOutTrigger by remember { mutableStateOf<Long>(0L) }
+    var hasInitializedCamera by remember { mutableStateOf(false) }
 
     // Lifecycle event handling for MapView
     DisposableEffect(lifecycleOwner) {
@@ -116,6 +126,7 @@ fun OsmMapView(
                         android.view.MotionEvent.ACTION_DOWN,
                         android.view.MotionEvent.ACTION_MOVE -> {
                             isUserInteracting = true
+                            onUserPannedChanged?.invoke(true)
                             onMapTouchStateChanged?.invoke(true)
                         }
                         android.view.MotionEvent.ACTION_UP,
@@ -219,14 +230,25 @@ fun OsmMapView(
                         }
                     }
 
-                    // 4. Smooth Recenter Trigger Handling
+                    // 4. Kinetic Zoom In / Zoom Out Controls
+                    if (zoomInTrigger > 0L && zoomInTrigger != lastZoomInTrigger) {
+                        lastZoomInTrigger = zoomInTrigger
+                        mapView.controller.zoomIn()
+                    }
+                    if (zoomOutTrigger > 0L && zoomOutTrigger != lastZoomOutTrigger) {
+                        lastZoomOutTrigger = zoomOutTrigger
+                        mapView.controller.zoomOut()
+                    }
+
+                    // 5. Smooth Recenter Trigger Handling (Rapido 1-tap recenter)
                     if (recenterTrigger != 0L && recenterTrigger != lastRecenterTrigger) {
                         lastRecenterTrigger = recenterTrigger
+                        onUserPannedChanged?.invoke(false)
                         if (centerLat != 0.0 && centerLng != 0.0) {
-                            mapView.controller.animateTo(GeoPoint(centerLat, centerLng), zoomLevel, 600L)
+                            mapView.controller.animateTo(GeoPoint(centerLat, centerLng), zoomLevel, 550L)
                         }
-                    } else if (autoFitBounds && (polylinePoints.size >= 2 || markers.size >= 2)) {
-                        // 5. Safe Auto-fit camera framing with padding
+                    } else if (autoFitBounds && !userHasPanned && (polylinePoints.size >= 2 || markers.size >= 2)) {
+                        // 6. Safe Auto-fit camera framing with asymmetrical bottom-sheet padding
                         val allPoints = mutableListOf<GeoPoint>()
                         if (polylinePoints.isNotEmpty()) allPoints.addAll(polylinePoints)
                         if (driverPolylinePoints.isNotEmpty()) allPoints.addAll(driverPolylinePoints)
@@ -249,15 +271,35 @@ fun OsmMapView(
                             if (boundsKey != lastBoundsKey) {
                                 lastBoundsKey = boundsKey
                                 if (mapView.width > 0 && mapView.height > 0) {
-                                    val padding = 0.003
-                                    val boundingBox = BoundingBox(maxLat + padding, maxLng + padding, minLat - padding, minLng - padding)
-                                    mapView.zoomToBoundingBox(boundingBox, true, 110)
+                                    val latSpan = (maxLat - minLat).coerceAtLeast(0.005)
+                                    val lngSpan = (maxLng - minLng).coerceAtLeast(0.005)
+
+                                    // Offset the bounding box towards the south so markers remain visible above the bottom sheet
+                                    val extraSouth = latSpan * 0.40
+                                    val extraNorth = latSpan * 0.12
+                                    val extraEastWest = lngSpan * 0.15
+
+                                    val boundingBox = BoundingBox(
+                                        maxLat + extraNorth,
+                                        maxLng + extraEastWest,
+                                        minLat - extraSouth,
+                                        minLng - extraEastWest
+                                    )
+                                    mapView.zoomToBoundingBox(boundingBox, true, 80)
                                 }
                             }
                         }
-                    } else if (centerLat != 0.0 && centerLng != 0.0) {
+                    } else if (!userHasPanned && centerLat != 0.0 && centerLng != 0.0) {
+                        // 7. Non-intrusive tracking when user has NOT panned away
                         val currentCenter = mapView.mapCenter
-                        if (Math.abs(currentCenter.latitude - centerLat) > 0.0001 || Math.abs(currentCenter.longitude - centerLng) > 0.0001) {
+                        val distLat = Math.abs(currentCenter.latitude - centerLat)
+                        val distLng = Math.abs(currentCenter.longitude - centerLng)
+                        if (!hasInitializedCamera) {
+                            hasInitializedCamera = true
+                            mapView.controller.setZoom(zoomLevel)
+                            mapView.controller.setCenter(GeoPoint(centerLat, centerLng))
+                        } else if (distLat > 0.00035 || distLng > 0.00035) {
+                            // Only smoothly follow if vehicle/user moved significantly (> 35m) in live tracking
                             mapView.controller.animateTo(GeoPoint(centerLat, centerLng))
                         }
                     }

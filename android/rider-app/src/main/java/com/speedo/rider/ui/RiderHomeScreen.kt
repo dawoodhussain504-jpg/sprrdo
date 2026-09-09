@@ -189,6 +189,17 @@ fun RiderHomeScreen(
             markers = mapMarkers,
             polylinePoints = polylinePoints,
             autoFitBounds = uiState.dropAddress.isNotEmpty() && uiState.dropLat != 0.0 && !isDrawerCollapsed,
+            showControls = true,
+            controlsBottomPadding = if (uiState.dropAddress.isBlank()) 180.dp else if (isDrawerCollapsed) 95.dp else 360.dp,
+            contentPadding = PaddingValues(
+                top = 180.dp,
+                bottom = if (uiState.dropAddress.isBlank()) 180.dp else if (isDrawerCollapsed) 100.dp else 370.dp,
+                start = 24.dp,
+                end = 24.dp
+            ),
+            onRecenterClick = {
+                viewModel.fetchCurrentLocation()
+            },
             onMapTouchStateChanged = { isDragging ->
                 if (isDragging && uiState.dropAddress.isNotEmpty()) {
                     isDrawerCollapsed = true
@@ -497,37 +508,7 @@ fun RiderHomeScreen(
         }
         }
 
-        // 4. Floating Rapido My Location / Recenter Target Button
-        Surface(
-            shape = CircleShape,
-            color = SpeedoWhite,
-            shadowElevation = 6.dp,
-            border = BorderStroke(1.dp, SpeedoCardBorder),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(
-                    end = 16.dp,
-                    bottom = if (uiState.dropAddress.isBlank()) 170.dp
-                             else if (isDrawerCollapsed) 95.dp
-                             else 360.dp
-                )
-                .clickable {
-                    viewModel.fetchCurrentLocation()
-                    recenterTrigger = System.currentTimeMillis()
-                }
-        ) {
-            Box(
-                modifier = Modifier.size(42.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Recenter Location",
-                    tint = SpeedoOrange,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
+
 
         // 4.5. Popular Destinations Carousel with Place Images (Visible on Home when drop is not yet selected)
         if (uiState.dropAddress.isBlank()) {

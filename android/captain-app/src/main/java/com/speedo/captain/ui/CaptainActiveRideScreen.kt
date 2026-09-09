@@ -196,7 +196,10 @@ fun CaptainActiveRideScreen(
             markers = mapMarkers,
             polylinePoints = polylinePoints,
             driverPolylinePoints = driverPolyline,
-            autoFitBounds = true
+            autoFitBounds = true,
+            showControls = true,
+            controlsBottomPadding = 320.dp,
+            contentPadding = PaddingValues(top = 110.dp, bottom = 320.dp, start = 24.dp, end = 24.dp)
         )
 
         // 2. Floating Top Turn-by-Turn Navigation Banner
