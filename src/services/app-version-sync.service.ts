@@ -136,7 +136,7 @@ export async function syncAppVersions(force = false): Promise<void> {
 
       const dbCode = res.rows.length > 0 ? Number(res.rows[0].latest_version_code || 1) : 0;
       const targetCode = def.versionCode;
-      const targetUrl = def.updateUrl || `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
+      const targetUrl = def.updateUrl || `https://speedo-backend-scfk.onrender.com/downloads/speedo-${appId}.apk`;
       const targetRole = appId === 'rider' ? 'rider' : (appId === 'captain' ? 'captain' : 'all');
 
       if (res.rows.length === 0) {
