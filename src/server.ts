@@ -32,6 +32,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Normalize multi-slash URLs from legacy/migrated clients
+app.use((req, _res, next) => {
+  if (req.url && req.url.includes("//")) {
+    req.url = req.url.replace(/\/+/g, "/");
+  }
+  next();
+});
+
 // Serve uploaded KYC documents, selfies, and payment QR codes statically
 const candidateUploadDirs = [
   path.resolve(process.cwd(), 'uploads'),
