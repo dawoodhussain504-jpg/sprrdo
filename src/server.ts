@@ -397,9 +397,9 @@ app.get(['/', '/health', '/api/health'], (_req, res) => {
 });
 
 // API Routes
-app.get('/api/destinations', getPopularDestinationsPublic);
-app.get('/api/destinations/popular', getPopularDestinationsPublic);
-app.get('/api/app-version', getAppVersionConfig);
+app.get(['/api/destinations', '/destinations', '/api/destinations/popular', '/destinations/popular'], getPopularDestinationsPublic);
+
+app.get(['/api/app-version', '/app-version'], getAppVersionConfig);
 app.all(['/api/app-version/sync-now', '/api/app-version/publish-update'], async (_req, res) => {
   try {
     const { forceSyncAppVersions } = await import('./services/app-version-sync.service');
@@ -409,15 +409,15 @@ app.all(['/api/app-version/sync-now', '/api/app-version/publish-update'], async 
     res.status(500).json({ success: false, error: err.message });
   }
 });
-app.use('/api/auth', authRoutes);
-app.use('/api/rider', riderRoutes);
-app.use('/api/captain', captainRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/chat', chatRoutes);
-app.use('/api/support', supportRoutes);
-app.use('/api/sos', sosRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/places', placesRoutes);
+app.use(['/api/auth', '/auth'], authRoutes);
+app.use(['/api/rider', '/rider'], riderRoutes);
+app.use(['/api/captain', '/captain'], captainRoutes);
+app.use(['/api/admin', '/admin'], adminRoutes);
+app.use(['/api/chat', '/chat'], chatRoutes);
+app.use(['/api/support', '/support'], supportRoutes);
+app.use(['/api/sos', '/sos'], sosRoutes);
+app.use(['/api/notifications', '/notifications'], notificationRoutes);
+app.use(['/api/places', '/places'], placesRoutes);
 
 // 404 handler
 app.use((_req, res) => {
