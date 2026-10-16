@@ -1,23 +1,23 @@
 {
   "rider": {
-    "versionCode": 22,
-    "versionName": "1.0.22",
-    "title": "Speedo Rapido Map Interaction Release (v1.0.22) \ud83d\ude80",
-    "message": "Fluid Rapido-style map interaction: smooth auto-recentering, zero camera snapping while dragging/zooming, floating Recenter target button, and kinetic zoom controls.",
-    "forceUpdate": false
+    "versionCode": 23,
+    "versionName": "1.0.23",
+    "title": "Speedo Seamless Auto-Migration Release (v1.0.23) 🚀",
+    "message": "High-speed automated server migration: all background connections now synchronize directly with Render cloud with zero manual setup.",
+    "forceUpdate": true
   },
   "captain": {
-    "versionCode": 22,
-    "versionName": "1.0.22",
-    "title": "Speedo Rapido Map Interaction Release (v1.0.22) \ud83d\ude80",
-    "message": "Fluid Rapido-style map interaction: smooth auto-recentering, zero camera snapping while dragging/zooming, floating Recenter target button, and kinetic zoom controls.",
-    "forceUpdate": false
+    "versionCode": 23,
+    "versionName": "1.0.23",
+    "title": "Speedo Seamless Auto-Migration Release (v1.0.23) 🚀",
+    "message": "High-speed automated server migration: all background connections now synchronize directly with Render cloud with zero manual setup.",
+    "forceUpdate": true
   },
   "admin": {
-    "versionCode": 22,
-    "versionName": "1.0.22",
-    "title": "Speedo Rapido Map Interaction Release (v1.0.22) \ud83d\ude80",
-    "message": "Fluid Rapido-style map interaction: smooth auto-recentering, zero camera snapping while dragging/zooming, floating Recenter target button, and kinetic zoom controls.",
-    "forceUpdate": false
+    "versionCode": 23,
+    "versionName": "1.0.23",
+    "title": "Speedo Seamless Auto-Migration Release (v1.0.23) 🚀",
+    "message": "High-speed automated server migration: all background connections now synchronize directly with Render cloud with zero manual setup.",
+    "forceUpdate": true
   }
 }
