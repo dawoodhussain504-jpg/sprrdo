@@ -288,6 +288,30 @@ app.use('/downloads', express.static(preferredDownloadsDir, {
   }
 }));
 
+// Serve Speedo Web Admin Portal directly at /admin, /admin/, /portal
+const candidateAdminDirs = [
+  path.resolve(__dirname, '../admin'),
+  path.resolve(__dirname, '../../admin'),
+  path.resolve(__dirname, '../../../admin'),
+  path.resolve(process.cwd(), 'admin'),
+  path.resolve(process.cwd(), 'backend/admin'),
+];
+
+const preferredAdminDir = candidateAdminDirs.find(d => fs.existsSync(path.join(d, 'index.html')));
+if (preferredAdminDir) {
+  console.log('💻 [WebAdmin] Speedo Web Admin Portal ready at:', preferredAdminDir);
+  app.get(['/admin', '/admin/', '/portal', '/portal/', '/admin-dashboard'], (req, res, next) => {
+    if (!req.headers.authorization && (!req.headers.accept || req.headers.accept.includes('text/html') || req.headers.accept.includes('*/*'))) {
+      return res.sendFile(path.join(preferredAdminDir, 'index.html'));
+    }
+    next();
+  });
+  app.use('/admin', express.static(preferredAdminDir));
+  app.use('/portal', express.static(preferredAdminDir));
+}
+
+
+
 /**
  * Searches all candidate paths where APK files might reside inside container
  */

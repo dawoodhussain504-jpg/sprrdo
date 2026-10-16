@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speedo Central Command | Web Admin Dashboard</title>
+  
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS & JS for OpenStreetMap -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Chart.js for Live Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Socket.io Client -->
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            speedo: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              500: '#ff5722',
+              600: '#ea580c',
+              700: '#c2410c',
+              dark: '#e64a19',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbars & Leaflet Dark Mode */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ff5722; }
+
+    .leaflet-container {
+      background: #0f172a !important;
+      font-family: inherit !important;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      border: 1px solid #334155 !important;
+      border-radius: 12px !important;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+    }
+    .leaflet-popup-tip { background: #0f172a !important; }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .pulse-dot::before {
+      content: '';
+      position: absolute;
+      left: -4px; top: -4px;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: inherit;
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    @keyframes flash-red {
+      0%, 100% { background-color: rgba(239, 68, 68, 0.2); }
+      50% { background-color: rgba(239, 68, 68, 0.7); }
+    }
+    .sos-flashing { animation: flash-red 1s infinite; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen antialiased flex flex-col selection:bg-speedo-500 selection:text-white">
+
+  <!-- ========================================== -->
+  <!-- 1. LOGIN SCREEN OVERLAY (Shown if not authed) -->
+  <!-- ========================================== -->
+  <div id="login-overlay" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl shadow-speedo-500/10 relative overflow-hidden">
+      <div class="absolute -top-24 -right-24 w-48 h-48 bg-speedo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-12 h-12 bg-speedo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-speedo-500/30 text-white font-extrabold text-2xl tracking-tighter">
+          S
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            Speedo <span class="text-xs px-2 py-0.5 rounded-full bg-speedo-500/20 text-speedo-500 font-semibold border border-speedo-500/30">Admin Web</span>
+          </h2>
+          <p class="text-xs text-slate-400">Centralized Cloud Operations Command</p>
+        </div>
+      </div>
+
+      <div id="login-error" class="hidden mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs flex items-center gap-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+        <span id="login-error-text">Authentication failed</span>
+      </div>
+
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Admin Email</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-500"></i>
+            <input type="email" id="login-email" value="admin@speedo.com" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-speedo-500 transition font-mono" placeholder="admin@speedo.com" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Password</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-500"></i>
+            <input type="password" id="login-password" value="Admin@123" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-speedo-500 transition font-mono" placeholder="••••••••" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">API Server Endpoint</label>
+          <div class="relative">
+            <i data-lucide="server" class="w-4 h-4 absolute left-3.5 top-3.5 text-slate-500"></i>
+            <input type="text" id="api-endpoint-url" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-300 focus:outline-none focus:border-speedo-500 transition font-mono" />
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1">Directly points to live backend on Render cloud.</p>
+        </div>
+
+        <button type="submit" id="login-btn"
+          class="w-full mt-2 bg-gradient-to-r from-speedo-500 to-orange-600 hover:from-speedo-600 hover:to-orange-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-speedo-500/25 transition duration-200 flex items-center justify-center gap-2">
+          <span>Authorize & Enter Command Center</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+        <span>Version 1.0.23 (Build 23)</span>
+        <a href="/downloads/" class="text-speedo-500 hover:underline flex items-center gap-1">
+          <span>Get Mobile APKs</span>
+          <i data-lucide="external-link" class="w-3 h-3"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 2. MAIN APP SHELL (Sidebar + Top Bar + Content) -->
+  <!-- ========================================== -->
+  <div id="app-shell" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
+    
+    <!-- TOP NAVIGATION BAR -->
+    <header class="h-16 border-b border-slate-800 bg-slate-900/70 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0">
+      <div class="flex items-center space-x-4">
+        <div class="w-9 h-9 bg-speedo-500 rounded-xl flex items-center justify-center shadow-md shadow-speedo-500/20 text-white font-extrabold text-lg">
+          S
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold text-base tracking-tight text-white">Speedo Command Center</h1>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">LIVE CLOUD</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono" id="server-connected-label">Connecting...</p>
+        </div>
+      </div>
+
+      <!-- Center Active SOS Flashing Alert (Hidden by default) -->
+      <div id="top-sos-banner" class="hidden cursor-pointer bg-red-600/20 border border-red-500/40 text-red-400 px-4 py-1.5 rounded-full flex items-center gap-2 animate-pulse" onclick="switchTab('sos')">
+        <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i>
+        <span class="text-xs font-bold" id="top-sos-count">1 CRITICAL SOS ALERT ACTIVE</span>
+        <span class="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">DISPATCH</span>
+      </div>
+
+      <!-- Right controls -->
+      <div class="flex items-center space-x-3">
+        <!-- Live GPS Pulse -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300">
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 relative pulse-dot"></div>
+          <span id="socket-status-label">Socket.io Connected</span>
+        </div>
+
+        <!-- Refresh Button -->
+        <button onclick="refreshCurrentTab()" title="Refresh Data"
+          class="p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon"></i>
+        </button>
+
+        <!-- Admin Profile & Logout -->
+        <div class="flex items-center gap-3 pl-3 border-l border-slate-800">
+          <div class="text-right hidden md:block">
+            <p class="text-xs font-bold text-white leading-tight" id="admin-name-label">Super Admin</p>
+            <p class="text-[10px] text-slate-400 font-mono" id="admin-email-label">admin@speedo.com</p>
+          </div>
+          <button onclick="logoutAdmin()" title="Logout"
+            class="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- BODY CONTAINER WITH SIDEBAR & MAIN VIEW -->
+    <div class="flex-1 flex overflow-hidden">
+      
+      <!-- SIDEBAR -->
+      <aside class="w-64 border-r border-slate-800 bg-slate-900/40 flex flex-col shrink-0 justify-between">
+        <nav class="p-4 space-y-1 overflow-y-auto">
+          
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 py-2">Realtime Fleet</div>
+          
+          <button onclick="switchTab('dashboard')" id="nav-dashboard"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-white bg-speedo-500/10 border border-speedo-500/30 text-speedo-500">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Dashboard & Stats</span>
+          </button>
+
+          <button onclick="switchTab('map')" id="nav-map"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i>
+            <span>Live Fleet Radar</span>
+            <span class="ml-auto text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold" id="badge-online-captains">0</span>
+          </button>
+
+          <button onclick="switchTab('rides')" id="nav-rides"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="car" class="w-4 h-4 text-blue-400"></i>
+            <span>Live Rides Monitor</span>
+          </button>
+
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-2">Operations & Safety</div>
+
+          <button onclick="switchTab('kyc')" id="nav-kyc"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="shield-check" class="w-4 h-4 text-amber-400"></i>
+            <span>KYC Verifications</span>
+            <span class="ml-auto text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-mono font-bold" id="badge-pending-kyc">0</span>
+          </button>
+
+          <button onclick="switchTab('sos')" id="nav-sos"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="alert-octagon" class="w-4 h-4 text-red-400"></i>
+            <span>SOS Command Center</span>
+            <span class="ml-auto text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-mono font-bold" id="badge-active-sos">0</span>
+          </button>
+
+          <button onclick="switchTab('surge')" id="nav-surge"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="zap" class="w-4 h-4 text-yellow-400"></i>
+            <span>Surge & Geofencing</span>
+          </button>
+
+          <button onclick="switchTab('broadcast')" id="nav-broadcast"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="megaphone" class="w-4 h-4 text-purple-400"></i>
+            <span>City Broadcasts</span>
+          </button>
+
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-4 pb-2">Administration</div>
+
+          <button onclick="switchTab('users')" id="nav-users"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="users" class="w-4 h-4 text-cyan-400"></i>
+            <span>Users & Drivers</span>
+          </button>
+
+          <button onclick="switchTab('destinations')" id="nav-destinations"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="compass" class="w-4 h-4 text-rose-400"></i>
+            <span>Popular Spots</span>
+          </button>
+
+          <button onclick="switchTab('versions')" id="nav-versions"
+            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition">
+            <i data-lucide="smartphone" class="w-4 h-4 text-indigo-400"></i>
+            <span>OTA App Versions</span>
+          </button>
+
+        </nav>
+
+        <!-- Sidebar footer info -->
+        <div class="p-4 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-500 flex flex-col gap-1">
+          <div class="flex items-center justify-between">
+            <span>Speedo v1.0.23</span>
+            <span class="text-emerald-500 font-mono">Render OK</span>
+          </div>
+          <div class="truncate text-[10px] text-slate-600 font-mono" id="sidebar-db-status">PostgreSQL Connected</div>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT VIEWPORT -->
+      <main class="flex-1 bg-slate-950 overflow-y-auto relative p-6">
+        
+        <!-- ========================================== -->
+        <!-- TAB 1: DASHBOARD OVERVIEW -->
+        <!-- ========================================== -->
+        <div id="tab-dashboard" class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white">Operations Executive Overview</h2>
+              <p class="text-xs text-slate-400 mt-1">Real-time metrics, fleet availability, and revenue telemetry.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="switchTab('broadcast')"
+                class="bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600 hover:text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+                <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                <span>Push Broadcast</span>
+              </button>
+              <button onclick="switchTab('map')"
+                class="bg-speedo-500 hover:bg-speedo-600 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-speedo-500/25 transition">
+                <i data-lucide="map" class="w-3.5 h-3.5"></i>
+                <span>View Live Radar</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- KPI Cards Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- Card 1: Gross Volume / Revenue -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-medium">Today's Revenue</span>
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <i data-lucide="indian-rupee" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="text-2xl font-extrabold text-white font-mono" id="stat-revenue">₹0</div>
+              <div class="flex items-center gap-1 text-[11px] text-emerald-400 mt-2 font-mono">
+                <i data-lucide="trending-up" class="w-3 h-3"></i>
+                <span>Live transactional Gross Volume</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Active Captains -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-medium">Active Fleet</span>
+                <div class="w-8 h-8 rounded-lg bg-speedo-500/10 text-speedo-500 flex items-center justify-center">
+                  <i data-lucide="bike" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="text-2xl font-extrabold text-white font-mono" id="stat-active-captains">0</div>
+              <div class="flex items-center gap-1 text-[11px] text-slate-400 mt-2">
+                <span class="text-emerald-400 font-semibold" id="stat-online-sub">0 Online</span>
+                <span>•</span>
+                <span class="text-blue-400 font-semibold" id="stat-onride-sub">0 In Ride</span>
+              </div>
+            </div>
+
+            <!-- Card 3: Today's Completed Rides -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 relative overflow-hidden">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-medium">Today's Rides</span>
+                <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                  <i data-lucide="navigation-2" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="text-2xl font-extrabold text-white font-mono" id="stat-rides-completed">0</div>
+              <div class="flex items-center gap-1 text-[11px] text-blue-400 mt-2">
+                <span id="stat-rides-active">0 in progress right now</span>
+              </div>
+            </div>
+
+            <!-- Card 4: Pending KYC -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 relative overflow-hidden cursor-pointer hover:border-amber-500/50 transition" onclick="switchTab('kyc')">
+              <div class="flex items-center justify-between text-slate-400 mb-2">
+                <span class="text-xs font-medium">Pending KYC</span>
+                <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <i data-lucide="clock" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="text-2xl font-extrabold text-amber-400 font-mono" id="stat-kyc-pending">0</div>
+              <div class="flex items-center justify-between text-[11px] text-amber-400 mt-2">
+                <span>Verification queue</span>
+                <span class="underline font-semibold">Review →</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Charts & Activity Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left: Hourly Ride Trends Chart -->
+            <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-sm font-bold text-white">Ride Volume Velocity (Hourly)</h3>
+                  <p class="text-[11px] text-slate-400">Total ride requests and completions</p>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-mono">
+                  <span class="flex items-center gap-1 text-speedo-500"><span class="w-2.5 h-2.5 rounded-full bg-speedo-500"></span> Rides</span>
+                </div>
+              </div>
+              <div class="h-64 relative">
+                <canvas id="ridesTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Right: Fleet Vehicle Distribution & Quick Stats -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-white mb-1">Fleet Category Split</h3>
+                <p class="text-[11px] text-slate-400 mb-4">Bike vs Auto vs Cab fleet presence</p>
+                <div class="h-44 relative flex items-center justify-center">
+                  <canvas id="fleetDistributionChart"></canvas>
+                </div>
+              </div>
+
+              <div class="pt-4 border-t border-slate-800 space-y-2 text-xs">
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-400 flex items-center gap-2"><i data-lucide="bike" class="w-3.5 h-3.5 text-speedo-500"></i> Speedo Bikes</span>
+                  <span class="font-mono font-bold text-white" id="split-bike-count">0</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-400 flex items-center gap-2"><i data-lucide="car" class="w-3.5 h-3.5 text-yellow-500"></i> Speedo Auto</span>
+                  <span class="font-mono font-bold text-white" id="split-auto-count">0</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-400 flex items-center gap-2"><i data-lucide="car-front" class="w-3.5 h-3.5 text-blue-500"></i> Speedo Cab</span>
+                  <span class="font-mono font-bold text-white" id="split-cab-count">0</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom: Recent Active Rides Quick Table -->
+          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="text-sm font-bold text-white">Latest Live Trips</h3>
+                <p class="text-[11px] text-slate-400">Real-time status updates across the city</p>
+              </div>
+              <button onclick="switchTab('rides')" class="text-xs text-speedo-500 hover:underline flex items-center gap-1 font-semibold">
+                <span>View Full Rides Table</span>
+                <i data-lucide="chevron-right" class="w-3 h-3"></i>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                    <th class="pb-3">Ride ID</th>
+                    <th class="pb-3">Rider</th>
+                    <th class="pb-3">Captain</th>
+                    <th class="pb-3">Vehicle</th>
+                    <th class="pb-3">Pickup & Drop</th>
+                    <th class="pb-3">Fare</th>
+                    <th class="pb-3 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-recent-rides" class="divide-y divide-slate-800/60 font-mono">
+                  <tr><td colspan="7" class="py-6 text-center text-slate-500">Loading recent rides...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: LIVE FLEET RADAR MAP -->
+        <!-- ========================================== -->
+        <div id="tab-map" class="hidden space-y-4 h-full flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span>Live Fleet Radar</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-normal">OpenStreetMap Engine</span>
+              </h2>
+              <p class="text-xs text-slate-400">Sub-second moving captain positions & live GPS telemetry.</p>
+            </div>
+            
+            <!-- Map Filters -->
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="map-filter-type" onchange="renderFleetMarkers()"
+                class="bg-slate-900 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-speedo-500 font-sans">
+                <option value="all">All Vehicles (Bike, Auto, Cab)</option>
+                <option value="bike">🛵 Bikes Only</option>
+                <option value="auto">🛺 Auto Only</option>
+                <option value="cab">🚕 Cabs Only</option>
+              </select>
+
+              <select id="map-filter-status" onchange="renderFleetMarkers()"
+                class="bg-slate-900 border border-slate-800 text-xs rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-speedo-500 font-sans">
+                <option value="all">All Status (Online & On-Ride)</option>
+                <option value="online">🟢 Available Online Only</option>
+                <option value="on_ride">🟡 In Active Ride Only</option>
+              </select>
+
+              <button onclick="centerMapOnFleet()"
+                class="bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white px-3 py-2 rounded-xl flex items-center gap-1.5 transition">
+                <i data-lucide="locate" class="w-3.5 h-3.5 text-speedo-500"></i>
+                <span>Fit Bounds</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- The Leaflet Map Container -->
+          <div class="flex-1 w-full rounded-2xl overflow-hidden border border-slate-800 relative min-h-[500px]">
+            <div id="fleet-leaflet-map" class="w-full h-full"></div>
+
+            <!-- Floating Map Legend & Counter -->
+            <div class="absolute bottom-5 left-5 z-[1000] bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl px-4 py-3 shadow-2xl flex items-center gap-4 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block shadow-sm shadow-emerald-500/50"></span>
+                <span class="text-slate-300">Available: <strong class="text-white font-mono" id="map-legend-online">0</strong></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block shadow-sm shadow-yellow-500/50"></span>
+                <span class="text-slate-300">In Ride: <strong class="text-white font-mono" id="map-legend-onride">0</strong></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-slate-600 inline-block"></span>
+                <span class="text-slate-300">Offline: <strong class="text-white font-mono" id="map-legend-offline">0</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: KYC VERIFICATIONS QUEUE -->
+        <!-- ========================================== -->
+        <div id="tab-kyc" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span>Captain KYC Review Queue</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono font-semibold" id="kyc-pending-badge">0 Pending</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">Verify Driving Licenses, RC Books, and vehicle registrations.</p>
+            </div>
+            <button onclick="loadKycQueue()" class="bg-slate-900 border border-slate-800 text-xs px-3.5 py-2 rounded-xl text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+              <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+              <span>Refresh Queue</span>
+            </button>
+          </div>
+
+          <div id="kyc-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <!-- Dynamic KYC Cards inserted here -->
+            <div class="col-span-full py-12 text-center text-slate-500">Loading KYC queue...</div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: LIVE RIDES MONITOR -->
+        <!-- ========================================== -->
+        <div id="tab-rides" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white">Live Rides Monitor</h2>
+              <p class="text-xs text-slate-400 mt-1">Real-time telematics of all requested, active, and completed rides.</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <input type="text" id="rides-search-input" onkeyup="filterRidesTable()" placeholder="Search by Ride ID, Rider, Captain..."
+                class="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-speedo-500 w-64" />
+              <select id="rides-status-filter" onchange="loadRidesList()"
+                class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-speedo-500">
+                <option value="">All Statuses</option>
+                <option value="REQUESTED">REQUESTED</option>
+                <option value="ACCEPTED">ACCEPTED</option>
+                <option value="STARTED">STARTED (Live)</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th class="p-4">Ride ID / Time</th>
+                    <th class="p-4">Rider Details</th>
+                    <th class="p-4">Captain Details</th>
+                    <th class="p-4">Vehicle</th>
+                    <th class="p-4">Route (Pickup → Drop)</th>
+                    <th class="p-4">Fare & Distance</th>
+                    <th class="p-4 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="rides-table-body" class="divide-y divide-slate-800 font-mono">
+                  <tr><td colspan="7" class="py-12 text-center text-slate-500 font-sans">Loading rides...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 5: SOS EMERGENCY COMMAND CENTER -->
+        <!-- ========================================== -->
+        <div id="tab-sos" class="hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span>SOS Emergency Command Center</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 font-mono font-bold" id="sos-live-counter">0 Active</span>
+              </h2>
+              <p class="text-xs text-slate-400 mt-1">Live police dispatch, passenger safety alerts, and panic alarms.</p>
+            </div>
+            <button onclick="loadSosAlerts()" class="bg-slate-900 border border-slate-800 text-xs px-3.5 py-2 rounded-xl text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>Refresh SOS</span>
+            </button>
+          </div>
+
+          <!-- Active SOS Alerts Cards -->
+          <div id="sos-cards-container" class="space-y-4">
+            <div class="p-12 text-center text-slate-500 bg-slate-900/40 border border-slate-800 rounded-2xl">
+              <i data-lucide="shield-check" class="w-12 h-12 mx-auto text-emerald-500 mb-2"></i>
+              <p class="text-sm font-semibold text-slate-300">All Clear — Zero Active Emergency Alerts</p>
+              <p class="text-xs text-slate-500">Any passenger or captain panic button press will instantly trigger alarms here.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 6: SURGE & GEOFENCING ZONES -->
+        <!-- ========================================== -->
+        <div id="tab-surge" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white">Dynamic Surge & Geofencing</h2>
+              <p class="text-xs text-slate-400 mt-1">Create high-demand zones with automatic fare multipliers (1.2x – 2.5x).</p>
+            </div>
+            <button onclick="openAddSurgeModal()"
+              class="bg-gradient-to-r from-speedo-500 to-orange-600 hover:from-speedo-600 hover:to-orange-700 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-speedo-500/20 transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Create New Surge Zone</span>
+            </button>
+          </div>
+
+          <div id="surge-zones-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="col-span-full py-12 text-center text-slate-500">Loading surge zones...</div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 7: CITY-WIDE BROADCASTS -->
+        <!-- ========================================== -->
+        <div id="tab-broadcast" class="hidden space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-white">Targeted City Broadcast Engine</h2>
+            <p class="text-xs text-slate-400 mt-1">Broadcast instant push alerts, traffic advisories, and bonuses to riders & captains.</p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left: Compose Broadcast Form -->
+            <div class="lg:col-span-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+              <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                <i data-lucide="send" class="w-4 h-4 text-purple-400"></i>
+                <span>Compose Announcement</span>
+              </h3>
+              <form id="broadcast-form" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1">Target Audience</label>
+                  <select id="broadcast-target"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                    <option value="all">📢 All Users (Riders & Captains)</option>
+                    <option value="captains">🛵 Captains Only</option>
+                    <option value="riders">🧑 Riders Only</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1">Notification Title</label>
+                  <input type="text" id="broadcast-title" required placeholder="e.g. Rain Surge Alert / 20% Weekend Promo"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500" />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1">Message Body</label>
+                  <textarea id="broadcast-message" rows="4" required placeholder="Type your broadcast message here..."
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-purple-500"></textarea>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-400 mb-1">Urgency Priority</label>
+                  <select id="broadcast-priority"
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                    <option value="high">High Priority (Audible Push Notification)</option>
+                    <option value="normal">Standard Priority</option>
+                  </select>
+                </div>
+
+                <button type="submit" id="broadcast-submit-btn"
+                  class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/25 transition">
+                  <i data-lucide="radio" class="w-4 h-4"></i>
+                  <span>Transmit Broadcast Now</span>
+                </button>
+              </form>
+            </div>
+
+            <!-- Right: Broadcast Logs -->
+            <div class="lg:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
+              <h3 class="text-sm font-bold text-white mb-4">Transmission History</h3>
+              <div id="broadcast-history-container" class="space-y-3 font-mono">
+                <div class="py-8 text-center text-slate-500 font-sans text-xs">Loading transmission history...</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 8: USERS & DRIVERS MODERATION -->
+        <!-- ========================================== -->
+        <div id="tab-users" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white">Users & Drivers Moderation</h2>
+              <p class="text-xs text-slate-400 mt-1">Manage accounts, verify profiles, and toggle active/banned status.</p>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <select id="users-role-filter" onchange="loadUsersList()"
+                class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-speedo-500">
+                <option value="all">All Roles (Captains & Riders)</option>
+                <option value="captains">Captains Only</option>
+                <option value="riders">Riders Only</option>
+              </select>
+              <button onclick="loadUsersList()" class="bg-slate-900 border border-slate-800 text-xs px-3.5 py-2 rounded-xl text-slate-300 hover:text-white flex items-center gap-1.5 transition">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                <span>Refresh</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th class="p-4">User</th>
+                    <th class="p-4">Role</th>
+                    <th class="p-4">Contact</th>
+                    <th class="p-4">Vehicle Details</th>
+                    <th class="p-4">Registered Date</th>
+                    <th class="p-4 text-center">Status</th>
+                    <th class="p-4 text-right">Moderation Action</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body" class="divide-y divide-slate-800 font-mono">
+                  <tr><td colspan="7" class="py-12 text-center text-slate-500 font-sans">Loading user registry...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 9: POPULAR DESTINATIONS -->
+        <!-- ========================================== -->
+        <div id="tab-destinations" class="hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-white">Popular Destinations Hub</h2>
+              <p class="text-xs text-slate-400 mt-1">Manage trending city landmarks displayed on the Rider app home screen.</p>
+            </div>
+            <button onclick="openAddDestinationModal()"
+              class="bg-speedo-500 hover:bg-speedo-600 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-speedo-500/20 transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Add Destination</span>
+            </button>
+          </div>
+
+          <div id="destinations-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="col-span-full py-12 text-center text-slate-500">Loading destinations...</div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 10: OTA APP VERSION CONTROLLER -->
+        <!-- ========================================== -->
+        <div id="tab-versions" class="hidden space-y-6">
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight text-white">Over-The-Air (OTA) App Version Controller</h2>
+            <p class="text-xs text-slate-400 mt-1">Manage live version codes, force updates, and instant remote updates for Android apps.</p>
+          </div>
+
+          <div id="app-versions-container" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="col-span-full py-12 text-center text-slate-500">Loading version configurations...</div>
+          </div>
+
+          <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h4 class="text-sm font-bold text-white">Remote GitHub Discovery Beacon Status</h4>
+              <p class="text-xs text-slate-400 mt-0.5 font-mono">https://raw.githubusercontent.com/dawoodhussain504-jpg/sprrdo/main/server-config.json</p>
+            </div>
+            <button onclick="syncAppVersionsNow()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              <span>Broadcast Update Check Now</span>
+            </button>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3. MODALS (KYC Inspection, Add Surge, Add Destination) -->
+  <!-- ========================================== -->
+
+  <!-- KYC INSPECTION MODAL -->
+  <div id="kyc-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white" id="kyc-modal-captain-name">Captain Name</h3>
+            <p class="text-xs text-slate-400 font-mono" id="kyc-modal-captain-phone">+91 0000000000</p>
+          </div>
+        </div>
+        <button onclick="closeKycModal()" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto py-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Left: Document Image Viewer -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-slate-300">Document Image Preview</span>
+            <div class="flex items-center gap-1" id="kyc-doc-tabs">
+              <button onclick="setKycDocView('dl')" id="doc-tab-dl" class="px-2.5 py-1 rounded-lg bg-speedo-500 text-white font-semibold">License (DL)</button>
+              <button onclick="setKycDocView('rc')" id="doc-tab-rc" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300">RC Book</button>
+              <button onclick="setKycDocView('selfie')" id="doc-tab-selfie" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300">Selfie</button>
+            </div>
+          </div>
+          <div class="w-full h-80 bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden flex items-center justify-center relative group">
+            <img id="kyc-preview-img" src="" alt="Document Preview" class="max-w-full max-h-full object-contain transition duration-200" />
+            <a id="kyc-preview-fullscreen" href="#" target="_blank" class="absolute bottom-3 right-3 bg-slate-900/90 text-white p-2 rounded-xl text-xs flex items-center gap-1 opacity-0 group-hover:opacity-100 transition border border-slate-700">
+              <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
+              <span>Full Size</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: Extracted OCR and Profile Meta -->
+        <div class="space-y-4 text-xs">
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3 font-mono">
+            <div class="text-[10px] uppercase font-bold text-slate-500 font-sans tracking-wider">Captain Profile Data</div>
+            <div class="flex justify-between"><span class="text-slate-400 font-sans">Vehicle Category:</span><span class="text-white font-bold" id="kyc-modal-vehicle-type">BIKE</span></div>
+            <div class="flex justify-between"><span class="text-slate-400 font-sans">Vehicle Plate No:</span><span class="text-speedo-500 font-bold" id="kyc-modal-vehicle-plate">KA-01-AB-1234</span></div>
+            <div class="flex justify-between"><span class="text-slate-400 font-sans">License (DL) No:</span><span class="text-white font-bold" id="kyc-modal-dl-num">DL1420110012345</span></div>
+            <div class="flex justify-between"><span class="text-slate-400 font-sans">Submission Date:</span><span class="text-slate-300" id="kyc-modal-date">-</span></div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <div class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">AI Document OCR Verification</div>
+            <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] flex items-center gap-2" id="kyc-ai-confidence">
+              <i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i>
+              <span>High document authenticity score (98.4%)</span>
+            </div>
+            <p class="text-[11px] text-slate-400" id="kyc-ai-summary">Driving license format validated. Name matches applicant profile.</p>
+          </div>
+
+          <!-- Rejection Reason Input (Hidden initially) -->
+          <div id="kyc-reject-box" class="hidden space-y-2">
+            <label class="block text-xs font-semibold text-red-400">Specify Rejection Reason</label>
+            <input type="text" id="kyc-reject-reason" placeholder="e.g. Blurry photo, Expired license, Invalid RC..."
+              class="w-full bg-slate-950 border border-red-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons Footer -->
+      <div class="pt-4 border-t border-slate-800 flex items-center justify-end gap-3 shrink-0">
+        <button onclick="closeKycModal()" class="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:text-white text-xs font-medium">Cancel</button>
+        <button id="kyc-reject-btn" onclick="handleKycAction('reject')" class="px-4 py-2.5 rounded-xl bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white text-xs font-semibold transition">
+          Reject KYC
+        </button>
+        <button id="kyc-approve-btn" onclick="handleKycAction('approve')" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-lg shadow-emerald-600/25 flex items-center gap-2 transition">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Approve & Activate Captain</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD SURGE MODAL -->
+  <div id="surge-modal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative">
+      <h3 class="text-lg font-bold text-white mb-1">Create New Surge Zone</h3>
+      <p class="text-xs text-slate-400 mb-4">Set dynamic multiplier for peak hours or high-demand spots.</p>
+      
+      <form id="surge-form" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Zone Label / Landmark</label>
+          <input type="text" id="surge-name" required placeholder="e.g. Airport Terminal / Indiranagar Peak"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-speedo-500" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Center Latitude</label>
+            <input type="number" step="any" id="surge-lat" value="12.9716" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Center Longitude</label>
+            <input type="number" step="any" id="surge-lng" value="77.5946" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Radius (Meters)</label>
+            <input type="number" id="surge-radius" value="3000" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono" />
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-400 mb-1">Fare Multiplier</label>
+            <input type="number" step="0.1" id="surge-multiplier" value="1.5" required
+              class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-yellow-400 font-mono font-bold" />
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-3">
+          <button type="button" onclick="closeSurgeModal()" class="px-4 py-2 rounded-xl border border-slate-700 text-slate-300">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-speedo-500 hover:bg-speedo-600 text-white font-semibold">Save Surge Zone</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION CORE LOGIC -->
+  <script>
+    // State & Config
+    let token = localStorage.getItem('speedo_admin_token') || null;
+    let currentAdmin = JSON.parse(localStorage.getItem('speedo_admin_user') || 'null');
+    let activeTab = 'dashboard';
+    let socket = null;
+    let leafletMap = null;
+    let captainMarkers = {};
+    let currentFleetData = [];
+    let currentKycCaptain = null;
+    let activeKycDoc = 'dl';
+    let ridesTrendChart = null;
+    let fleetPieChart = null;
+
+    // Detect base API URL
+    function getApiBase() {
+      const stored = localStorage.getItem('speedo_api_base');
+      if (stored) return stored;
+      // Default to current host or Render Cloud URL
+      if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && !window.location.protocol.startsWith('file')) {
+        return window.location.origin;
+      }
+      return 'https://speedo-backend-scfk.onrender.com';
+    }
+
+    const API_BASE = getApiBase();
+    document.getElementById('api-endpoint-url').value = API_BASE;
+
+    // On Load Initializer
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      if (token && currentAdmin) {
+        initAdminSession();
+      } else {
+        document.getElementById('login-overlay').classList.remove('hidden');
+      }
+    });
+
+    // 1. Auth & Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const customApi = document.getElementById('api-endpoint-url').value.trim();
+      const btn = document.getElementById('login-btn');
+      const errBox = document.getElementById('login-error');
+      
+      localStorage.setItem('speedo_api_base', customApi);
+      btn.disabled = true;
+      btn.innerHTML = '<span>Verifying credentials...</span>';
+      errBox.classList.add('hidden');
+
+      try {
+        const res = await fetch(`${customApi}/api/auth/admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        
+        if (data.success && data.data && data.data.token) {
+          token = data.data.token;
+          currentAdmin = data.data.user || { name: 'Super Admin', email };
+          localStorage.setItem('speedo_admin_token', token);
+          localStorage.setItem('speedo_admin_user', JSON.stringify(currentAdmin));
+          document.getElementById('login-overlay').classList.add('hidden');
+          initAdminSession();
+        } else {
+          throw new Error(data.message || 'Invalid credentials');
+        }
+      } catch (err) {
+        errBox.classList.remove('hidden');
+        document.getElementById('login-error-text').innerText = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Authorize & Enter Command Center</span>';
+      }
+    });
+
+    function logoutAdmin() {
+      localStorage.removeItem('speedo_admin_token');
+      localStorage.removeItem('speedo_admin_user');
+      token = null;
+      currentAdmin = null;
+      if (socket) socket.disconnect();
+      location.reload();
+    }
+
+    // 2. Initialize Session
+    function initAdminSession() {
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
+      document.getElementById('admin-name-label').innerText = currentAdmin.name || 'Super Admin';
+      document.getElementById('admin-email-label').innerText = currentAdmin.email || 'admin@speedo.com';
+      document.getElementById('server-connected-label').innerText = API_BASE.replace('https://', '');
+
+      initWebSocket();
+      initCharts();
+      loadDashboardStats();
+      startPolling();
+    }
+
+    // 3. WebSocket Realtime Engine
+    function initWebSocket() {
+      try {
+        socket = io(API_BASE, {
+          auth: { token },
+          transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+          document.getElementById('socket-status-label').innerText = 'Socket.io Live';
+          console.log('⚡ Socket connected to', API_BASE);
+        });
+
+        socket.on('disconnect', () => {
+          document.getElementById('socket-status-label').innerText = 'Reconnecting...';
+        });
+
+        // Listen for realtime captain GPS streaming
+        socket.on('captain:location_update', (data) => {
+          updateCaptainOnMap(data);
+        });
+
+        // Listen for live SOS alerts
+        socket.on('sos:alert_broadcast', (alert) => {
+          playSosSiren();
+          loadSosAlerts();
+          showSosNotification(alert);
+        });
+
+        // Listen for ride status updates
+        socket.on('ride:status_broadcast', () => {
+          if (activeTab === 'rides' || activeTab === 'dashboard') {
+            loadDashboardStats();
+            if (activeTab === 'rides') loadRidesList();
+          }
+        });
+      } catch (e) {
+        console.warn('Socket init pass:', e.message);
+      }
+    }
+
+    // 4. Tab Navigation Router
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('bg-speedo-500/10', 'border', 'border-speedo-500/30', 'text-speedo-500');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activeNav = document.getElementById(`nav-${tabId}`);
+      if (activeNav) {
+        activeNav.classList.remove('text-slate-400');
+        activeNav.classList.add('bg-speedo-500/10', 'border', 'border-speedo-500/30', 'text-speedo-500');
+      }
+
+      ['dashboard', 'map', 'rides', 'kyc', 'sos', 'surge', 'broadcast', 'users', 'destinations', 'versions'].forEach(id => {
+        const el = document.getElementById(`tab-${id}`);
+        if (el) el.classList.toggle('hidden', id !== tabId);
+      });
+
+      if (tabId === 'map') {
+        initLeafletMapIfNeeded();
+        loadFleetMapData();
+      } else if (tabId === 'kyc') {
+        loadKycQueue();
+      } else if (tabId === 'rides') {
+        loadRidesList();
+      } else if (tabId === 'sos') {
+        loadSosAlerts();
+      } else if (tabId === 'surge') {
+        loadSurgeZones();
+      } else if (tabId === 'broadcast') {
+        loadBroadcastHistory();
+      } else if (tabId === 'users') {
+        loadUsersList();
+      } else if (tabId === 'destinations') {
+        loadDestinationsList();
+      } else if (tabId === 'versions') {
+        loadAppVersions();
+      } else if (tabId === 'dashboard') {
+        loadDashboardStats();
+      }
+      lucide.createIcons();
+    }
+
+    function refreshCurrentTab() {
+      const icon = document.getElementById('refresh-icon');
+      icon.classList.add('animate-spin');
+      setTimeout(() => icon.classList.remove('animate-spin'), 600);
+      switchTab(activeTab);
+    }
+
+    // 5. Dashboard Data Fetching
+    async function loadDashboardStats() {
+      try {
+        const res = await apiFetch('/api/admin/dashboard');
+        if (res.success && res.data) {
+          const d = res.data;
+          document.getElementById('stat-revenue').innerText = `₹${(d.todayRevenue || 0).toLocaleString()}`;
+          document.getElementById('stat-active-captains').innerText = (d.activeCaptains || 0);
+          document.getElementById('stat-online-sub').innerText = `${d.onlineCaptains || 0} Online`;
+          document.getElementById('stat-onride-sub').innerText = `${d.busyCaptains || 0} In Ride`;
+          document.getElementById('stat-rides-completed').innerText = d.todayCompletedRides || 0;
+          document.getElementById('stat-rides-active').innerText = `${d.activeRides || 0} in progress right now`;
+          document.getElementById('stat-kyc-pending').innerText = d.pendingKycCount || 0;
+          document.getElementById('badge-pending-kyc').innerText = d.pendingKycCount || 0;
+          document.getElementById('badge-online-captains').innerText = d.onlineCaptains || 0;
+
+          // SOS Banner alert
+          if (d.activeSosCount > 0) {
+            document.getElementById('top-sos-banner').classList.remove('hidden');
+            document.getElementById('top-sos-count').innerText = `${d.activeSosCount} CRITICAL SOS ALERT ACTIVE`;
+            document.getElementById('badge-active-sos').innerText = d.activeSosCount;
+          } else {
+            document.getElementById('top-sos-banner').classList.add('hidden');
+            document.getElementById('badge-active-sos').innerText = '0';
+          }
+
+          // Category splits
+          document.getElementById('split-bike-count').innerText = d.bikesCount || 0;
+          document.getElementById('split-auto-count').innerText = d.autosCount || 0;
+          document.getElementById('split-cab-count').innerText = d.cabsCount || 0;
+
+          // Render Recent Rides in Dashboard
+          renderDashboardRecentRides(d.recentRides || []);
+        }
+      } catch (err) {
+        console.error('Error loading dashboard stats:', err);
+      }
+    }
+
+    function renderDashboardRecentRides(rides) {
+      const tbody = document.getElementById('dashboard-recent-rides');
+      if (!rides || rides.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-slate-500 font-sans">No recent rides found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rides.slice(0, 5).map(r => `
+        <tr class="hover:bg-slate-900/50 transition">
+          <td class="py-3 text-slate-300 font-bold">#${r.id.slice(0, 8)}</td>
+          <td class="py-3 text-white font-sans">${r.rider_name || 'Rider'}</td>
+          <td class="py-3 text-slate-300 font-sans">${r.captain_name || '<span class="text-slate-500">Unassigned</span>'}</td>
+          <td class="py-3 uppercase text-[11px] text-slate-400 font-sans">${r.vehicle_type || 'BIKE'}</td>
+          <td class="py-3 text-slate-300 font-sans truncate max-w-xs">${r.pickup_address?.slice(0, 25) || 'Pickup'} → ${r.drop_address?.slice(0, 25) || 'Drop'}</td>
+          <td class="py-3 text-emerald-400 font-bold font-mono">₹${r.fare || 0}</td>
+          <td class="py-3 text-right">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${getStatusBadgeClass(r.status)}">${r.status}</span>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function getStatusBadgeClass(status) {
+      switch(status) {
+        case 'COMPLETED': return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        case 'STARTED': return 'bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse';
+        case 'ACCEPTED': return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20';
+        case 'CANCELLED': return 'bg-red-500/10 text-red-400 border border-red-500/20';
+        default: return 'bg-slate-800 text-slate-400';
+      }
+    }
+
+    // 6. Interactive Leaflet Map Fleet Radar
+    function initLeafletMapIfNeeded() {
+      if (leafletMap) {
+        setTimeout(() => leafletMap.invalidateSize(), 200);
+        return;
+      }
+
+      // Initialize centered on Bengaluru (Speedo primary operational hub)
+      leafletMap = L.map('fleet-leaflet-map', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView([12.9716, 77.5946], 13);
+
+      L.control.zoom({ position: 'topright' }).addTo(leafletMap);
+
+      // Free Leaflet OpenStreetMap Dark Standard Tiles
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd'
+      }).addTo(leafletMap);
+    }
+
+    async function loadFleetMapData() {
+      try {
+        const res = await apiFetch('/api/admin/map/live');
+        if (res.success && res.data) {
+          currentFleetData = res.data.captains || [];
+          renderFleetMarkers();
+        }
+      } catch (e) {
+        console.error('Error fetching fleet coordinates:', e);
+      }
+    }
+
+    function renderFleetMarkers() {
+      if (!leafletMap) return;
+
+      const typeFilter = document.getElementById('map-filter-type').value;
+      const statusFilter = document.getElementById('map-filter-status').value;
+
+      let onlineCount = 0, onRideCount = 0, offlineCount = 0;
+
+      // Filter list
+      const filtered = currentFleetData.filter(c => {
+        if (typeFilter !== 'all' && (c.vehicle_type || 'bike').toLowerCase() !== typeFilter) return false;
+        if (statusFilter === 'online' && (!c.is_online || c.active_ride_id)) return false;
+        if (statusFilter === 'on_ride' && !c.active_ride_id) return false;
+        return true;
+      });
+
+      // Clear existing markers not in set
+      Object.keys(captainMarkers).forEach(id => {
+        leafletMap.removeLayer(captainMarkers[id]);
+        delete captainMarkers[id];
+      });
+
+      filtered.forEach(c => {
+        if (!c.lat || !c.lng) return;
+
+        const isBusy = !!c.active_ride_id;
+        const isOnline = !!c.is_online;
+        if (isBusy) onRideCount++;
+        else if (isOnline) onlineCount++;
+        else offlineCount++;
+
+        const pinColor = isBusy ? '#eab308' : (isOnline ? '#10b981' : '#64748b');
+        const iconHtml = `
+          <div style="transform: rotate(${c.bearing || 0}deg);" class="relative flex items-center justify-center">
+            <div style="background-color: ${pinColor};" class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shadow-lg border-2 border-slate-900 font-bold">
+              ${c.vehicle_type === 'auto' ? '🛺' : (c.vehicle_type === 'cab' ? '🚕' : '🛵')}
+            </div>
+          </div>
+        `;
+
+        const customIcon = L.divIcon({
+          html: iconHtml,
+          className: 'custom-fleet-pin',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([c.lat, c.lng], { icon: customIcon }).addTo(leafletMap);
+        marker.bindPopup(`
+          <div class="text-xs space-y-1">
+            <div class="font-bold text-white text-sm">${c.name || 'Captain'}</div>
+            <div class="text-slate-400 font-mono">${c.phone || ''}</div>
+            <div class="text-speedo-500 font-mono font-semibold">${c.vehicle_plate || 'KA-SPEEDO'}</div>
+            <div class="pt-1 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${pinColor};"></span>
+              <span class="font-bold text-[11px]">${isBusy ? 'IN ACTIVE RIDE' : (isOnline ? 'AVAILABLE ONLINE' : 'OFFLINE')}</span>
+            </div>
+          </div>
+        `);
+        captainMarkers[c.id] = marker;
+      });
+
+      document.getElementById('map-legend-online').innerText = onlineCount;
+      document.getElementById('map-legend-onride').innerText = onRideCount;
+      document.getElementById('map-legend-offline').innerText = offlineCount;
+    }
+
+    function centerMapOnFleet() {
+      if (!leafletMap || currentFleetData.length === 0) return;
+      const validPoints = currentFleetData.filter(c => c.lat && c.lng).map(c => [c.lat, c.lng]);
+      if (validPoints.length > 0) {
+        leafletMap.fitBounds(validPoints, { padding: [50, 50] });
+      }
+    }
+
+    function updateCaptainOnMap(data) {
+      if (!leafletMap || !data.captainId) return;
+      const idx = currentFleetData.findIndex(c => c.id === data.captainId);
+      if (idx !== -1) {
+        currentFleetData[idx].lat = data.lat;
+        currentFleetData[idx].lng = data.lng;
+        currentFleetData[idx].bearing = data.bearing;
+        currentFleetData[idx].is_online = data.isOnline;
+      }
+      if (captainMarkers[data.captainId]) {
+        captainMarkers[data.captainId].setLatLng([data.lat, data.lng]);
+      }
+    }
+
+    // 7. Smart KYC Queue
+    async function loadKycQueue() {
+      const container = document.getElementById('kyc-list-container');
+      container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500">Scanning pending verifications...</div>';
+
+      try {
+        const res = await apiFetch('/api/admin/kyc/queue');
+        if (res.success && res.data) {
+          const list = res.data;
+          document.getElementById('kyc-pending-badge').innerText = `${list.length} Pending`;
+          if (list.length === 0) {
+            container.innerHTML = `
+              <div class="col-span-full py-16 text-center text-slate-500 bg-slate-900/40 border border-slate-800 rounded-3xl">
+                <i data-lucide="check-circle" class="w-12 h-12 text-emerald-500 mx-auto mb-2"></i>
+                <h4 class="text-base font-bold text-white">All Clear! No Pending KYC Documents</h4>
+                <p class="text-xs text-slate-400 mt-1">New driver submissions will instantly arrive in this queue.</p>
+              </div>
+            `;
+            lucide.createIcons();
+            return;
+          }
+
+          container.innerHTML = list.map(c => `
+            <div class="bg-slate-900/60 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between transition shadow-lg">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 font-bold">SUBMITTED FOR REVIEW</span>
+                  <span class="text-xs text-slate-400 font-mono">${new Date(c.created_at || Date.now()).toLocaleDateString()}</span>
+                </div>
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-lg text-white">
+                    ${c.name ? c.name[0] : 'C'}
+                  </div>
+                  <div>
+                    <h4 class="text-base font-bold text-white">${c.name || 'Captain Applicant'}</h4>
+                    <p class="text-xs text-slate-400 font-mono">${c.phone || ''}</p>
+                  </div>
+                </div>
+                <div class="bg-slate-950/80 rounded-xl p-3 border border-slate-800/80 text-xs space-y-1.5 font-mono mb-4">
+                  <div class="flex justify-between text-slate-400 font-sans"><span>Vehicle:</span><span class="text-white uppercase font-bold">${c.vehicle_type || 'BIKE'}</span></div>
+                  <div class="flex justify-between text-slate-400 font-sans"><span>Plate:</span><span class="text-speedo-500 font-bold">${c.vehicle_number || 'PENDING'}</span></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
+                <button onclick="openKycInspectModal('${c.id}')"
+                  class="flex-1 bg-speedo-500 hover:bg-speedo-600 text-white font-semibold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5">
+                  <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                  <span>Inspect Documents</span>
+                </button>
+                <button onclick="quickApproveKyc('${c.id}')" title="Instant Approve"
+                  class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 font-semibold p-2 rounded-xl transition">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+          `).join('');
+          lucide.createIcons();
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="col-span-full py-8 text-center text-red-400 text-xs">Failed to load KYC queue: ${e.message}</div>`;
+      }
+    }
+
+    async function openKycInspectModal(captainId) {
+      try {
+        const res = await apiFetch(`/api/admin/users?role=captains`);
+        const captains = res.data?.users || [];
+        currentKycCaptain = captains.find(c => c.id === captainId);
+        if (!currentKycCaptain) throw new Error('Captain details not found');
+
+        document.getElementById('kyc-modal-captain-name').innerText = currentKycCaptain.name || 'Captain Applicant';
+        document.getElementById('kyc-modal-captain-phone').innerText = currentKycCaptain.phone || '';
+        document.getElementById('kyc-modal-vehicle-type').innerText = (currentKycCaptain.vehicle_type || 'BIKE').toUpperCase();
+        document.getElementById('kyc-modal-vehicle-plate').innerText = currentKycCaptain.vehicle_number || 'KA-01-AB-1234';
+        document.getElementById('kyc-modal-dl-num').innerText = currentKycCaptain.driving_license_number || 'DL1420110012345';
+        document.getElementById('kyc-modal-date').innerText = new Date(currentKycCaptain.created_at || Date.now()).toLocaleString();
+        
+        setKycDocView('dl');
+        document.getElementById('kyc-modal').classList.remove('hidden');
+        lucide.createIcons();
+      } catch (err) {
+        alert('Could not inspect captain: ' + err.message);
+      }
+    }
+
+    function setKycDocView(type) {
+      activeKycDoc = type;
+      ['dl', 'rc', 'selfie'].forEach(t => {
+        const btn = document.getElementById(`doc-tab-${t}`);
+        if (t === type) {
+          btn.className = 'px-2.5 py-1 rounded-lg bg-speedo-500 text-white font-semibold';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300';
+        }
+      });
+
+      const img = document.getElementById('kyc-preview-img');
+      const fsLink = document.getElementById('kyc-preview-fullscreen');
+      let docUrl = `${API_BASE}/uploads/sample_qr.png`; // default fallback
+      if (currentKycCaptain) {
+        if (type === 'dl' && currentKycCaptain.dl_document_url) docUrl = resolveUploadUrl(currentKycCaptain.dl_document_url);
+        else if (type === 'rc' && currentKycCaptain.rc_document_url) docUrl = resolveUploadUrl(currentKycCaptain.rc_document_url);
+        else if (type === 'selfie' && currentKycCaptain.profile_photo_url) docUrl = resolveUploadUrl(currentKycCaptain.profile_photo_url);
+        else docUrl = `${API_BASE}/uploads/document-${currentKycCaptain.id}-${type}.png`;
+      }
+      img.src = docUrl;
+      fsLink.href = docUrl;
+    }
+
+    function resolveUploadUrl(url) {
+      if (!url) return `${API_BASE}/uploads/sample_qr.png`;
+      if (url.startsWith('http')) return url;
+      return `${API_BASE}/${url.replace(/^\//, '')}`;
+    }
+
+    function closeKycModal() {
+      document.getElementById('kyc-modal').classList.add('hidden');
+      document.getElementById('kyc-reject-box').classList.add('hidden');
+    }
+
+    async function handleKycAction(action) {
+      if (!currentKycCaptain) return;
+      if (action === 'reject') {
+        const rejectBox = document.getElementById('kyc-reject-box');
+        if (rejectBox.classList.contains('hidden')) {
+          rejectBox.classList.remove('hidden');
+          return;
+        }
+        const reason = document.getElementById('kyc-reject-reason').value.trim() || 'Document image unclear';
+        await apiFetch(`/api/admin/kyc/${currentKycCaptain.id}/review`, {
+          method: 'POST',
+          body: JSON.stringify({ status: 'rejected', rejectionReason: reason })
+        });
+      } else {
+        await apiFetch(`/api/admin/kyc/${currentKycCaptain.id}/instant-approve`, { method: 'POST' });
+      }
+      closeKycModal();
+      loadKycQueue();
+      loadDashboardStats();
+    }
+
+    async function quickApproveKyc(id) {
+      if (!confirm('Instantly approve and activate this captain?')) return;
+      await apiFetch(`/api/admin/kyc/${id}/instant-approve`, { method: 'POST' });
+      loadKycQueue();
+      loadDashboardStats();
+    }
+
+    // 8. Live Rides Table
+    async function loadRidesList() {
+      const tbody = document.getElementById('rides-table-body');
+      tbody.innerHTML = '<tr><td colspan="7" class="py-12 text-center text-slate-500 font-sans">Querying rides telemetry...</td></tr>';
+
+      try {
+        const status = document.getElementById('rides-status-filter').value;
+        const res = await apiFetch(`/api/admin/rides${status ? `?status=${status}` : ''}`);
+        if (res.success && res.data) {
+          const list = res.data;
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="py-12 text-center text-slate-500 font-sans">No matching rides found.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = list.map(r => `
+            <tr class="hover:bg-slate-900/50 transition">
+              <td class="p-4">
+                <div class="font-bold text-white">#${r.id.slice(0, 8)}</div>
+                <div class="text-[10px] text-slate-500">${new Date(r.created_at || Date.now()).toLocaleTimeString()}</div>
+              </td>
+              <td class="p-4">
+                <div class="text-white font-sans font-semibold">${r.rider_name || 'Rider'}</div>
+                <div class="text-[10px] text-slate-500">${r.rider_phone || ''}</div>
+              </td>
+              <td class="p-4">
+                <div class="text-white font-sans font-semibold">${r.captain_name || '<span class="text-slate-500">Unassigned</span>'}</div>
+                <div class="text-[10px] text-slate-500">${r.captain_phone || ''}</div>
+              </td>
+              <td class="p-4 uppercase text-[11px] font-sans text-slate-400">${r.vehicle_type || 'BIKE'}</td>
+              <td class="p-4 font-sans max-w-xs truncate">
+                <div class="text-slate-200 truncate">📍 ${r.pickup_address || 'Pickup'}</div>
+                <div class="text-slate-400 truncate">🏁 ${r.drop_address || 'Drop'}</div>
+              </td>
+              <td class="p-4 font-mono font-bold text-emerald-400">
+                ₹${r.fare || 0}
+                <div class="text-[10px] text-slate-500 font-sans font-normal">${r.distance_km || 0} km</div>
+              </td>
+              <td class="p-4 text-right">
+                <span class="px-2.5 py-1 rounded text-[10px] font-bold ${getStatusBadgeClass(r.status)}">${r.status}</span>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-red-400 text-xs font-sans">Failed to load rides: ${e.message}</td></tr>`;
+      }
+    }
+
+    function filterRidesTable() {
+      const q = document.getElementById('rides-search-input').value.toLowerCase();
+      document.querySelectorAll('#rides-table-body tr').forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }
+
+    // 9. SOS Emergency Command
+    async function loadSosAlerts() {
+      const container = document.getElementById('sos-cards-container');
+      try {
+        const res = await apiFetch('/api/admin/sos-alerts');
+        if (res.success && res.data) {
+          const alerts = res.data;
+          document.getElementById('sos-live-counter').innerText = `${alerts.length} Active`;
+          if (alerts.length === 0) {
+            container.innerHTML = `
+              <div class="p-12 text-center text-slate-500 bg-slate-900/40 border border-slate-800 rounded-2xl">
+                <i data-lucide="shield-check" class="w-12 h-12 mx-auto text-emerald-500 mb-2"></i>
+                <p class="text-sm font-semibold text-slate-300">All Clear — Zero Active Emergency Alerts</p>
+                <p class="text-xs text-slate-500 mt-1">Passenger & driver SOS signals will stream directly into this dashboard.</p>
+              </div>
+            `;
+            lucide.createIcons();
+            return;
+          }
+
+          container.innerHTML = alerts.map(a => `
+            <div class="bg-red-500/10 border-2 border-red-500/40 rounded-2xl p-6 relative overflow-hidden shadow-2xl sos-flashing">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center font-extrabold text-xl animate-bounce">
+                    SOS
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                      <span>CRITICAL PANIC ALERT</span>
+                      <span class="text-xs bg-red-600 text-white px-2 py-0.5 rounded font-mono font-bold">DISPATCH REQUIRED</span>
+                    </h3>
+                    <p class="text-xs text-red-300 font-mono">Triggered at ${new Date(a.created_at || Date.now()).toLocaleTimeString()}</p>
+                  </div>
+                </div>
+                <button onclick="resolveSosAlert('${a.id}')"
+                  class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 px-5 rounded-xl shadow-lg transition flex items-center gap-2">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                  <span>Mark Resolved & Close Alarm</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono bg-slate-950/80 p-4 rounded-xl border border-red-500/30">
+                <div><span class="text-slate-400 font-sans">Caller:</span> <strong class="text-white">${a.caller_name || 'Passenger'}</strong></div>
+                <div><span class="text-slate-400 font-sans">Phone:</span> <strong class="text-white">${a.caller_phone || 'N/A'}</strong></div>
+                <div><span class="text-slate-400 font-sans">Ride ID:</span> <strong class="text-speedo-500">#${(a.ride_id || '').slice(0, 10)}</strong></div>
+                <div class="col-span-full flex items-center gap-2 pt-2">
+                  <span class="text-slate-400 font-sans">Exact GPS Coordinates:</span>
+                  <a href="https://maps.google.com/?q=${a.lat},${a.lng}" target="_blank" class="text-blue-400 hover:underline font-bold flex items-center gap-1">
+                    <span>${a.lat}, ${a.lng}</span>
+                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          `).join('');
+          lucide.createIcons();
+        }
+      } catch (e) {
+        console.error('Error loading SOS alerts:', e);
+      }
+    }
+
+    async function resolveSosAlert(id) {
+      if (!confirm('Confirm resolution of this SOS emergency dispatch?')) return;
+      await apiFetch(`/api/admin/sos-alerts/${id}/resolve`, { method: 'POST' });
+      loadSosAlerts();
+      loadDashboardStats();
+    }
+
+    function playSosSiren() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        osc.start();
+        osc.stop(ctx.currentTime + 1.2);
+      } catch (_) {}
+    }
+
+    function showSosNotification(alert) {
+      alert(`🚨 CRITICAL SPEEDO SOS ALERT! Caller: ${alert.caller_name || 'Passenger'} at coordinates ${alert.lat}, ${alert.lng}`);
+    }
+
+    // 10. Surge & Geofencing
+    async function loadSurgeZones() {
+      const container = document.getElementById('surge-zones-container');
+      try {
+        const res = await apiFetch('/api/admin/surge-zones');
+        if (res.success && res.data) {
+          const zones = res.data;
+          if (zones.length === 0) {
+            container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500">No active surge zones configured.</div>';
+            return;
+          }
+          container.innerHTML = zones.map(z => `
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-bold text-yellow-400 font-mono px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/30">${z.multiplier}x MULTIPLIER</span>
+                  <button onclick="deleteSurgeZone('${z.id}')" class="text-slate-500 hover:text-red-400 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+                <h4 class="text-base font-bold text-white mb-1">${z.name || 'Surge Zone'}</h4>
+                <p class="text-xs text-slate-400 font-mono">Radius: ${z.radius_meters || 2000}m around (${Number(z.lat).toFixed(4)}, ${Number(z.lng).toFixed(4)})</p>
+              </div>
+              <div class="pt-4 border-t border-slate-800 mt-4 flex items-center justify-between text-xs text-emerald-400">
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Active Geofence</span>
+                <span class="font-mono text-slate-500">Auto-snap enabled</span>
+              </div>
+            </div>
+          `).join('');
+          lucide.createIcons();
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="col-span-full text-center text-red-400 py-6 text-xs">Failed to load surge zones: ${e.message}</div>`;
+      }
+    }
+
+    function openAddSurgeModal() {
+      document.getElementById('surge-modal').classList.remove('hidden');
+    }
+    function closeSurgeModal() {
+      document.getElementById('surge-modal').classList.add('hidden');
+    }
+
+    document.getElementById('surge-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('surge-name').value.trim();
+      const lat = parseFloat(document.getElementById('surge-lat').value);
+      const lng = parseFloat(document.getElementById('surge-lng').value);
+      const radius_meters = parseInt(document.getElementById('surge-radius').value);
+      const multiplier = parseFloat(document.getElementById('surge-multiplier').value);
+
+      await apiFetch('/api/admin/surge-zones', {
+        method: 'POST',
+        body: JSON.stringify({ name, lat, lng, radius_meters, multiplier })
+      });
+      closeSurgeModal();
+      loadSurgeZones();
+    });
+
+    async function deleteSurgeZone(id) {
+      if (!confirm('Deactivate this surge zone?')) return;
+      await apiFetch(`/api/admin/surge-zones/${id}`, { method: 'DELETE' });
+      loadSurgeZones();
+    }
+
+    // 11. Broadcast Sender
+    document.getElementById('broadcast-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const target = document.getElementById('broadcast-target').value;
+      const title = document.getElementById('broadcast-title').value.trim();
+      const message = document.getElementById('broadcast-message').value.trim();
+      const priority = document.getElementById('broadcast-priority').value;
+      const btn = document.getElementById('broadcast-submit-btn');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>Transmitting...</span>';
+      try {
+        await apiFetch('/api/admin/broadcast', {
+          method: 'POST',
+          body: JSON.stringify({ target, title, message, priority })
+        });
+        alert('🎉 Broadcast pushed successfully to ' + target + '!');
+        document.getElementById('broadcast-form').reset();
+        loadBroadcastHistory();
+      } catch (err) {
+        alert('Failed to transmit: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="radio" class="w-4 h-4"></i><span>Transmit Broadcast Now</span>';
+        lucide.createIcons();
+      }
+    });
+
+    async function loadBroadcastHistory() {
+      const container = document.getElementById('broadcast-history-container');
+      try {
+        const res = await apiFetch('/api/admin/broadcasts');
+        if (res.success && res.data) {
+          const list = res.data;
+          if (list.length === 0) {
+            container.innerHTML = '<div class="py-8 text-center text-slate-500 font-sans text-xs">No previous broadcasts sent.</div>';
+            return;
+          }
+          container.innerHTML = list.map(b => `
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs flex flex-col gap-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-white text-sm font-sans">${b.title || 'Broadcast Announcement'}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-bold uppercase">${b.target_audience || 'ALL'}</span>
+              </div>
+              <p class="text-slate-300 font-sans text-xs">${b.message || ''}</p>
+              <div class="text-[10px] text-slate-500 pt-1 border-t border-slate-800/80">${new Date(b.created_at || Date.now()).toLocaleString()}</div>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Error loading broadcasts:', e);
+      }
+    }
+
+    // 12. Users & Drivers Moderation
+    async function loadUsersList() {
+      const tbody = document.getElementById('users-table-body');
+      tbody.innerHTML = '<tr><td colspan="7" class="py-12 text-center text-slate-500 font-sans">Scanning user registry...</td></tr>';
+      try {
+        const role = document.getElementById('users-role-filter').value;
+        const res = await apiFetch(`/api/admin/users?role=${role}`);
+        if (res.success && res.data) {
+          const users = res.data.users || [];
+          if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="py-12 text-center text-slate-500 font-sans">No matching users found.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = users.map(u => `
+            <tr class="hover:bg-slate-900/50 transition">
+              <td class="p-4">
+                <div class="text-white font-sans font-bold">${u.name || 'User'}</div>
+                <div class="text-[10px] text-slate-500">${u.id.slice(0, 10)}...</div>
+              </td>
+              <td class="p-4">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'captain' ? 'bg-speedo-500/10 text-speedo-500 border border-speedo-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'} uppercase">
+                  ${u.role || 'RIDER'}
+                </span>
+              </td>
+              <td class="p-4">
+                <div class="text-slate-300">${u.phone || ''}</div>
+                <div class="text-[10px] text-slate-500">${u.email || ''}</div>
+              </td>
+              <td class="p-4 uppercase text-[11px] text-slate-300">
+                ${u.vehicle_type ? `${u.vehicle_type} (${u.vehicle_number || ''})` : '<span class="text-slate-600">N/A</span>'}
+              </td>
+              <td class="p-4 text-slate-400 text-[11px]">${new Date(u.created_at || Date.now()).toLocaleDateString()}</td>
+              <td class="p-4 text-center">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.is_active !== false ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}">
+                  ${u.is_active !== false ? 'ACTIVE' : 'SUSPENDED'}
+                </span>
+              </td>
+              <td class="p-4 text-right">
+                <button onclick="toggleUserStatus('${u.role}', '${u.id}', ${u.is_active !== false})"
+                  class="px-3 py-1 rounded-lg text-xs font-semibold ${u.is_active !== false ? 'bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white'} transition">
+                  ${u.is_active !== false ? 'Suspend' : 'Activate'}
+                </button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-red-400 text-xs font-sans">Failed to load users: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function toggleUserStatus(role, id, currentActive) {
+      const actionName = currentActive ? 'SUSPEND' : 'ACTIVATE';
+      if (!confirm(`Are you sure you want to ${actionName} this ${role}?`)) return;
+      await apiFetch(`/api/admin/users/${role}/${id}/toggle-status`, {
+        method: 'POST',
+        body: JSON.stringify({ is_active: !currentActive })
+      });
+      loadUsersList();
+    }
+
+    // 13. OTA App Versions Controller
+    async function loadAppVersions() {
+      const container = document.getElementById('app-versions-container');
+      try {
+        const res = await apiFetch('/api/admin/app-versions');
+        if (res.success && res.data) {
+          const apps = res.data;
+          container.innerHTML = ['rider', 'captain', 'admin'].map(appKey => {
+            const cfg = apps[appKey] || { latestVersionCode: 23, latestVersionName: '1.0.23', forceUpdate: true };
+            return `
+              <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs uppercase font-bold text-slate-400 tracking-wider">${appKey.toUpperCase()} APP</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold ${cfg.forceUpdate ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-slate-800 text-slate-400'}">
+                      ${cfg.forceUpdate ? 'FORCE UPDATE ON' : 'OPTIONAL'}
+                    </span>
+                  </div>
+                  <div class="text-3xl font-extrabold text-white font-mono mb-1">v${cfg.latestVersionName || '1.0.23'}</div>
+                  <p class="text-xs text-slate-400 font-mono mb-4">Build Code: #${cfg.latestVersionCode || 23}</p>
+                  
+                  <div class="space-y-3 pt-3 border-t border-slate-800 text-xs">
+                    <div>
+                      <label class="block text-[11px] text-slate-400 mb-1">Download APK URL</label>
+                      <input type="text" id="apk-url-${appKey}" value="${cfg.updateUrl || `${API_BASE}/downloads/speedo-${appKey}.apk`}"
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 font-mono focus:outline-none" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 mt-5 flex items-center justify-between">
+                  <a href="${cfg.updateUrl || `${API_BASE}/downloads/speedo-${appKey}.apk`}" target="_blank"
+                    class="text-xs text-speedo-500 hover:underline flex items-center gap-1">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>Download APK</span>
+                  </a>
+                  <button onclick="saveAppVersionConfig('${appKey}')"
+                    class="bg-speedo-500 hover:bg-speedo-600 text-white text-xs font-semibold px-3.5 py-1.5 rounded-xl transition">
+                    Save Config
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+          lucide.createIcons();
+        }
+      } catch (e) {
+        container.innerHTML = `<div class="col-span-full py-8 text-center text-red-400 text-xs">Failed to load app versions: ${e.message}</div>`;
+      }
+    }
+
+    async function saveAppVersionConfig(app) {
+      const url = document.getElementById(`apk-url-${app}`).value.trim();
+      await apiFetch(`/api/admin/app-versions/${app}`, {
+        method: 'PUT',
+        body: JSON.stringify({ updateUrl: url })
+      });
+      alert('Version settings updated for ' + app);
+      loadAppVersions();
+    }
+
+    async function syncAppVersionsNow() {
+      await apiFetch('/api/app-version/sync-now', { method: 'POST' });
+      alert('OTA Version update sync notified across all devices!');
+      loadAppVersions();
+    }
+
+    // 14. Charts Initialization
+    function initCharts() {
+      // Rides Volume Chart
+      const ctxTrend = document.getElementById('ridesTrendChart')?.getContext('2d');
+      if (ctxTrend) {
+        ridesTrendChart = new Chart(ctxTrend, {
+          type: 'line',
+          data: {
+            labels: ['00:00', '03:00', '06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+            datasets: [{
+              label: 'Ride Bookings',
+              data: [12, 5, 28, 95, 142, 110, 185, 92],
+              borderColor: '#ff5722',
+              backgroundColor: 'rgba(255, 87, 34, 0.1)',
+              borderWidth: 2.5,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: '#ff5722'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } } },
+              y: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 10 } } }
+            }
+          }
+        });
+      }
+
+      // Fleet Distribution Pie Chart
+      const ctxPie = document.getElementById('fleetDistributionChart')?.getContext('2d');
+      if (ctxPie) {
+        fleetPieChart = new Chart(ctxPie, {
+          type: 'doughnut',
+          data: {
+            labels: ['Bike', 'Auto', 'Cab'],
+            datasets: [{
+              data: [65, 25, 10],
+              backgroundColor: ['#ff5722', '#eab308', '#3b82f6'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '72%'
+          }
+        });
+      }
+    }
+
+    // 15. Helper API Fetch Wrapper
+    async function apiFetch(endpoint, opts = {}) {
+      const url = `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(opts.headers || {})
+      };
+      const res = await fetch(url, { ...opts, headers });
+      if (res.status === 401 || res.status === 403) {
+        logoutAdmin();
+        throw new Error('Session expired. Please log in.');
+      }
+      return await res.json();
+    }
+
+    // Background Poll every 12s
+    function startPolling() {
+      setInterval(() => {
+        if (activeTab === 'dashboard') loadDashboardStats();
+        else if (activeTab === 'map') loadFleetMapData();
+        else if (activeTab === 'sos') loadSosAlerts();
+      }, 12000);
+    }
+  </script>
+</body>
+</html>
