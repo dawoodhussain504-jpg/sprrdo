@@ -1,4 +1,4 @@
-package com.speedo.core.utils
+﻿package com.speedo.core.utils
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -13,7 +13,7 @@ object Constants {
     const val KEY_CUSTOM_BASE_URL = "custom_base_url"
 
     // Default API URL (Railway Live Cloud URL)
-    const val DEFAULT_BASE_URL = "https://web-production-5d826.up.railway.app/api/"
+    const val DEFAULT_BASE_URL = "https://speedo-backend-scfk.onrender.com/api/"
 
     // Google Maps Platform API Key (Official)
     const val GOOGLE_MAPS_API_KEY = "AIzaSyAl4c7ort-C7mVrM-4eZKvqucgWkt03X1E"
@@ -55,3 +55,4 @@ object Constants {
             .apply()
     }
 }
+
