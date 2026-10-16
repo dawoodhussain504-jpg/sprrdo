@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Speedo Automated App Update & Version Sequencer
 ================================================
@@ -36,7 +36,7 @@ BACKEND_DIR = os.path.join(ROOT_DIR, "backend")
 DOWNLOADS_DIR = os.path.join(ROOT_DIR, "downloads")
 BACKEND_DOWNLOADS_DIR = os.path.join(BACKEND_DIR, "downloads")
 
-PROD_URL = "https://web-production-5d826.up.railway.app"
+PROD_URL = "https://speedo-backend-scfk.onrender.com"
 
 def log(tag, msg):
     print(f"[{tag}] {msg}", flush=True)
@@ -241,3 +241,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
