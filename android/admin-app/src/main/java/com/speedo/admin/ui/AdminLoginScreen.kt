@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.speedo.admin.viewmodel.AdminViewModel
 import com.speedo.core.components.SpeedoPrimaryButton
-import com.speedo.core.components.SpeedoServerConfigDialog
 import com.speedo.core.components.SpeedoTextField
 import com.speedo.core.theme.*
 
@@ -34,17 +33,10 @@ fun AdminLoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showServerDialog by remember { mutableStateOf(false) }
 
     var email by remember { mutableStateOf("admin@speedo.com") }
     var password by remember { mutableStateOf("Admin@123") }
     var passwordVisible by remember { mutableStateOf(false) }
-
-    if (showServerDialog) {
-        SpeedoServerConfigDialog(
-            onDismissRequest = { showServerDialog = false }
-        )
-    }
 
     Surface(
         modifier = Modifier
@@ -54,25 +46,15 @@ fun AdminLoginScreen(
             .imePadding(),
         color = SpeedoWhite
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            IconButton(
-                onClick = { showServerDialog = true },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(Icons.Default.Dns, contentDescription = "Server Settings", tint = SpeedoTextSecondary)
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(28.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 72)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(28.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            com.speedo.core.components.SpeedoAppIconBadge(sizeDp = 72)
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -151,5 +133,4 @@ fun AdminLoginScreen(
             )
         }
     }
-}
 }
