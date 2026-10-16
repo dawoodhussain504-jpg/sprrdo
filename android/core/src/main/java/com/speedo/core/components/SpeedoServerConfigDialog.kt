@@ -1,4 +1,4 @@
-﻿package com.speedo.core.components
+package com.speedo.core.components
 
 import android.content.Context
 import androidx.compose.foundation.background
@@ -45,7 +45,7 @@ fun SpeedoServerConfigDialog(
     var isSuccess by remember { mutableStateOf(false) }
 
     val presets = listOf(
-        \"Render Cloud (Live)\" to \"https://speedo-backend-scfk.onrender.com/api/\",
+        "Render Cloud (Live)" to "https://speedo-backend-scfk.onrender.com/api/",
         "Local WiFi (PC IP)" to "http://10.181.215.97:5000/api/",
         "Android Emulator" to "http://10.0.2.2:5000/api/",
         "Localhost (Port 5000)" to "http://localhost:5000/api/"
