@@ -39,6 +39,9 @@ object RetrofitClient {
     }
 
     fun getService(context: Context): SpeedoApiService {
+        Constants.syncWithRemoteServerBeacon(context) {
+            resetService()
+        }
         return apiService ?: synchronized(this) {
             apiService ?: buildService(context.applicationContext).also { apiService = it }
         }
