@@ -74,7 +74,7 @@ export async function getAppVersionConfig(req: Request, res: Response) {
 
     if (result.rows.length === 0) {
       const defaultName = `Speedo ${appId.charAt(0).toUpperCase() + appId.slice(1)}`;
-      const defaultUrl = `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
+      const defaultUrl = `https://speedo-backend-scfk.onrender.com/downloads/speedo-${appId}.apk`;
       await db.query(
         `INSERT INTO app_version_configs
          (app_id, app_name, latest_version_code, latest_version_name, min_supported_version_code, force_update, title, message, release_notes, update_url, is_active, updated_at)
@@ -99,7 +99,7 @@ export async function getAppVersionConfig(req: Request, res: Response) {
     // Auto-migrate play store placeholder to direct APK download link if set
     let row = result.rows[0];
     if (row.update_url && row.update_url.includes('play.google.com')) {
-      const directUrl = `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
+      const directUrl = `https://speedo-backend-scfk.onrender.com/downloads/speedo-${appId}.apk`;
       await db.query('UPDATE app_version_configs SET update_url = $1 WHERE app_id = $2', [directUrl, appId]);
       row.update_url = directUrl;
     }
@@ -175,7 +175,7 @@ export async function updateAppVersionConfig(req: Request, res: Response) {
 
     const targetUrl = updateUrl && !updateUrl.includes('play.google.com')
       ? updateUrl
-      : `https://web-production-5d826.up.railway.app/downloads/speedo-${appId}.apk`;
+      : `https://speedo-backend-scfk.onrender.com/downloads/speedo-${appId}.apk`;
 
     const isNewBuildPublished = targetCode > currentLiveCode;
 
