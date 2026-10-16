@@ -57,7 +57,7 @@ object Constants {
         
         // Auto-purge dead Railway URL from persistent storage
         if (saved != null && (saved.contains("railway") || saved.contains("up.railway.app"))) {
-            Log.w(TAG, "Purging deprecated Railway URL from SharedPreferences: ")
+            Log.w(TAG, "Purging deprecated Railway URL from SharedPreferences: $saved")
             prefs.edit().remove(KEY_CUSTOM_BASE_URL).apply()
             return DEFAULT_BASE_URL
         }
@@ -67,14 +67,14 @@ object Constants {
 
     fun setCustomBaseUrl(context: Context, url: String) {
         var formatted = url.trim()
-        if (!formatted.endsWith("/")) formatted = "/"
-        if (!formatted.endsWith("api/")) formatted = "api/"
+        if (!formatted.endsWith("/")) formatted = "$formatted/"
+        if (!formatted.endsWith("api/")) formatted = "${formatted}api/"
 
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_CUSTOM_BASE_URL, formatted)
             .apply()
-        Log.i(TAG, "Custom Base URL saved: ")
+        Log.i(TAG, "Custom Base URL saved: $formatted")
     }
 
     /**
@@ -84,7 +84,7 @@ object Constants {
     fun syncWithRemoteServerBeacon(context: Context, onServerMigrated: ((String) -> Unit)? = null) {
         thread(isDaemon = true, name = "SpeedoServerDiscovery") {
             try {
-                val discoveryUrl = URL("=")
+                val discoveryUrl = URL(REMOTE_CONFIG_URL)
                 val conn = (discoveryUrl.openConnection() as HttpURLConnection).apply {
                     connectTimeout = 5000
                     readTimeout = 5000
@@ -95,12 +95,12 @@ object Constants {
                     val json = JSONObject(body)
                     val remoteUrl = json.optString("active_server_url", "").trim()
                     if (remoteUrl.isNotBlank()) {
-                        var formatted = if (remoteUrl.endsWith("/")) remoteUrl else "/"
-                        if (!formatted.endsWith("api/")) formatted = "api/"
+                        var formatted = if (remoteUrl.endsWith("/")) remoteUrl else "$remoteUrl/"
+                        if (!formatted.endsWith("api/")) formatted = "${formatted}api/"
 
                         val current = getBaseUrl(context)
                         if (!current.equals(formatted, ignoreCase = true)) {
-                            Log.i(TAG, "🚀 [REMOTE SERVER DISCOVERY] Server migrated from  to ! Auto-updating app...")
+                            Log.i(TAG, "🚀 [REMOTE SERVER DISCOVERY] Server migrated from $current to $formatted! Auto-updating app...")
                             setCustomBaseUrl(context, formatted)
                             onServerMigrated?.invoke(formatted)
                         }
@@ -108,7 +108,7 @@ object Constants {
                 }
                 conn.disconnect()
             } catch (e: Exception) {
-                Log.d(TAG, "Remote server discovery silent pass: ")
+                Log.d(TAG, "Remote server discovery silent pass: ${e.message}")
             }
         }
     }
